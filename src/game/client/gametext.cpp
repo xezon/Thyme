@@ -119,7 +119,7 @@ void GameTextManager::Read_To_End_Of_Quote(File *file, char *in, char *out, char
     while (true) {
         char current;
 
-        // if in pointer is valid, read data from that, otherwise read from file.
+        // If in pointer is valid, read data from that, otherwise read from file.
         if (in != nullptr) {
             current = *in++;
 
@@ -141,7 +141,7 @@ void GameTextManager::Read_To_End_Of_Quote(File *file, char *in, char *out, char
             state = 1;
         }
 
-        // state 1 read so long as its alphanumeric characters or underscore
+        // state 1 read so long as its alphanumeric characters or underscore.
         if (state == 1) {
             if ((current < 'a' || current > 'z') && (current < 'A' || current > 'Z') && (current < '0' || current > '9')
                 && current != '_') {
@@ -151,7 +151,7 @@ void GameTextManager::Read_To_End_Of_Quote(File *file, char *in, char *out, char
             }
         }
 
-        // state 2 ignore everything and keep reading until a breaking condition is encountered
+        // state 2 ignore everything and keep reading until a breaking condition is encountered.
     }
 
     if (wave_pos > 0) {
@@ -265,7 +265,7 @@ void GameTextManager::Remove_Leading_And_Trailing(char *buffer)
         // Empty loop.
     }
 
-    // Null terminate after last none whitespace
+    // Null terminate after last none whitespace.
     buffer[pos + 1] = '\0';
 }
 
