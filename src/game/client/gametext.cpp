@@ -443,7 +443,7 @@ bool GameTextManager::Get_CSF_Info(const char *filename)
 bool GameTextFile::Parse_String_File(const char *filename,
     StringInfo *string_info,
     int &max_label_len,
-    BufferView<unichar_t> translate,
+    BufferView<unichar_t> buffer_trans,
     BufferView<char> buffer_in,
     BufferView<char> buffer_out,
     BufferView<char> buffer_ex)
@@ -501,12 +501,12 @@ bool GameTextFile::Parse_String_File(const char *filename,
                     continue;
                 }
 
-                Translate_Copy(translate, buffer_out);
-                Strip_Spaces(translate);
+                Translate_Copy(buffer_trans, buffer_out);
+                Strip_Spaces(buffer_trans);
 
                 // TODO maybe Windows build does something extra here not done in mac version.
 
-                string_info[index].text = translate;
+                string_info[index].text = buffer_trans;
                 string_info[index].speech = buffer_ex;
 
                 read_string = true;
@@ -545,7 +545,7 @@ bool GameTextManager::Parse_String_File(const char *filename)
 bool GameTextFile::Parse_CSF_File(const char *filename,
     StringInfo *string_info,
     int &max_label_len,
-    BufferView<unichar_t> translate,
+    BufferView<unichar_t> buffer_trans,
     BufferView<char> buffer_in)
 {
     captainslog_info("Parsing CSF file '%s'.", filename);
@@ -600,24 +600,24 @@ bool GameTextFile::Parse_CSF_File(const char *filename,
             length = le32toh(length);
 
             if (length > 0) {
-                file->Read(translate, sizeof(translate[0]) * length);
+                file->Read(buffer_trans, sizeof(buffer_trans[0]) * length);
             }
 
             // CSF format supports multiple strings per label, but we only care about
             // first string.
             if (i == 0) {
-                translate[length] = '\0';
+                buffer_trans[length] = '\0';
 
-                for (int j = 0; translate[j] != '\0'; ++j) {
+                for (int j = 0; buffer_trans[j] != '\0'; ++j) {
                     // Correct for big endian systems
-                    translate[j] = le16toh(translate[j]);
+                    buffer_trans[j] = le16toh(buffer_trans[j]);
 
                     // Binary NOT to decode
-                    translate[j] = ~translate[j];
+                    buffer_trans[j] = ~buffer_trans[j];
                 }
 
-                Strip_Spaces(translate);
-                string_info[index].text = translate;
+                Strip_Spaces(buffer_trans);
+                string_info[index].text = buffer_trans;
             }
 
             // FourCC of 'STRW' rather than 'STR ' indicates extra data.
@@ -945,7 +945,7 @@ void GameTextManager::Deinit()
 
 // #TODO Reorder class functions in this file to better match the order in header file.
 
-GameTextFile::GameTextFile() : m_textCount(0), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfo(nullptr) {}
+GameTextFile::GameTextFile() : m_stringInfoCount(0), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfo(nullptr) {}
 
 GameTextFile::~GameTextFile()
 {
@@ -954,12 +954,17 @@ GameTextFile::~GameTextFile()
 
 bool GameTextFile::Load(const char *filename, GameTextType filetype)
 {
+    if (!filename || !filename[0]) {
+        captainslog_info("String file without file name cannot be loaded.");
+        return false;
+    }
+
     bool success = false;
 
     Unload();
     filetype = Get_File_Type(filename, filetype);
 
-    int max_label_len;
+    int max_label_len = 0;
     char buffer_in[512] = { 0 };
     char buffer_out[512] = { 0 };
     char buffer_ex[512] = { 0 };
@@ -970,17 +975,17 @@ bool GameTextFile::Load(const char *filename, GameTextType filetype)
     auto bufview_trans = BufferView<unichar_t>::Create(buffer_trans);
 
     if (filetype == GameTextType::TYPE_CSF) {
-        if (Get_CSF_Info(filename, m_textCount, m_language)) {
+        if (Get_CSF_Info(filename, m_stringInfoCount, m_language)) {
             captainslog_dbgassert(m_stringInfo == nullptr, "string info must be not allocated already");
-            m_stringInfo = new StringInfo[m_textCount];
+            m_stringInfo = new StringInfo[m_stringInfoCount];
             if (Parse_CSF_File(filename, m_stringInfo, max_label_len, bufview_trans, bufview_in)) {
                 success = true;
             }
         }
     } else if (filetype == GameTextType::TYPE_STR) {
-        if (Get_String_Count(filename, m_textCount, bufview_in, bufview_out, bufview_ex)) {
+        if (Get_String_Count(filename, m_stringInfoCount, bufview_in, bufview_out, bufview_ex)) {
             captainslog_dbgassert(m_stringInfo == nullptr, "string info must be not allocated already");
-            m_stringInfo = new StringInfo[m_textCount];
+            m_stringInfo = new StringInfo[m_stringInfoCount];
             if (Parse_String_File(
                     filename, m_stringInfo, max_label_len, bufview_trans, bufview_in, bufview_out, bufview_ex)) {
                 success = true;
@@ -990,19 +995,68 @@ bool GameTextFile::Load(const char *filename, GameTextType filetype)
 
     static_assert(GameTextType::Count == static_cast<GameTextType>(3), "New Game Text Type needs to be covered here");
 
+    if (success) {
+        captainslog_info("String file '%s' with %d lines loaded successfully.", filename, m_stringInfoCount);
+    } else {
+        Unload();
+        captainslog_info("String file '%s' failed to load.", filename);
+    }
+
     return success;
 }
 
 bool GameTextFile::Save(const char *filename, GameTextType filetype)
 {
+    if (!filename || !filename[0]) {
+        captainslog_info("String file without file name cannot be saved.");
+        return false;
+    }
+
+    if (!m_stringInfo) {
+        captainslog_info("String file without string data cannot be saved.");
+        return false;
+    }
+
     bool success = false;
+
+    filetype = Get_File_Type(filename, filetype);
+
+    GameTextLengthInfo len_info = { 0 };
+    char buffer_in[512] = { 0 };
+    char buffer_out[512] = { 0 };
+    char buffer_ex[512] = { 0 };
+    unichar_t buffer_trans[1024] = { 0 };
+    auto bufview_string = BufferView<StringInfo>::Create(m_stringInfo, m_stringInfoCount);
+    auto bufview_trans = BufferView<unichar_t>::Create(buffer_trans);
+    auto bufview_in = BufferView<char>::Create(buffer_in);
+    auto bufview_out = BufferView<char>::Create(buffer_out);
+    auto bufview_ex = BufferView<char>::Create(buffer_ex);
+
+    if (filetype == GameTextType::TYPE_CSF) {
+        if (Write_CSF_File(filename, bufview_string, len_info, bufview_trans, bufview_in)) {
+            success = true;
+        }
+    } else if (filetype == GameTextType::TYPE_STR) {
+        if (Write_String_File(filename, bufview_string, len_info, bufview_trans, bufview_in, bufview_out, bufview_ex)) {
+            success = true;
+        }
+    }
+
+    if (success) {
+        captainslog_info("String file '%s' with %d text lines saved successfully.", filename, m_stringInfoCount);
+        captainslog_info("String file max label len: %d", len_info.max_label_len);
+        captainslog_info("String file max text len: %d", len_info.max_text_len);
+        captainslog_info("String file max speech len: %d", len_info.max_speech_len);
+    } else {
+        captainslog_info("String file '%s' failed to save.", filename);
+    }
 
     return success;
 }
 
 void GameTextFile::Unload()
 {
-    m_textCount = 0;
+    m_stringInfoCount = 0;
     m_language = LanguageID::LANGUAGE_ID_US;
 
     if (m_stringInfo) {
@@ -1035,4 +1089,28 @@ GameTextType GameTextFile::Get_File_Type(const char *filename, GameTextType file
             filetype = GameTextType::TYPE_CSF;
     }
     return filetype;
+}
+
+bool GameTextFile::Write_String_File(const char *filename,
+    BufferView<StringInfo> buffer_string_info,
+    GameTextLengthInfo &len_info,
+    BufferView<unichar_t> buffer_trans,
+    BufferView<char> buffer_in,
+    BufferView<char> buffer_out,
+    BufferView<char> buffer_ex)
+{
+    bool success = false;
+
+    return success;
+}
+
+bool GameTextFile::Write_CSF_File(const char *filename,
+    BufferView<StringInfo> buffer_string_info,
+    GameTextLengthInfo &len_info,
+    BufferView<unichar_t> buffer_trans,
+    BufferView<char> buffer_in)
+{
+    bool success = false;
+
+    return success;
 }

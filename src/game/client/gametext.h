@@ -104,6 +104,14 @@ enum class GameTextType
 };
 
 // FEATURE
+struct GameTextLengthInfo
+{
+    int max_label_len;
+    int max_text_len;
+    int max_speech_len;
+};
+
+// FEATURE
 // GameTextFile contains the core file handling functionality of original GameTextManager, which allows to use it for more
 // flexible localization file operations.
 class GameTextFile
@@ -119,6 +127,7 @@ public:
     void Unload();
 
 private:
+    // Original game functionality
     static void Read_To_End_Of_Quote(File *file, char *in, char *out, char *wave, int buff_len);
     static void Translate_Copy(unichar_t *out, char *in);
     static void Remove_Leading_And_Trailing(char *buffer);
@@ -134,21 +143,34 @@ private:
     static bool Parse_String_File(const char *filename,
         StringInfo *string_info,
         int &max_label_len,
-        BufferView<unichar_t> translate,
+        BufferView<unichar_t> buffer_trans,
         BufferView<char> buffer_in,
         BufferView<char> buffer_out,
         BufferView<char> buffer_ex);
     static bool Parse_CSF_File(const char *filename,
         StringInfo *string_info,
         int &max_label_len,
-        BufferView<unichar_t> translate,
+        BufferView<unichar_t> buffer_trans,
         BufferView<char> buffer_in);
 
+    // Thyme functionality
     static const char *Get_File_Extension(const char *filename);
     static GameTextType Get_File_Type(const char *filename, GameTextType filetype);
+    static bool Write_String_File(const char *filename,
+        BufferView<StringInfo> buffer_string_info,
+        GameTextLengthInfo &len_info,
+        BufferView<unichar_t> buffer_trans,
+        BufferView<char> buffer_in,
+        BufferView<char> buffer_out,
+        BufferView<char> buffer_ex);
+    static bool Write_CSF_File(const char *filename,
+        BufferView<StringInfo> buffer_string_info,
+        GameTextLengthInfo &len_info,
+        BufferView<unichar_t> buffer_trans,
+        BufferView<char> buffer_in);
 
 private:
-    int m_textCount;
+    int m_stringInfoCount;
     LanguageID m_language;
     StringInfo *m_stringInfo;
 };
@@ -216,7 +238,7 @@ private:
     // pad 3 chars
     LanguageID m_language;
     Utf16String m_failed;
-    StringInfo *m_mapStringInfo;
+    StringInfo *m_mapStringInfo; // #TODO Replace all allocated arrays and buffers with std::vector
     StringLookUp *m_mapStringLUT;
     int m_mapTextCount;
     std::vector<Utf8String> m_stringVector;
