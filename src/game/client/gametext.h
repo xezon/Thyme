@@ -68,6 +68,10 @@ struct StringLookUp
     StringInfo *info;
 };
 
+// #TODO Original buffer sizes are exceptionally large. Consider decreasing.
+constexpr size_t GAMETEXT_BUFFER_SIZE = 10240;
+constexpr size_t GAMETEXT_TRANSLATE_SIZE = 20480;
+
 // FEATURE
 // BufferView allows to pass along a buffer and its size in one go.
 template<typename T> class BufferView
@@ -90,6 +94,16 @@ private:
 };
 
 // FEATURE
+enum class GameTextType
+{
+    TYPE_AUTO,
+    TYPE_CSF,
+    TYPE_STR,
+
+    Count
+};
+
+// FEATURE
 // GameTextFile contains the core file handling functionality of original GameTextManager, which allows to use it for more
 // flexible localization file operations.
 class GameTextFile
@@ -97,6 +111,13 @@ class GameTextFile
     friend class GameTextManager;
 
 public:
+    GameTextFile();
+    ~GameTextFile();
+
+    bool Load(const char *filename, GameTextType filetype = GameTextType::TYPE_AUTO);
+    bool Save(const char *filename, GameTextType filetype = GameTextType::TYPE_AUTO);
+    void Unload();
+
 private:
     static void Read_To_End_Of_Quote(File *file, char *in, char *out, char *wave, int buff_len);
     static void Translate_Copy(unichar_t *out, char *in);
@@ -111,17 +132,25 @@ private:
         BufferView<char> buffer_ex);
     static bool Get_CSF_Info(const char *filename, int &text_count, LanguageID &language);
     static bool Parse_String_File(const char *filename,
-        StringInfo *stringInfo,
+        StringInfo *string_info,
         int &max_label_len,
         BufferView<unichar_t> translate,
         BufferView<char> buffer_in,
         BufferView<char> buffer_out,
         BufferView<char> buffer_ex);
     static bool Parse_CSF_File(const char *filename,
-        StringInfo *stringInfo,
+        StringInfo *string_info,
         int &max_label_len,
         BufferView<unichar_t> translate,
         BufferView<char> buffer_in);
+
+    static const char *Get_File_Extension(const char *filename);
+    static GameTextType Get_File_Type(const char *filename, GameTextType filetype);
+
+private:
+    int m_textCount;
+    LanguageID m_language;
+    StringInfo *m_stringInfo;
 };
 
 class GameTextInterface : public SubsystemInterface
@@ -174,10 +203,10 @@ private:
 private:
     int m_textCount;
     int m_maxLabelLen; // #TODO Remove?
-    char m_bufferIn[10240];
-    char m_bufferOut[10240];
-    char m_bufferEx[10240];
-    unichar_t m_translateBuffer[20480];
+    char m_bufferIn[GAMETEXT_BUFFER_SIZE];
+    char m_bufferOut[GAMETEXT_BUFFER_SIZE];
+    char m_bufferEx[GAMETEXT_BUFFER_SIZE];
+    unichar_t m_translateBuffer[GAMETEXT_TRANSLATE_SIZE];
     StringInfo *m_stringInfo;
     StringLookUp *m_stringLUT;
     bool m_initialized;

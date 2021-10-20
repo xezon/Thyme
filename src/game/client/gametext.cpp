@@ -942,3 +942,97 @@ void GameTextManager::Deinit()
     m_noStringList = nullptr;
     m_initialized = false;
 }
+
+// #TODO Reorder class functions in this file to better match the order in header file.
+
+GameTextFile::GameTextFile() : m_textCount(0), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfo(nullptr) {}
+
+GameTextFile::~GameTextFile()
+{
+    Unload();
+}
+
+bool GameTextFile::Load(const char *filename, GameTextType filetype)
+{
+    bool success = false;
+
+    Unload();
+    filetype = Get_File_Type(filename, filetype);
+
+    int max_label_len;
+    char buffer_in[512] = { 0 };
+    char buffer_out[512] = { 0 };
+    char buffer_ex[512] = { 0 };
+    unichar_t buffer_trans[1024] = { 0 };
+    auto bufview_in = BufferView<char>::Create(buffer_in);
+    auto bufview_out = BufferView<char>::Create(buffer_out);
+    auto bufview_ex = BufferView<char>::Create(buffer_ex);
+    auto bufview_trans = BufferView<unichar_t>::Create(buffer_trans);
+
+    if (filetype == GameTextType::TYPE_CSF) {
+        if (Get_CSF_Info(filename, m_textCount, m_language)) {
+            captainslog_dbgassert(m_stringInfo == nullptr, "string info must be not allocated already");
+            m_stringInfo = new StringInfo[m_textCount];
+            if (Parse_CSF_File(filename, m_stringInfo, max_label_len, bufview_trans, bufview_in)) {
+                success = true;
+            }
+        }
+    } else if (filetype == GameTextType::TYPE_STR) {
+        if (Get_String_Count(filename, m_textCount, bufview_in, bufview_out, bufview_ex)) {
+            captainslog_dbgassert(m_stringInfo == nullptr, "string info must be not allocated already");
+            m_stringInfo = new StringInfo[m_textCount];
+            if (Parse_String_File(
+                    filename, m_stringInfo, max_label_len, bufview_trans, bufview_in, bufview_out, bufview_ex)) {
+                success = true;
+            }
+        }
+    }
+
+    static_assert(GameTextType::Count == static_cast<GameTextType>(3), "New Game Text Type needs to be covered here");
+
+    return success;
+}
+
+bool GameTextFile::Save(const char *filename, GameTextType filetype)
+{
+    bool success = false;
+
+    return success;
+}
+
+void GameTextFile::Unload()
+{
+    m_textCount = 0;
+    m_language = LanguageID::LANGUAGE_ID_US;
+
+    if (m_stringInfo) {
+        delete[] m_stringInfo;
+        m_stringInfo = nullptr;
+    }
+}
+
+const char *GameTextFile::Get_File_Extension(const char *filename)
+{
+    const char *begin = filename;
+    const char *end = filename + strlen(filename);
+    while (end != begin) {
+        if (*end == '.')
+            return end + 1;
+        --end;
+    }
+    return end;
+}
+
+GameTextType GameTextFile::Get_File_Type(const char *filename, GameTextType filetype)
+{
+    if (filetype == GameTextType::TYPE_AUTO) {
+        const char *fileext = Get_File_Extension(filename);
+        if (strcasecmp(fileext, "csf") == 0)
+            filetype = GameTextType::TYPE_CSF;
+        else if (strcasecmp(fileext, "str") == 0)
+            filetype = GameTextType::TYPE_STR;
+        else
+            filetype = GameTextType::TYPE_CSF;
+    }
+    return filetype;
+}
