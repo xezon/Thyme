@@ -176,4 +176,11 @@
 #define SIZE_OF(typ, id) sizeof(((typ *)0)->id)
 #endif // !SIZE_OF
 
+/**
+* Macro to set bit flags
+*/
+#ifndef BIT
+#define BIT(x) (1 << x)
+#endif // !BIT
+
 #endif // BASE_MACROS_H
