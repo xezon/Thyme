@@ -72,8 +72,7 @@ struct StringLookUp
 constexpr size_t GAMETEXT_BUFFER_SIZE = 10240;
 constexpr size_t GAMETEXT_TRANSLATE_SIZE = 20480;
 
-// FEATURE
-// BufferView allows to pass along a buffer and its size in one go.
+// FEATURE: BufferView allows to pass along a buffer and its size in one go.
 template<typename T> class BufferView
 {
 public:
@@ -93,7 +92,7 @@ private:
     size_t m_size;
 };
 
-// FEATURE
+// FEATURE: Game text type
 enum class GameTextType
 {
     TYPE_AUTO,
@@ -103,17 +102,23 @@ enum class GameTextType
     Count
 };
 
-// FEATURE
+// FEATURE: Game text option flags
+enum GameTextOption
+{
+    GAMETEXTOPTION_NONE = 0,
+    GAMETEXTOPTION_WRITEOUT_LF = BIT(0),
+};
+
 struct GameTextLengthInfo
 {
     int max_label_len;
-    int max_text_len;
+    int max_text_utf8_len;
+    int max_text_utf16_len;
     int max_speech_len;
 };
 
-// FEATURE
-// GameTextFile contains the core file handling functionality of original GameTextManager, which allows to use it for more
-// flexible localization file operations.
+// FEATURE: GameTextFile contains the core file handling functionality of original GameTextManager, which allows to use it
+// for more flexible localization file operations.
 class GameTextFile
 {
     friend class GameTextManager;
@@ -129,7 +134,7 @@ public:
 private:
     // Original game functionality
     static void Read_To_End_Of_Quote(File *file, char *in, char *out, char *wave, int buff_len);
-    static void Translate_Copy(unichar_t *out, char *in);
+    static void Translate_Copy(unichar_t *out, const char *in);
     static void Remove_Leading_And_Trailing(char *buffer);
     static void Strip_Spaces(unichar_t *buffer);
     static char Read_Char(File *file);
@@ -156,18 +161,21 @@ private:
     // Thyme functionality
     static const char *Get_File_Extension(const char *filename);
     static GameTextType Get_File_Type(const char *filename, GameTextType filetype);
-    static bool Write_String_File(const char *filename,
-        BufferView<StringInfo> buffer_string_info,
+
+    template<size_t Size> static bool Write(File *file, const char (&buf)[Size]);
+    static bool Write(File *file, const void *buf, int len);
+    static bool Write(File *file, const Utf8String &string);
+
+    static bool Write_STR_Entry(File *file,
+        const StringInfo &string_info,
         GameTextLengthInfo &len_info,
-        BufferView<unichar_t> buffer_trans,
-        BufferView<char> buffer_in,
-        BufferView<char> buffer_out,
-        BufferView<char> buffer_ex);
-    static bool Write_CSF_File(const char *filename,
-        BufferView<StringInfo> buffer_string_info,
-        GameTextLengthInfo &len_info,
-        BufferView<unichar_t> buffer_trans,
-        BufferView<char> buffer_in);
+        GameTextOption options = GAMETEXTOPTION_NONE);
+
+    static bool Write_STR_File(
+        const char *filename, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info);
+
+    static bool Write_CSF_File(
+        const char *filename, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info);
 
 private:
     int m_stringInfoCount;

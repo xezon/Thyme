@@ -204,10 +204,10 @@ bool GameTextManager::Read_Line(char *buffer, int length, File *file)
 }
 
 // Converts an ASCII string into a usc2/utf16 string.
-void GameTextFile::Translate_Copy(unichar_t *out, char *in)
+void GameTextFile::Translate_Copy(unichar_t *out, const char *in)
 {
     // Unsigned allows handling Latin extended code page.
-    unsigned char *in_unsigned = reinterpret_cast<unsigned char *>(in);
+    const unsigned char *in_unsigned = reinterpret_cast<const unsigned char *>(in);
     unsigned char current = *in_unsigned++;
     bool escape = false;
 
@@ -1022,31 +1022,35 @@ bool GameTextFile::Save(const char *filename, GameTextType filetype)
     filetype = Get_File_Type(filename, filetype);
 
     GameTextLengthInfo len_info = { 0 };
-    char buffer_in[512] = { 0 };
-    char buffer_out[512] = { 0 };
-    char buffer_ex[512] = { 0 };
-    unichar_t buffer_trans[1024] = { 0 };
-    auto bufview_string = BufferView<StringInfo>::Create(m_stringInfo, m_stringInfoCount);
-    auto bufview_trans = BufferView<unichar_t>::Create(buffer_trans);
-    auto bufview_in = BufferView<char>::Create(buffer_in);
-    auto bufview_out = BufferView<char>::Create(buffer_out);
-    auto bufview_ex = BufferView<char>::Create(buffer_ex);
+    auto string_info_bufview = BufferView<StringInfo>::Create(m_stringInfo, m_stringInfoCount);
 
     if (filetype == GameTextType::TYPE_CSF) {
-        if (Write_CSF_File(filename, bufview_string, len_info, bufview_trans, bufview_in)) {
+        if (Write_CSF_File(filename, string_info_bufview, len_info)) {
             success = true;
         }
     } else if (filetype == GameTextType::TYPE_STR) {
-        if (Write_String_File(filename, bufview_string, len_info, bufview_trans, bufview_in, bufview_out, bufview_ex)) {
+        if (Write_STR_File(filename, string_info_bufview, len_info)) {
             success = true;
         }
     }
 
+    static_assert(GameTextType::Count == static_cast<GameTextType>(3), "New Game Text Type needs to be covered here");
+
     if (success) {
         captainslog_info("String file '%s' with %d text lines saved successfully.", filename, m_stringInfoCount);
         captainslog_info("String file max label len: %d", len_info.max_label_len);
-        captainslog_info("String file max text len: %d", len_info.max_text_len);
+        captainslog_info("String file max utf8 text len: %d", len_info.max_text_utf8_len);
+        captainslog_info("String file max utf16 text len: %d", len_info.max_text_utf16_len);
         captainslog_info("String file max speech len: %d", len_info.max_speech_len);
+
+        captainslog_dbgassert(
+            GAMETEXT_BUFFER_SIZE > len_info.max_label_len, "Read buffer must be larger than max label length.");
+        captainslog_dbgassert(
+            GAMETEXT_BUFFER_SIZE > len_info.max_text_utf8_len, "Read buffer must be larger than max utf8 text length.");
+        captainslog_dbgassert(
+            GAMETEXT_TRANSLATE_SIZE > len_info.max_text_utf16_len, "Read buffer must be larger than max utf16 text length.");
+        captainslog_dbgassert(
+            GAMETEXT_BUFFER_SIZE > len_info.max_speech_len, "Read buffer must be larger than max speech length.");
     } else {
         captainslog_info("String file '%s' failed to save.", filename);
     }
@@ -1091,26 +1095,120 @@ GameTextType GameTextFile::Get_File_Type(const char *filename, GameTextType file
     return filetype;
 }
 
-bool GameTextFile::Write_String_File(const char *filename,
-    BufferView<StringInfo> buffer_string_info,
-    GameTextLengthInfo &len_info,
-    BufferView<unichar_t> buffer_trans,
-    BufferView<char> buffer_in,
-    BufferView<char> buffer_out,
-    BufferView<char> buffer_ex)
+template<size_t Size> static bool GameTextFile::Write(File *file, const char (&buf)[Size])
 {
-    bool success = false;
+    const int len = Size * sizeof(char);
+    return file->Write(buf, len) == len;
+}
+
+bool GameTextFile::Write(File *file, const void *buf, int len)
+{
+    return file->Write(buf, len) == len;
+}
+
+bool GameTextFile::Write(File *file, const Utf8String &string)
+{
+    const void *buf = string.Str();
+    const int len = string.Get_Length() * sizeof(char);
+    return file->Write(buf, len) == len;
+}
+
+bool GameTextFile::Write_STR_Entry(
+    File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, GameTextOption options)
+{
+    static const char eol[] = { '\r', '\n' };
+    static const char txt[] = { '"' };
+    static const char end[] = { 'E', 'N', 'D' };
+
+    bool success = true;
+
+    const Utf8String &label_utf8 = string_info.label;
+    const Utf8String &speech_utf8 = string_info.speech;
+    Utf16String text_utf16;
+    Utf8String text_utf8;
+
+    // Copy utf16 text and treat certain characters special
+    const bool write_lf = (options & GAMETEXTOPTION_WRITEOUT_LF);
+
+    for (int i = 0, count = string_info.text.Get_Length(); i < count; ++i) {
+        unichar_t c = string_info.text[i];
+        if (write_lf && c == U_CHAR('\n')) {
+            // Print an escaped line feed
+            text_utf16.Concat(U_CHAR('\\'));
+            text_utf16.Concat(U_CHAR('n'));
+            if (i != 0) {
+                // This is optional. Makes it easier to look at string in file.
+                text_utf16.Concat(U_CHAR('\n'));
+            }
+        } else if (c == U_CHAR('"')) {
+            // Print an escaped quote
+            text_utf16.Concat(U_CHAR('\\'));
+            text_utf16.Concat(U_CHAR('"'));
+        } else {
+            text_utf16.Concat(c);
+        }
+    }
+
+    // Convert utf16 to utf8
+    text_utf8.Translate(text_utf16);
+
+    success = success && Write(file, label_utf8);
+    success = success && Write(file, eol);
+
+    success = success && Write(file, txt);
+    success = success && Write(file, text_utf8);
+    success = success && Write(file, txt);
+    success = success && Write(file, eol);
+
+    if (!speech_utf8.Is_Empty()) {
+        success = success && Write(file, speech_utf8);
+        success = success && Write(file, eol);
+    }
+
+    success = success && Write(file, end);
+    success = success && Write(file, eol);
+    success = success && Write(file, eol);
+
+    if (success) {
+        len_info.max_label_len = std::max(len_info.max_label_len, label_utf8.Get_Length());
+        len_info.max_text_utf8_len = std::max(len_info.max_text_utf8_len, text_utf8.Get_Length());
+        len_info.max_text_utf16_len = std::max(len_info.max_text_utf16_len, text_utf16.Get_Length());
+        len_info.max_speech_len = std::max(len_info.max_speech_len, speech_utf8.Get_Length());
+    }
 
     return success;
 }
 
-bool GameTextFile::Write_CSF_File(const char *filename,
-    BufferView<StringInfo> buffer_string_info,
-    GameTextLengthInfo &len_info,
-    BufferView<unichar_t> buffer_trans,
-    BufferView<char> buffer_in)
+bool GameTextFile::Write_STR_File(
+    const char *filename, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info)
 {
     bool success = false;
+
+    captainslog_info("Writing string file '%s' in STR format", filename);
+    File *file = g_theFileSystem->Open(filename, File::WRITE | File::CREATE | File::BINARY);
+
+    if (file != nullptr) {
+        success = true;
+        for (size_t text_line = 0, text_count = string_info_bufview.Size(); text_line < text_count; ++text_line) {
+            const StringInfo &string_info = string_info_bufview[text_line];
+            if (!string_info.label.Is_Empty()) {
+                if (!Write_STR_Entry(file, string_info_bufview[text_line], len_info)) {
+                    success = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    return success;
+}
+
+bool GameTextFile::Write_CSF_File(
+    const char *filename, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info)
+{
+    bool success = false;
+
+    captainslog_info("Writing string file '%s' in CSF format.", filename);
 
     return success;
 }
