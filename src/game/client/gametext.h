@@ -15,8 +15,8 @@
 #pragma once
 
 #include "always.h"
-#include "subsysteminterface.h"
 #include "gametextfile.h"
+#include "subsysteminterface.h"
 
 struct NoString
 {
@@ -42,7 +42,7 @@ public:
     virtual void Deinit() = 0;
 };
 
-// GameTextManager is an original game class. It is self contained and will automatically load and read generals.csf,
+// GameTextManager is self contained and will automatically load and read generals.csf,
 // generals.str and map.str files.
 class GameTextManager : public GameTextInterface
 {
@@ -79,7 +79,7 @@ private:
 
 private:
     int m_textCount;
-    int m_maxLabelLen; // #TODO Remove?
+    int m_maxLabelLen;
     char m_bufferIn[GAMETEXT_BUFFER_SIZE];
     char m_bufferOut[GAMETEXT_BUFFER_SIZE];
     char m_bufferEx[GAMETEXT_BUFFER_SIZE];
@@ -93,7 +93,7 @@ private:
     // pad 3 chars
     LanguageID m_language;
     Utf16String m_failed;
-    StringInfo *m_mapStringInfo; // #TODO Replace all allocated arrays and buffers with std::vector
+    StringInfo *m_mapStringInfo;
     StringLookUp *m_mapStringLUT;
     int m_mapTextCount;
     std::vector<Utf8String> m_stringVector;
