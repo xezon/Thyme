@@ -69,6 +69,7 @@ set(GAMEENGINE_SRC
     game/client/drawgroupinfo.cpp
     game/client/gameclient.cpp
     game/client/gametext.cpp
+    game/client/gametextfile.cpp
     game/client/globallanguage.cpp
     game/client/ingameui.cpp
     game/client/optionpreferences.cpp
