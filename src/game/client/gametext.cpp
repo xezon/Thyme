@@ -804,12 +804,12 @@ void GameTextManager::Init()
 
     bool loaded = false;
 
-    if (m_useStringFile && m_textFile.Load("data/Generals.str", GameTextType::TYPE_STR)) {
+    if (m_useStringFile && m_textFile.Load("data/Generals.str", GameTextType::STR)) {
         loaded = true;
     } else {
         Utf8String csf_file;
         csf_file.Format("data/%s/Generals.csf", Get_Registry_Language().Str());
-        if (m_textFile.Load(csf_file.Str(), GameTextType::TYPE_CSF)) {
+        if (m_textFile.Load(csf_file.Str(), GameTextType::CSF)) {
             loaded = true;
         }
     }

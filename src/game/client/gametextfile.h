@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief String file.
+ * @brief Localization String file (Thyme Feature).
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License
@@ -101,19 +101,21 @@ private:
 // FEATURE: Game text type
 enum class GameTextType
 {
-    TYPE_AUTO,
-    TYPE_CSF,
-    TYPE_STR,
+    AUTO,
+    CSF,
+    STR,
 
     Count
 };
 
 // FEATURE: Game text option flags
-enum GameTextOption
+enum class GameTextOption
 {
-    GAMETEXTOPTION_NONE = 0,
-    GAMETEXTOPTION_WRITEOUT_LF = BIT(0),
+    NONE = 0,
+    WRITEOUT_LF = BIT(0),
 };
+
+DEFINE_ENUMERATION_BITWISE_OPERATORS(GameTextOption)
 
 struct GameTextLengthInfo
 {
@@ -131,14 +133,20 @@ class GameTextFile
 
 public:
     using StringInfos = std::vector<StringInfo>;
+    using LengthInfo = GameTextLengthInfo;
+    using Option = GameTextOption;
+    using Type = GameTextType;
+    using Utf16Buf = BufferView<unichar_t>;
 
-    GameTextFile() : m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
+    GameTextFile() : m_options(Option::NONE), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
 
-    bool Load(const char *filename, GameTextType filetype = GameTextType::TYPE_AUTO);
-    bool Save(const char *filename, GameTextType filetype = GameTextType::TYPE_AUTO);
+    bool Load(const char *filename, Type filetype = Type::AUTO);
+    bool Save(const char *filename, Type filetype = Type::AUTO);
     void Unload();
 
     const StringInfos &Get_String_Infos() const { return m_stringInfos; }
+    void SetOptions(Option options) { m_options = options; }
+    Option GetOptions() const { return m_options; }
 
 private:
     static void Read_To_End_Of_Quote(File *file, char *in, char *out, char *wave, int buff_len);
@@ -167,37 +175,31 @@ private:
         BufferView<char> buffer_in);
 
     static const char *Get_File_Extension(const char *filename);
-    static GameTextType Get_File_Type(const char *filename, GameTextType filetype);
+    static Type Get_File_Type(const char *filename, Type filetype);
 
-    static void Log_Length_Info(const GameTextLengthInfo &len_info);
-    static void Check_Length_Info(const GameTextLengthInfo &len_info);
+    static void Log_Length_Info(const LengthInfo &len_info);
+    static void Check_Length_Info(const LengthInfo &len_info);
 
     template<typename T> static bool Write(File *file, const T &value);
     template<> static bool Write<Utf8String>(File *file, const Utf8String &string);
     template<> static bool Write<Utf16String>(File *file, const Utf16String &string);
     static bool Write(File *file, const void *data, size_t len);
 
-    static bool Write_STR_Label(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info);
-    static bool Write_STR_Text(
-        File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, GameTextOption options);
-    static bool Write_STR_Speech(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info);
-    static bool Write_STR_End(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info);
-    static bool Write_STR_Entry(File *file,
-        const StringInfo &string_info,
-        GameTextLengthInfo &len_info,
-        GameTextOption options = GAMETEXTOPTION_NONE);
-    static bool Write_STR_File(File *file, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info);
+    bool Write_STR_Label(File *file, const StringInfo &string_info, LengthInfo &len_info);
+    bool Write_STR_Text(File *file, const StringInfo &string_info, LengthInfo &len_info);
+    bool Write_STR_Speech(File *file, const StringInfo &string_info, LengthInfo &len_info);
+    bool Write_STR_End(File *file, const StringInfo &string_info, LengthInfo &len_info);
+    bool Write_STR_Entry(File *file, const StringInfo &string_info, LengthInfo &len_info);
+    bool Write_STR_File(File *file, LengthInfo &len_info);
 
-    static bool Write_CSF_Header(File *file, BufferView<StringInfo> string_info_bufview, LanguageID language);
-    static bool Write_CSF_Label(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info);
-    static bool Write_CSF_Text(
-        File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, BufferView<unichar_t> translate_bufview);
-    static bool Write_CSF_Entry(
-        File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, BufferView<unichar_t> translate_bufview);
-    static bool Write_CSF_File(
-        File *file, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info, LanguageID language);
+    bool Write_CSF_Header(File *file);
+    bool Write_CSF_Label(File *file, const StringInfo &string_info, LengthInfo &len_info);
+    bool Write_CSF_Text(File *file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview);
+    bool Write_CSF_Entry(File *file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview);
+    bool Write_CSF_File(File *file, LengthInfo &len_info);
 
 private:
+    Option m_options;
     LanguageID m_language;
     StringInfos m_stringInfos;
 
