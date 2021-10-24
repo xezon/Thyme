@@ -1131,17 +1131,24 @@ bool GameTextFile::Write(File *file, const void *data, size_t len)
     return file->Write(data, len) == len;
 }
 
-bool GameTextFile::Write_STR_Entry(
+const char GameTextFile::s_eol[] = { '\r', '\n' };
+const char GameTextFile::s_quo[] = { '"' };
+const char GameTextFile::s_end[] = { 'E', 'N', 'D' };
+
+bool GameTextFile::Write_STR_Label(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info)
+{
+    bool ok = true;
+    ok = ok && Write(file, string_info.label);
+    ok = ok && Write(file, s_eol);
+    if (ok) {
+        len_info.max_label_len = std::max(len_info.max_label_len, string_info.label.Get_Length());
+    }
+    return ok;
+}
+
+bool GameTextFile::Write_STR_Text(
     File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, GameTextOption options)
 {
-    static const char eol[] = { '\r', '\n' };
-    static const char txt[] = { '"' };
-    static const char end[] = { 'E', 'N', 'D' };
-
-    bool success = true;
-
-    const Utf8String &label_utf8 = string_info.label;
-    const Utf8String &speech_utf8 = string_info.speech;
     Utf16String text_utf16;
     Utf8String text_utf8;
 
@@ -1170,31 +1177,53 @@ bool GameTextFile::Write_STR_Entry(
     // Convert utf16 to utf8
     text_utf8.Translate(text_utf16);
 
-    success = success && Write(file, label_utf8);
-    success = success && Write(file, eol);
-
-    success = success && Write(file, txt);
-    success = success && Write(file, text_utf8);
-    success = success && Write(file, txt);
-    success = success && Write(file, eol);
-
-    if (!speech_utf8.Is_Empty()) {
-        success = success && Write(file, speech_utf8);
-        success = success && Write(file, eol);
-    }
-
-    success = success && Write(file, end);
-    success = success && Write(file, eol);
-    success = success && Write(file, eol);
-
-    if (success) {
-        len_info.max_label_len = std::max(len_info.max_label_len, label_utf8.Get_Length());
+    bool ok = true;
+    ok = ok && Write(file, s_quo);
+    ok = ok && Write(file, text_utf8);
+    ok = ok && Write(file, s_quo);
+    ok = ok && Write(file, s_eol);
+    if (ok) {
         len_info.max_text_utf8_len = std::max(len_info.max_text_utf8_len, text_utf8.Get_Length());
         len_info.max_text_utf16_len = std::max(len_info.max_text_utf16_len, text_utf16.Get_Length());
-        len_info.max_speech_len = std::max(len_info.max_speech_len, speech_utf8.Get_Length());
     }
+    return ok;
+}
 
-    return success;
+bool GameTextFile::Write_STR_Speech(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info)
+{
+    bool ok = true;
+    if (!string_info.speech.Is_Empty()) {
+        ok = ok && Write(file, string_info.speech);
+        ok = ok && Write(file, s_eol);
+        if (ok) {
+            len_info.max_speech_len = std::max(len_info.max_speech_len, string_info.speech.Get_Length());
+        }
+    }
+    return ok;
+}
+
+bool GameTextFile::Write_STR_End(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info)
+{
+    bool ok = true;
+    ok = ok && Write(file, s_end);
+    ok = ok && Write(file, s_eol);
+    ok = ok && Write(file, s_eol);
+    return ok;
+}
+
+bool GameTextFile::Write_STR_Entry(
+    File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, GameTextOption options)
+{
+    if (Write_STR_Label(file, string_info, len_info)) {
+        if (Write_STR_Text(file, string_info, len_info, options)) {
+            if (Write_STR_Speech(file, string_info, len_info)) {
+                if (Write_STR_End(file, string_info, len_info)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 bool GameTextFile::Write_STR_File(File *file, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info)

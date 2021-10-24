@@ -188,11 +188,15 @@ private:
     template<> static bool Write<Utf16String>(File *file, const Utf16String &string);
     static bool Write(File *file, const void *data, size_t len);
 
+    static bool Write_STR_Label(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info);
+    static bool Write_STR_Text(
+        File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, GameTextOption options);
+    static bool Write_STR_Speech(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info);
+    static bool Write_STR_End(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info);
     static bool Write_STR_Entry(File *file,
         const StringInfo &string_info,
         GameTextLengthInfo &len_info,
         GameTextOption options = GAMETEXTOPTION_NONE);
-
     static bool Write_STR_File(File *file, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info);
 
     static bool Write_CSF_Header(File *file, BufferView<StringInfo> string_info_bufview, LanguageID language);
@@ -201,7 +205,6 @@ private:
         File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, BufferView<unichar_t> translate_bufview);
     static bool Write_CSF_Entry(
         File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, BufferView<unichar_t> translate_bufview);
-
     static bool Write_CSF_File(
         File *file, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info, LanguageID language);
 
@@ -209,6 +212,10 @@ private:
     int m_stringInfoCount;
     LanguageID m_language;
     StringInfo *m_stringInfo;
+
+    static const char s_eol[];
+    static const char s_quo[];
+    static const char s_end[];
 };
 
 class GameTextInterface : public SubsystemInterface
