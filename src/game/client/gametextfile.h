@@ -128,14 +128,17 @@ struct GameTextLengthInfo
 class GameTextFile
 {
     friend class GameTextManager;
-    using StringInfos = std::vector<StringInfo>;
 
 public:
-    GameTextFile() : m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos() {};
+    using StringInfos = std::vector<StringInfo>;
+
+    GameTextFile() : m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
 
     bool Load(const char *filename, GameTextType filetype = GameTextType::TYPE_AUTO);
     bool Save(const char *filename, GameTextType filetype = GameTextType::TYPE_AUTO);
     void Unload();
+
+    const StringInfos &Get_String_Infos() const { return m_stringInfos; }
 
 private:
     static void Read_To_End_Of_Quote(File *file, char *in, char *out, char *wave, int buff_len);

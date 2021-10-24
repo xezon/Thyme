@@ -18,6 +18,8 @@
 #include "gametextfile.h"
 #include "subsysteminterface.h"
 
+#define USE_LEGACY_GAMETEXT 1
+
 struct NoString
 {
     NoString *next;
@@ -26,8 +28,8 @@ struct NoString
 
 struct StringLookUp
 {
-    Utf8String *label;
-    StringInfo *info;
+    const Utf8String *label;
+    const StringInfo *info;
 };
 
 class GameTextInterface : public SubsystemInterface
@@ -63,6 +65,8 @@ public:
     static int Compare_LUT(void const *a, void const *b);
     static GameTextInterface *Create_Game_Text_Interface();
 
+#if USE_LEGACY_GAMETEXT
+
 private:
     void Read_To_End_Of_Quote(File *file, char *in, char *out, char *wave, int buff_len);
     void Translate_Copy(unichar_t *out, char *in);
@@ -97,6 +101,30 @@ private:
     StringLookUp *m_mapStringLUT;
     int m_mapTextCount;
     std::vector<Utf8String> m_stringVector;
+
+#else // !USE_LEGACY_GAMETEXT
+
+private:
+    bool m_initialized = false;
+    bool m_useStringFile = true;
+    Utf16String m_failed = U_CHAR("***FATAL*** String Manager failed to initialize properly");
+
+    // Main localization
+    GameTextFile m_textFile;
+    int m_textCount = 0;
+    const StringInfo *m_stringInfo = nullptr;
+    StringLookUp *m_stringLUT = nullptr;
+
+    // Map localization
+    GameTextFile m_mapTextFile;
+    int m_mapTextCount = 0;
+    const StringInfo *m_mapStringInfo = nullptr;
+    StringLookUp *m_mapStringLUT = nullptr;
+
+    NoString *m_noStringList = nullptr;
+    std::vector<Utf8String> m_stringVector;
+
+#endif // USE_LEGACY_GAMETEXT
 };
 
 #ifdef GAME_DLL
