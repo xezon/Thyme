@@ -955,7 +955,7 @@ GameTextFile::~GameTextFile()
 bool GameTextFile::Load(const char *filename, GameTextType filetype)
 {
     if (!filename || !filename[0]) {
-        captainslog_info("String file without file name cannot be loaded.");
+        captainslog_error("String file without file name cannot be loaded");
         return false;
     }
 
@@ -976,7 +976,7 @@ bool GameTextFile::Load(const char *filename, GameTextType filetype)
 
     if (filetype == GameTextType::TYPE_CSF) {
         if (Get_CSF_Info(filename, m_stringInfoCount, m_language)) {
-            captainslog_dbgassert(m_stringInfo == nullptr, "string info must be not allocated already");
+            captainslog_dbgassert(m_stringInfo == nullptr, "String info must be not allocated already");
             m_stringInfo = new StringInfo[m_stringInfoCount];
             if (Parse_CSF_File(filename, m_stringInfo, max_label_len, bufview_trans, bufview_in)) {
                 success = true;
@@ -984,7 +984,7 @@ bool GameTextFile::Load(const char *filename, GameTextType filetype)
         }
     } else if (filetype == GameTextType::TYPE_STR) {
         if (Get_String_Count(filename, m_stringInfoCount, bufview_in, bufview_out, bufview_ex)) {
-            captainslog_dbgassert(m_stringInfo == nullptr, "string info must be not allocated already");
+            captainslog_dbgassert(m_stringInfo == nullptr, "String info must be not allocated already");
             m_stringInfo = new StringInfo[m_stringInfoCount];
             if (Parse_String_File(
                     filename, m_stringInfo, max_label_len, bufview_trans, bufview_in, bufview_out, bufview_ex)) {
@@ -996,24 +996,44 @@ bool GameTextFile::Load(const char *filename, GameTextType filetype)
     static_assert(GameTextType::Count == static_cast<GameTextType>(3), "New Game Text Type needs to be covered here");
 
     if (success) {
-        captainslog_info("String file '%s' with %d lines loaded successfully.", filename, m_stringInfoCount);
+        captainslog_info("String file '%s' with %d lines loaded successfully", filename, m_stringInfoCount);
     } else {
         Unload();
-        captainslog_info("String file '%s' failed to load.", filename);
+        captainslog_info("String file '%s' failed to load", filename);
     }
 
     return success;
 }
 
+void GameTextFile::LogLengthInfo(const GameTextLengthInfo &len_info)
+{
+    captainslog_info("String file max label len: %d", len_info.max_label_len);
+    captainslog_info("String file max utf8 text len: %d", len_info.max_text_utf8_len);
+    captainslog_info("String file max utf16 text len: %d", len_info.max_text_utf16_len);
+    captainslog_info("String file max speech len: %d", len_info.max_speech_len);
+}
+
+void GameTextFile::CheckLengthInfo(const GameTextLengthInfo &len_info)
+{
+    captainslog_dbgassert(
+        GAMETEXT_BUFFER_SIZE > len_info.max_label_len, "Read buffer must be larger than max label length");
+    captainslog_dbgassert(
+        GAMETEXT_BUFFER_SIZE > len_info.max_text_utf8_len, "Read buffer must be larger than max utf8 text length");
+    captainslog_dbgassert(
+        GAMETEXT_TRANSLATE_SIZE > len_info.max_text_utf16_len, "Read buffer must be larger than max utf16 text length");
+    captainslog_dbgassert(
+        GAMETEXT_BUFFER_SIZE > len_info.max_speech_len, "Read buffer must be larger than max speech length");
+}
+
 bool GameTextFile::Save(const char *filename, GameTextType filetype)
 {
     if (!filename || !filename[0]) {
-        captainslog_info("String file without file name cannot be saved.");
+        captainslog_error("String file without file name cannot be saved");
         return false;
     }
 
     if (!m_stringInfo) {
-        captainslog_info("String file without string data cannot be saved.");
+        captainslog_error("String file without string data cannot be saved");
         return false;
     }
 
@@ -1037,22 +1057,11 @@ bool GameTextFile::Save(const char *filename, GameTextType filetype)
     static_assert(GameTextType::Count == static_cast<GameTextType>(3), "New Game Text Type needs to be covered here");
 
     if (success) {
-        captainslog_info("String file '%s' with %d text lines saved successfully.", filename, m_stringInfoCount);
-        captainslog_info("String file max label len: %d", len_info.max_label_len);
-        captainslog_info("String file max utf8 text len: %d", len_info.max_text_utf8_len);
-        captainslog_info("String file max utf16 text len: %d", len_info.max_text_utf16_len);
-        captainslog_info("String file max speech len: %d", len_info.max_speech_len);
-
-        captainslog_dbgassert(
-            GAMETEXT_BUFFER_SIZE > len_info.max_label_len, "Read buffer must be larger than max label length.");
-        captainslog_dbgassert(
-            GAMETEXT_BUFFER_SIZE > len_info.max_text_utf8_len, "Read buffer must be larger than max utf8 text length.");
-        captainslog_dbgassert(
-            GAMETEXT_TRANSLATE_SIZE > len_info.max_text_utf16_len, "Read buffer must be larger than max utf16 text length.");
-        captainslog_dbgassert(
-            GAMETEXT_BUFFER_SIZE > len_info.max_speech_len, "Read buffer must be larger than max speech length.");
+        LogLengthInfo(len_info);
+        CheckLengthInfo(len_info);
+        captainslog_info("String file '%s' with %d text lines saved successfully", filename, m_stringInfoCount);
     } else {
-        captainslog_info("String file '%s' failed to save.", filename);
+        captainslog_info("String file '%s' failed to save", filename);
     }
 
     return success;

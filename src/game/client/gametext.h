@@ -162,6 +162,9 @@ private:
     static const char *Get_File_Extension(const char *filename);
     static GameTextType Get_File_Type(const char *filename, GameTextType filetype);
 
+    static void LogLengthInfo(const GameTextLengthInfo& len_info);
+    static void CheckLengthInfo(const GameTextLengthInfo& len_info);
+
     template<size_t Size> static bool Write(File *file, const char (&buf)[Size]);
     static bool Write(File *file, const void *buf, int len);
     static bool Write(File *file, const Utf8String &string);
