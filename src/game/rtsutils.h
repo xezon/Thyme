@@ -80,6 +80,7 @@ template<> struct hash<Utf8String>
     }
 };
 
+
 template<int a, int b, int c, int d> struct FourCC
 {
 #ifdef SYSTEM_LITTLE_ENDIAN
@@ -88,6 +89,12 @@ template<int a, int b, int c, int d> struct FourCC
     static const uint32_t value = (((((a << 8) | b) << 8) | c) << 8) | d;
 #endif
 };
+
+// FourCC with big endian input (standard)
+template<int a, int b, int c, int d> using FourCC_BE = struct FourCC<a, b, c, d>;
+
+// FourCC with little endian input (reversed)
+template<int a, int b, int c, int d> using FourCC_LE = struct FourCC<d, c, b, a>;
 
 inline unsigned Get_Time()
 {
