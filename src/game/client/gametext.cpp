@@ -946,7 +946,7 @@ void GameTextManager::Deinit()
 
 // #TODO Reorder class functions in this file to better match the order in header file.
 
-GameTextFile::GameTextFile() : m_stringInfoCount(0), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfo(nullptr) {}
+GameTextFile::GameTextFile() : m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos() {}
 
 GameTextFile::~GameTextFile()
 {
@@ -965,6 +965,7 @@ bool GameTextFile::Load(const char *filename, GameTextType filetype)
     Unload();
     filetype = Get_File_Type(filename, filetype);
 
+    int string_count = 0;
     int max_label_len = 0;
     char buffer_in[512] = { 0 };
     char buffer_out[512] = { 0 };
@@ -976,19 +977,18 @@ bool GameTextFile::Load(const char *filename, GameTextType filetype)
     auto bufview_trans = BufferView<unichar_t>::Create(buffer_trans);
 
     if (filetype == GameTextType::TYPE_CSF) {
-        if (Get_CSF_Info(filename, m_stringInfoCount, m_language)) {
-            captainslog_dbgassert(m_stringInfo == nullptr, "String info must be not allocated already");
-            m_stringInfo = new StringInfo[m_stringInfoCount];
-            if (Parse_CSF_File(filename, m_stringInfo, max_label_len, bufview_trans, bufview_in)) {
+        if (Get_CSF_Info(filename, string_count, m_language)) {
+            m_stringInfos.resize(string_count);
+            if (Parse_CSF_File(filename, &m_stringInfos[0], max_label_len, bufview_trans, bufview_in)) {
                 success = true;
             }
         }
     } else if (filetype == GameTextType::TYPE_STR) {
-        if (Get_String_Count(filename, m_stringInfoCount, bufview_in, bufview_out, bufview_ex)) {
-            captainslog_dbgassert(m_stringInfo == nullptr, "String info must be not allocated already");
-            m_stringInfo = new StringInfo[m_stringInfoCount];
+        if (Get_String_Count(filename, string_count, bufview_in, bufview_out, bufview_ex)) {
+            m_stringInfos.resize(string_count);
+
             if (Parse_String_File(
-                    filename, m_stringInfo, max_label_len, bufview_trans, bufview_in, bufview_out, bufview_ex)) {
+                    filename, &m_stringInfos[0], max_label_len, bufview_trans, bufview_in, bufview_out, bufview_ex)) {
                 success = true;
             }
         }
@@ -997,7 +997,7 @@ bool GameTextFile::Load(const char *filename, GameTextType filetype)
     static_assert(GameTextType::Count == static_cast<GameTextType>(3), "New Game Text Type needs to be covered here");
 
     if (success) {
-        captainslog_info("String file '%s' with %d lines loaded successfully", filename, m_stringInfoCount);
+        captainslog_info("String file '%s' with %zu lines loaded successfully", filename, m_stringInfos.size());
     } else {
         Unload();
         captainslog_info("String file '%s' failed to load", filename);
@@ -1029,7 +1029,7 @@ bool GameTextFile::Save(const char *filename, GameTextType filetype)
         return false;
     }
 
-    if (!m_stringInfo) {
+    if (!m_stringInfos.empty()) {
         captainslog_error("String file without string data cannot be saved");
         return false;
     }
@@ -1045,7 +1045,7 @@ bool GameTextFile::Save(const char *filename, GameTextType filetype)
     filetype = Get_File_Type(filename, filetype);
 
     GameTextLengthInfo len_info = { 0 };
-    auto string_info_bufview = BufferView<StringInfo>::Create(m_stringInfo, m_stringInfoCount);
+    auto string_info_bufview = BufferView<StringInfo>::Create(m_stringInfos);
 
     if (filetype == GameTextType::TYPE_CSF) {
         if (Write_CSF_File(file, string_info_bufview, len_info, m_language)) {
@@ -1062,7 +1062,7 @@ bool GameTextFile::Save(const char *filename, GameTextType filetype)
     if (success) {
         Log_Length_Info(len_info);
         Check_Length_Info(len_info);
-        captainslog_info("String file '%s' with %d text lines saved successfully", filename, m_stringInfoCount);
+        captainslog_info("String file '%s' with %zu text lines saved successfully", filename, m_stringInfos.size());
     } else {
         captainslog_info("String file '%s' failed to save", filename);
     }
@@ -1072,13 +1072,8 @@ bool GameTextFile::Save(const char *filename, GameTextType filetype)
 
 void GameTextFile::Unload()
 {
-    m_stringInfoCount = 0;
     m_language = LanguageID::LANGUAGE_ID_US;
-
-    if (m_stringInfo) {
-        delete[] m_stringInfo;
-        m_stringInfo = nullptr;
-    }
+    std::swap(m_stringInfos, StringInfos());
 }
 
 const char *GameTextFile::Get_File_Extension(const char *filename)

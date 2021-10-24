@@ -97,6 +97,7 @@ public:
     using value_type = T;
 
     template<size_t Size> static BufferView Create(value_type (&buf)[Size]) { return BufferView(buf, Size); }
+    static BufferView Create(std::vector<T> &vector) { return BufferView(&vector[0], vector.size()); }
     static BufferView Create(value_type *buf, size_t size) { return BufferView(buf, size); }
 
     inline BufferView(value_type *buf, size_t size) : m_buf(buf), m_size(size) {}
@@ -140,6 +141,7 @@ struct GameTextLengthInfo
 class GameTextFile
 {
     friend class GameTextManager;
+    using StringInfos = std::vector<StringInfo>;
 
 public:
     GameTextFile();
@@ -209,9 +211,8 @@ private:
         File *file, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info, LanguageID language);
 
 private:
-    int m_stringInfoCount;
     LanguageID m_language;
-    StringInfo *m_stringInfo;
+    StringInfos m_stringInfos;
 
     static const char s_eol[];
     static const char s_quo[];
