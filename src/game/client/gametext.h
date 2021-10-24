@@ -49,6 +49,24 @@ struct CSFHeader
     LanguageID langid;
 };
 
+struct CSFLabelHeader
+{
+    uint32_t id;
+    int32_t string_count;
+    int32_t length;
+};
+
+struct CSFTextHeader
+{
+    uint32_t id;
+    int32_t length;
+};
+
+struct CSFSpeechHeader
+{
+    int32_t length;
+};
+
 struct NoString
 {
     NoString *next;
@@ -162,23 +180,30 @@ private:
     static const char *Get_File_Extension(const char *filename);
     static GameTextType Get_File_Type(const char *filename, GameTextType filetype);
 
-    static void LogLengthInfo(const GameTextLengthInfo& len_info);
-    static void CheckLengthInfo(const GameTextLengthInfo& len_info);
+    static void Log_Length_Info(const GameTextLengthInfo &len_info);
+    static void Check_Length_Info(const GameTextLengthInfo &len_info);
 
-    template<size_t Size> static bool Write(File *file, const char (&buf)[Size]);
-    static bool Write(File *file, const void *buf, int len);
-    static bool Write(File *file, const Utf8String &string);
+    template<typename T> static bool Write(File *file, const T &value);
+    template<> static bool Write<Utf8String>(File *file, const Utf8String &string);
+    template<> static bool Write<Utf16String>(File *file, const Utf16String &string);
+    static bool Write(File *file, const void *data, size_t len);
 
     static bool Write_STR_Entry(File *file,
         const StringInfo &string_info,
         GameTextLengthInfo &len_info,
         GameTextOption options = GAMETEXTOPTION_NONE);
 
-    static bool Write_STR_File(
-        const char *filename, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info);
+    static bool Write_STR_File(File *file, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info);
+
+    static bool Write_CSF_Header(File *file, BufferView<StringInfo> string_info_bufview, LanguageID language);
+    static bool Write_CSF_Label(File *file, const StringInfo &string_info, GameTextLengthInfo &len_info);
+    static bool Write_CSF_Text(
+        File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, BufferView<unichar_t> translate_bufview);
+    static bool Write_CSF_Entry(
+        File *file, const StringInfo &string_info, GameTextLengthInfo &len_info, BufferView<unichar_t> translate_bufview);
 
     static bool Write_CSF_File(
-        const char *filename, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info);
+        File *file, BufferView<StringInfo> string_info_bufview, GameTextLengthInfo &len_info, LanguageID language);
 
 private:
     int m_stringInfoCount;
