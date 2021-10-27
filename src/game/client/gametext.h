@@ -84,10 +84,10 @@ private:
 private:
     int m_textCount;
     int m_maxLabelLen;
-    char m_bufferIn[GAMETEXT_BUFFER_SIZE];
-    char m_bufferOut[GAMETEXT_BUFFER_SIZE];
-    char m_bufferEx[GAMETEXT_BUFFER_SIZE];
-    unichar_t m_translateBuffer[GAMETEXT_TRANSLATE_SIZE];
+    char m_bufferIn[10240];
+    char m_bufferOut[10240];
+    char m_bufferEx[10240];
+    unichar_t m_translateBuffer[20480];
     StringInfo *m_stringInfo;
     StringLookUp *m_stringLUT;
     bool m_initialized;
