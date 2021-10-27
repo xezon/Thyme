@@ -709,6 +709,34 @@ bool GameTextFile::Write(File *file, const void *data, size_t len)
     return file->Write(data, len) == len;
 }
 
+bool GameTextFile::Write_STR_File(File *file, LengthInfo &len_info)
+{
+    captainslog_info("Writing string file '%s' in STR format", file->Get_File_Name().Str());
+
+    for (const StringInfo &string_info : m_stringInfos) {
+        if (!string_info.label.Is_Empty()) {
+            if (!Write_STR_Entry(file, string_info, len_info)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool GameTextFile::Write_STR_Entry(File *file, const StringInfo &string_info, LengthInfo &len_info)
+{
+    if (Write_STR_Label(file, string_info, len_info)) {
+        if (Write_STR_Text(file, string_info, len_info)) {
+            if (Write_STR_Speech(file, string_info, len_info)) {
+                if (Write_STR_End(file, string_info, len_info)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 bool GameTextFile::Write_STR_Label(File *file, const StringInfo &string_info, LengthInfo &len_info)
 {
     bool ok = true;
@@ -784,33 +812,32 @@ bool GameTextFile::Write_STR_End(File *file, const StringInfo &string_info, Leng
     return ok;
 }
 
-bool GameTextFile::Write_STR_Entry(File *file, const StringInfo &string_info, LengthInfo &len_info)
+bool GameTextFile::Write_CSF_File(File *file, LengthInfo &len_info)
 {
-    if (Write_STR_Label(file, string_info, len_info)) {
-        if (Write_STR_Text(file, string_info, len_info)) {
-            if (Write_STR_Speech(file, string_info, len_info)) {
-                if (Write_STR_End(file, string_info, len_info)) {
-                    return true;
-                }
+    captainslog_info("Writing string file '%s' in CSF format", file->Get_File_Name().Str());
+
+    bool success = false;
+
+    if (Write_CSF_Header(file)) {
+        success = true;
+        unichar_t translate[GAMETEXT_TRANSLATE_SIZE];
+        auto translate_bufview = Utf16Buf::Create(translate);
+
+        for (size_t line = 0, count = m_stringInfos.size(); line < count; ++line) {
+            const StringInfo &string_info = m_stringInfos[line];
+
+            if (string_info.label.Is_Empty()) {
+                captainslog_error("String %d has no label", line);
+                continue;
+            }
+
+            if (!Write_CSF_Entry(file, string_info, len_info, translate_bufview)) {
+                success = false;
+                break;
             }
         }
     }
-    return false;
-}
-
-bool GameTextFile::Write_STR_File(File *file, LengthInfo &len_info)
-{
-    captainslog_info("Writing string file '%s' in STR format", file->Get_File_Name().Str());
-
-    for (const StringInfo &string_info : m_stringInfos) {
-        if (!string_info.label.Is_Empty()) {
-            if (!Write_STR_Entry(file, string_info, len_info)) {
-                return false;
-            }
-        }
-    }
-
-    return true;
+    return success;
 }
 
 bool GameTextFile::Write_CSF_Header(File *file)
@@ -832,6 +859,17 @@ bool GameTextFile::Write_CSF_Header(File *file)
     return Write(file, header);
 }
 
+bool GameTextFile::Write_CSF_Entry(
+    File *file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview)
+{
+    if (Write_CSF_Label(file, string_info, len_info)) {
+        if (Write_CSF_Text(file, string_info, len_info, translate_bufview)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool GameTextFile::Write_CSF_Label(File *file, const StringInfo &string_info, LengthInfo &len_info)
 {
     CSFLabelHeader header;
@@ -848,7 +886,6 @@ bool GameTextFile::Write_CSF_Label(File *file, const StringInfo &string_info, Le
             return true;
         }
     }
-
     return false;
 }
 
@@ -898,47 +935,5 @@ bool GameTextFile::Write_CSF_Text(
             }
         }
     }
-
     return text_ok && (speech_ok || !write_speech);
-}
-
-bool GameTextFile::Write_CSF_Entry(
-    File *file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview)
-{
-    if (Write_CSF_Label(file, string_info, len_info)) {
-        if (Write_CSF_Text(file, string_info, len_info, translate_bufview)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool GameTextFile::Write_CSF_File(File *file, LengthInfo &len_info)
-{
-    captainslog_info("Writing string file '%s' in CSF format", file->Get_File_Name().Str());
-
-    bool success = false;
-
-    if (Write_CSF_Header(file)) {
-        success = true;
-        unichar_t translate[GAMETEXT_TRANSLATE_SIZE];
-        auto translate_bufview = Utf16Buf::Create(translate);
-
-        for (size_t line = 0, count = m_stringInfos.size(); line < count; ++line) {
-            const StringInfo &string_info = m_stringInfos[line];
-
-            if (string_info.label.Is_Empty()) {
-                captainslog_error("String %d has no label", line);
-                continue;
-            }
-
-            if (!Write_CSF_Entry(file, string_info, len_info, translate_bufview)) {
-                success = false;
-                break;
-            }
-        }
-    }
-
-    return success;
 }

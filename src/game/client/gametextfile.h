@@ -189,18 +189,18 @@ private:
     template<> static bool Write<Utf16String>(File *file, const Utf16String &string);
     static bool Write(File *file, const void *data, size_t len);
 
+    bool Write_STR_File(File *file, LengthInfo &len_info);
+    bool Write_STR_Entry(File *file, const StringInfo &string_info, LengthInfo &len_info);
     bool Write_STR_Label(File *file, const StringInfo &string_info, LengthInfo &len_info);
     bool Write_STR_Text(File *file, const StringInfo &string_info, LengthInfo &len_info);
     bool Write_STR_Speech(File *file, const StringInfo &string_info, LengthInfo &len_info);
     bool Write_STR_End(File *file, const StringInfo &string_info, LengthInfo &len_info);
-    bool Write_STR_Entry(File *file, const StringInfo &string_info, LengthInfo &len_info);
-    bool Write_STR_File(File *file, LengthInfo &len_info);
 
+    bool Write_CSF_File(File *file, LengthInfo &len_info);
     bool Write_CSF_Header(File *file);
+    bool Write_CSF_Entry(File *file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview);
     bool Write_CSF_Label(File *file, const StringInfo &string_info, LengthInfo &len_info);
     bool Write_CSF_Text(File *file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview);
-    bool Write_CSF_Entry(File *file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview);
-    bool Write_CSF_File(File *file, LengthInfo &len_info);
 
 private:
     Option m_options;
