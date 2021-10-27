@@ -52,6 +52,7 @@ struct CSFHeader
     LanguageID langid;
 };
 
+// #FEATURE Describes CSF Label header.
 struct CSFLabelHeader
 {
     uint32_t id;
@@ -59,12 +60,14 @@ struct CSFLabelHeader
     int32_t length;
 };
 
+// #FEATURE Describes CSF Text header.
 struct CSFTextHeader
 {
     uint32_t id;
     int32_t length;
 };
 
+// #FEATURE Describes CSF Speech header.
 struct CSFSpeechHeader
 {
     int32_t length;
@@ -77,7 +80,7 @@ struct StringInfo
     Utf8String speech;
 };
 
-// FEATURE: BufferView allows to pass along a buffer and its size in one go.
+// #FEATURE BufferView allows to pass along a buffer and its size in one go.
 template<typename T> class BufferView
 {
 public:
@@ -98,7 +101,7 @@ private:
     size_t m_size;
 };
 
-// FEATURE: Game text type
+// #FEATURE Game text type.
 enum class GameTextType
 {
     AUTO,
@@ -108,7 +111,7 @@ enum class GameTextType
     Count
 };
 
-// FEATURE: Game text option flags
+// #FEATURE Game text option flags.
 enum class GameTextOption
 {
     NONE = 0,
@@ -117,6 +120,7 @@ enum class GameTextOption
 
 DEFINE_ENUMERATION_BITWISE_OPERATORS(GameTextOption)
 
+// #FEATURE Stores information about localization text lengths.
 struct GameTextLengthInfo
 {
     int max_label_len;
@@ -125,7 +129,7 @@ struct GameTextLengthInfo
     int max_speech_len;
 };
 
-// FEATURE: GameTextFile contains the core file handling functionality of original GameTextManager, which allows to use it
+// #FEATURE GameTextFile contains the core file handling functionality of original GameTextManager, which allows to use it
 // for more flexible localization file operations.
 class GameTextFile
 {
