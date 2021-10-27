@@ -19,9 +19,11 @@
 #include "unicodestring.h"
 #include <vector>
 
-// #TODO Original buffer sizes are exceptionally large. Consider decreasing.
-constexpr size_t GAMETEXT_BUFFER_SIZE = 10240;
-constexpr size_t GAMETEXT_TRANSLATE_SIZE = 20480;
+// https://www.rfc-editor.org/rfc/rfc3629
+// In UTF-8, characters from the U+0000..U+10FFFF range (the UTF-16
+// accessible range) are encoded using sequences of 1 to 4 octets.
+constexpr size_t GAMETEXT_BUFFER_16_SIZE = 1024;
+constexpr size_t GAMETEXT_BUFFER_8_SIZE = GAMETEXT_BUFFER_16_SIZE * 4;
 
 // This enum applies to RA2/YR and Generals/ZH, BFME ID's are slightly different.
 enum class LanguageID : int32_t

@@ -679,10 +679,10 @@ void GameTextFile::Log_Length_Info(const LengthInfo &len_info)
 
 void GameTextFile::Check_Length_Info(const LengthInfo &len_info)
 {
-    captainslog_dbgassert(GAMETEXT_BUFFER_SIZE > len_info.max_label_len, "Read buffer must be larger");
-    captainslog_dbgassert(GAMETEXT_BUFFER_SIZE > len_info.max_text_utf8_len, "Read buffer must be larger");
-    captainslog_dbgassert(GAMETEXT_TRANSLATE_SIZE > len_info.max_text_utf16_len, "Read buffer must be larger");
-    captainslog_dbgassert(GAMETEXT_BUFFER_SIZE > len_info.max_speech_len, "Read buffer must be larger");
+    captainslog_dbgassert(GAMETEXT_BUFFER_8_SIZE > len_info.max_label_len, "Read buffer must be larger");
+    captainslog_dbgassert(GAMETEXT_BUFFER_8_SIZE > len_info.max_text_utf8_len, "Read buffer must be larger");
+    captainslog_dbgassert(GAMETEXT_BUFFER_16_SIZE > len_info.max_text_utf16_len, "Read buffer must be larger");
+    captainslog_dbgassert(GAMETEXT_BUFFER_8_SIZE > len_info.max_speech_len, "Read buffer must be larger");
 }
 
 template<typename T> static bool GameTextFile::Write(File *file, const T &value)
@@ -820,7 +820,7 @@ bool GameTextFile::Write_CSF_File(File *file, LengthInfo &len_info)
 
     if (Write_CSF_Header(file)) {
         success = true;
-        unichar_t translate[GAMETEXT_TRANSLATE_SIZE];
+        unichar_t translate[GAMETEXT_BUFFER_16_SIZE];
         auto translate_bufview = Utf16Buf::Create(translate);
 
         for (size_t line = 0, count = m_stringInfos.size(); line < count; ++line) {
