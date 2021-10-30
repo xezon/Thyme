@@ -38,8 +38,14 @@ int Encode_Buffered_File_Mode(int mode, int buffer_size);
 bool Decode_Buffered_File_Mode(int mode, int &buffer_size);
 } // namespace Thyme
 
+template<typename> class FileRefT;
+
+// Game file class. Can read and write file data. When using File*, then call Close() function when done with it. Prefer
+// wrapping File* in FileRef when writing new feature code to avoid misuse.
 class File : public MemoryPoolObject
 {
+    template<typename> friend class FileRefT;
+
     IMPLEMENT_ABSTRACT_POOL(File);
 
 public:
@@ -87,8 +93,9 @@ public:
     virtual void *Read_All_And_Close() = 0;
     virtual File *Convert_To_RAM() = 0;
 
-    Utf8String &Get_File_Name() { return m_filename; }
-    int Get_File_Mode() { return m_openMode; }
+    const Utf8String &Get_File_Name() const { return m_filename; }
+    int Get_File_Mode() const { return m_openMode; }
+
     void Set_Del_On_Close(bool del) { m_deleteOnClose = del; }
 
 protected:
@@ -100,3 +107,4 @@ protected:
     bool m_access;
     bool m_deleteOnClose;
 };
+
