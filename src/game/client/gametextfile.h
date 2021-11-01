@@ -110,8 +110,6 @@ enum class GameTextType
     AUTO,
     CSF,
     STR,
-
-    Count
 };
 
 // #FEATURE Game text option flags.

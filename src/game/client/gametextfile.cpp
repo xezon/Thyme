@@ -70,8 +70,6 @@ bool GameTextFile::Load(const char *filename, Type filetype)
         }
     }
 
-    static_assert(Type::Count == static_cast<Type>(3), "New Game Text Type needs to be covered here");
-
     if (success) {
         captainslog_info("String file '%s' with %zu lines loaded successfully", filename, m_stringInfos.size());
     } else {
@@ -116,8 +114,6 @@ bool GameTextFile::Save(const char *filename, Type filetype)
             success = true;
         }
     }
-
-    static_assert(Type::Count == static_cast<Type>(3), "New Game Text Type needs to be covered here");
 
     if (success) {
         Log_Length_Info(len_info);
