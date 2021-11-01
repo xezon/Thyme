@@ -897,7 +897,7 @@ bool GameTextFile::Write_CSF_Text(
     bool write_speech = !string_info.speech.Is_Empty();
 
     {
-        size_t text_len = string_info.text.Get_Length();
+        int text_len = string_info.text.Get_Length();
 
         CSFTextHeader header;
         header.id = write_speech ? FourCC_LE<'S', 'T', 'R', 'W'>::value : FourCC_LE<'S', 'T', 'R', ' '>::value;
@@ -906,11 +906,10 @@ bool GameTextFile::Write_CSF_Text(
         htole_ref(header.length);
 
         if (Write(file, header)) {
-
             captainslog_dbgassert(translate_bufview.Size() >= text_len, "Buffer is expected to be larger or equal text");
-            text_len = std::min(text_len, translate_bufview.Size());
+            text_len = std::min<int>(text_len, translate_bufview.Size());
 
-            for (size_t i = 0; i < text_len; ++i) {
+            for (int i = 0; i < text_len; ++i) {
                 // Every char is binary flipped here by design.
                 translate_bufview[i] = ~string_info.text[i];
                 htole_ref(translate_bufview[i]);

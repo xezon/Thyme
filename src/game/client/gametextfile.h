@@ -83,24 +83,25 @@ struct StringInfo
 };
 
 // #FEATURE BufferView allows to pass along a buffer and its size in one go.
-template<typename T> class BufferView
+template<typename ValueType, typename SizeType = int> class BufferView
 {
 public:
-    using value_type = T;
+    using value_type = ValueType;
+    using size_type = SizeType;
 
     template<size_t Size> static BufferView Create(value_type (&buf)[Size]) { return BufferView(buf, Size); }
-    static BufferView Create(std::vector<T> &vector) { return BufferView(&vector[0], vector.size()); }
-    static BufferView Create(value_type *buf, size_t size) { return BufferView(buf, size); }
+    static BufferView Create(std::vector<value_type> &vector) { return BufferView(&vector[0], vector.size()); }
+    static BufferView Create(value_type *buf, size_type size) { return BufferView(buf, size); }
 
-    inline BufferView(value_type *buf, size_t size) : m_buf(buf), m_size(size) {}
+    inline BufferView(value_type *buf, size_type size) : m_buf(buf), m_size(size) {}
 
     inline operator value_type *() { return m_buf; }
     inline value_type *Get() { return m_buf; }
-    inline size_t Size() { return m_size; }
+    inline size_type Size() { return m_size; }
 
 private:
     value_type *m_buf;
-    size_t m_size;
+    size_type m_size;
 };
 
 // #FEATURE Game text type.
