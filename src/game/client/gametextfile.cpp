@@ -94,8 +94,8 @@ bool GameTextFile::Save(const char *filename, Type filetype)
         return false;
     }
 
-    File *file = g_theFileSystem->Open(filename, File::WRITE | File::CREATE | File::BINARY);
-    if (!file) {
+    FileRef file = g_theFileSystem->Open(filename, File::WRITE | File::CREATE | File::BINARY);
+    if (!file.Is_Open()) {
         captainslog_error("String file '%s' cannot be opened for save", filename);
         return false;
     }
@@ -685,31 +685,31 @@ void GameTextFile::Check_Length_Info(const LengthInfo &len_info)
     captainslog_dbgassert(GAMETEXT_BUFFER_8_SIZE > len_info.max_speech_len, "Read buffer must be larger");
 }
 
-template<typename T> static bool GameTextFile::Write(File *file, const T &value)
+template<typename T> static bool GameTextFile::Write(FileRef &file, const T &value)
 {
     return file->Write(&value, sizeof(T)) == sizeof(T);
 }
 
-template<> bool GameTextFile::Write<Utf8String>(File *file, const Utf8String &string)
+template<> bool GameTextFile::Write<Utf8String>(FileRef &file, const Utf8String &string)
 {
     const void *buf = string.Str();
     const int len = string.Get_Length() * sizeof(char);
     return file->Write(buf, len) == len;
 }
 
-template<> bool GameTextFile::Write<Utf16String>(File *file, const Utf16String &string)
+template<> bool GameTextFile::Write<Utf16String>(FileRef &file, const Utf16String &string)
 {
     const void *buf = string.Str();
     const int len = string.Get_Length() * sizeof(unichar_t);
     return file->Write(buf, len) == len;
 }
 
-bool GameTextFile::Write(File *file, const void *data, size_t len)
+bool GameTextFile::Write(FileRef &file, const void *data, int len)
 {
     return file->Write(data, len) == len;
 }
 
-bool GameTextFile::Write_STR_File(File *file, LengthInfo &len_info)
+bool GameTextFile::Write_STR_File(FileRef &file, LengthInfo &len_info)
 {
     captainslog_info("Writing string file '%s' in STR format", file->Get_File_Name().Str());
 
@@ -723,7 +723,7 @@ bool GameTextFile::Write_STR_File(File *file, LengthInfo &len_info)
     return true;
 }
 
-bool GameTextFile::Write_STR_Entry(File *file, const StringInfo &string_info, LengthInfo &len_info)
+bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info, LengthInfo &len_info)
 {
     if (Write_STR_Label(file, string_info, len_info)) {
         if (Write_STR_Text(file, string_info, len_info)) {
@@ -737,7 +737,7 @@ bool GameTextFile::Write_STR_Entry(File *file, const StringInfo &string_info, Le
     return false;
 }
 
-bool GameTextFile::Write_STR_Label(File *file, const StringInfo &string_info, LengthInfo &len_info)
+bool GameTextFile::Write_STR_Label(FileRef &file, const StringInfo &string_info, LengthInfo &len_info)
 {
     bool ok = true;
     ok = ok && Write(file, string_info.label);
@@ -748,7 +748,7 @@ bool GameTextFile::Write_STR_Label(File *file, const StringInfo &string_info, Le
     return ok;
 }
 
-bool GameTextFile::Write_STR_Text(File *file, const StringInfo &string_info, LengthInfo &len_info)
+bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, LengthInfo &len_info)
 {
     Utf16String text_utf16;
     Utf8String text_utf8;
@@ -790,7 +790,7 @@ bool GameTextFile::Write_STR_Text(File *file, const StringInfo &string_info, Len
     return ok;
 }
 
-bool GameTextFile::Write_STR_Speech(File *file, const StringInfo &string_info, LengthInfo &len_info)
+bool GameTextFile::Write_STR_Speech(FileRef &file, const StringInfo &string_info, LengthInfo &len_info)
 {
     bool ok = true;
     if (!string_info.speech.Is_Empty()) {
@@ -803,7 +803,7 @@ bool GameTextFile::Write_STR_Speech(File *file, const StringInfo &string_info, L
     return ok;
 }
 
-bool GameTextFile::Write_STR_End(File *file, const StringInfo &string_info, LengthInfo &len_info)
+bool GameTextFile::Write_STR_End(FileRef &file, const StringInfo &string_info, LengthInfo &len_info)
 {
     bool ok = true;
     ok = ok && Write(file, s_end);
@@ -812,7 +812,7 @@ bool GameTextFile::Write_STR_End(File *file, const StringInfo &string_info, Leng
     return ok;
 }
 
-bool GameTextFile::Write_CSF_File(File *file, LengthInfo &len_info)
+bool GameTextFile::Write_CSF_File(FileRef &file, LengthInfo &len_info)
 {
     captainslog_info("Writing string file '%s' in CSF format", file->Get_File_Name().Str());
 
@@ -840,7 +840,7 @@ bool GameTextFile::Write_CSF_File(File *file, LengthInfo &len_info)
     return success;
 }
 
-bool GameTextFile::Write_CSF_Header(File *file)
+bool GameTextFile::Write_CSF_Header(FileRef &file)
 {
     CSFHeader header;
     header.id = FourCC_LE<'C', 'S', 'F', ' '>::value;
@@ -860,7 +860,7 @@ bool GameTextFile::Write_CSF_Header(File *file)
 }
 
 bool GameTextFile::Write_CSF_Entry(
-    File *file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview)
+    FileRef &file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview)
 {
     if (Write_CSF_Label(file, string_info, len_info)) {
         if (Write_CSF_Text(file, string_info, len_info, translate_bufview)) {
@@ -870,7 +870,7 @@ bool GameTextFile::Write_CSF_Entry(
     return false;
 }
 
-bool GameTextFile::Write_CSF_Label(File *file, const StringInfo &string_info, LengthInfo &len_info)
+bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info, LengthInfo &len_info)
 {
     CSFLabelHeader header;
     header.id = FourCC_LE<'L', 'B', 'L', ' '>::value;
@@ -890,7 +890,7 @@ bool GameTextFile::Write_CSF_Label(File *file, const StringInfo &string_info, Le
 }
 
 bool GameTextFile::Write_CSF_Text(
-    File *file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview)
+    FileRef &file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview)
 {
     bool text_ok = false;
     bool speech_ok = false;
