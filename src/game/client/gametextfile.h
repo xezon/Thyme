@@ -116,7 +116,9 @@ enum class GameTextType
 enum class GameTextOption
 {
     NONE = 0,
-    WRITEOUT_LF = BIT(0),
+    PRINT_LENGTH_INFO_ON_LOAD = BIT(0),
+    PRINT_LENGTH_INFO_ON_SAVE = BIT(1),
+    WRITEOUT_LF = BIT(2),
 };
 
 DEFINE_ENUMERATION_BITWISE_OPERATORS(GameTextOption)
@@ -190,6 +192,7 @@ private:
     static const char *Get_File_Extension(const char *filename);
     static Type Get_File_Type(const char *filename, Type filetype);
 
+    static void Collect_Length_Info(LengthInfo &len_info, const StringInfos &strings);
     static void Log_Length_Info(const LengthInfo &len_info);
     static void Check_Length_Info(const LengthInfo &len_info);
 
@@ -198,18 +201,18 @@ private:
     template<> static bool Write<Utf16String>(FileRef &file, const Utf16String &string);
     static bool Write(FileRef &file, const void *data, int len);
 
-    bool Write_STR_File(FileRef &file, LengthInfo &len_info);
-    bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, LengthInfo &len_info);
-    bool Write_STR_Label(FileRef &file, const StringInfo &string_info, LengthInfo &len_info);
-    bool Write_STR_Text(FileRef &file, const StringInfo &string_info, LengthInfo &len_info);
-    bool Write_STR_Speech(FileRef &file, const StringInfo &string_info, LengthInfo &len_info);
-    bool Write_STR_End(FileRef &file, const StringInfo &string_info, LengthInfo &len_info);
+    bool Write_STR_File(FileRef &file);
+    bool Write_STR_Entry(FileRef &file, const StringInfo &string_info);
+    bool Write_STR_Label(FileRef &file, const StringInfo &string_info);
+    bool Write_STR_Text(FileRef &file, const StringInfo &string_info);
+    bool Write_STR_Speech(FileRef &file, const StringInfo &string_info);
+    bool Write_STR_End(FileRef &file, const StringInfo &string_info);
 
-    bool Write_CSF_File(FileRef &file, LengthInfo &len_info);
+    bool Write_CSF_File(FileRef &file);
     bool Write_CSF_Header(FileRef &file);
-    bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview);
-    bool Write_CSF_Label(FileRef &file, const StringInfo &string_info, LengthInfo &len_info);
-    bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, LengthInfo &len_info, Utf16Buf translate_bufview);
+    bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
+    bool Write_CSF_Label(FileRef &file, const StringInfo &string_info);
+    bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
 
 private:
     Option m_options;
