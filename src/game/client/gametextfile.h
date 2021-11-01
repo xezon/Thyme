@@ -145,11 +145,19 @@ public:
 
     GameTextFile() : m_options(Option::NONE), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
 
+    // Loads CSF or STR file from disk. Will always unload current file data.
     bool Load(const char *filename, Type filetype = Type::AUTO);
+
+    // Saves CSF or STR file to disk. Will write over any existing file.
     bool Save(const char *filename, Type filetype = Type::AUTO);
+
+    // Unloads current file data.
     void Unload();
 
+    // Retrieves all localization data.
     const StringInfos &Get_String_Infos() const { return m_stringInfos; }
+
+    // Sets and gets options for operations.
     void SetOptions(Option options) { m_options = options; }
     Option GetOptions() const { return m_options; }
 

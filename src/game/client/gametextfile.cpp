@@ -749,13 +749,13 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, 
     Utf16String text_utf16;
     Utf8String text_utf8;
 
-    // Copy utf16 text and treat certain characters special
+    // Copy utf16 text and treat certain characters special.
     const bool write_lf = static_cast<int>(m_options & Option::WRITEOUT_LF) != 0;
 
     for (int i = 0, count = string_info.text.Get_Length(); i < count; ++i) {
         unichar_t c = string_info.text[i];
         if (write_lf && c == U_CHAR('\n')) {
-            // Print an escaped line feed
+            // Print an escaped line feed.
             text_utf16.Concat(U_CHAR('\\'));
             text_utf16.Concat(U_CHAR('n'));
             if (i != 0) {
@@ -763,7 +763,7 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, 
                 text_utf16.Concat(U_CHAR('\n'));
             }
         } else if (c == U_CHAR('"')) {
-            // Print an escaped quote
+            // Print an escaped quote.
             text_utf16.Concat(U_CHAR('\\'));
             text_utf16.Concat(U_CHAR('"'));
         } else {
@@ -771,7 +771,7 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, 
         }
     }
 
-    // Convert utf16 to utf8
+    // Convert utf16 to utf8.
     text_utf8.Translate(text_utf16);
 
     bool ok = true;
