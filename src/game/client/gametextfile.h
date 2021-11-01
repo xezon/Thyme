@@ -202,17 +202,17 @@ private:
     static bool Write(FileRef &file, const void *data, int len);
 
     bool Write_STR_File(FileRef &file);
-    bool Write_STR_Entry(FileRef &file, const StringInfo &string_info);
-    bool Write_STR_Label(FileRef &file, const StringInfo &string_info);
-    bool Write_STR_Text(FileRef &file, const StringInfo &string_info);
-    bool Write_STR_Speech(FileRef &file, const StringInfo &string_info);
-    bool Write_STR_End(FileRef &file, const StringInfo &string_info);
+    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, Option options);
+    static bool Write_STR_Label(FileRef &file, const StringInfo &string_info);
+    static bool Write_STR_Text(FileRef &file, const StringInfo &string_info, Option options);
+    static bool Write_STR_Speech(FileRef &file, const StringInfo &string_info);
+    static bool Write_STR_End(FileRef &file, const StringInfo &string_info);
 
     bool Write_CSF_File(FileRef &file);
-    bool Write_CSF_Header(FileRef &file);
-    bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
-    bool Write_CSF_Label(FileRef &file, const StringInfo &string_info);
-    bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
+    static bool Write_CSF_Header(FileRef &file, const LanguageID &language, const StringInfos &strings);
+    static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
+    static bool Write_CSF_Label(FileRef &file, const StringInfo &string_info);
+    static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
 
 private:
     Option m_options;

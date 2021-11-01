@@ -735,7 +735,7 @@ bool GameTextFile::Write_STR_File(FileRef &file)
 
     for (const StringInfo &string_info : m_stringInfos) {
         if (!string_info.label.Is_Empty()) {
-            if (!Write_STR_Entry(file, string_info)) {
+            if (!Write_STR_Entry(file, string_info, m_options)) {
                 return false;
             }
         }
@@ -743,10 +743,10 @@ bool GameTextFile::Write_STR_File(FileRef &file)
     return true;
 }
 
-bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info)
+bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info, Option options)
 {
     if (Write_STR_Label(file, string_info)) {
-        if (Write_STR_Text(file, string_info)) {
+        if (Write_STR_Text(file, string_info, options)) {
             if (Write_STR_Speech(file, string_info)) {
                 if (Write_STR_End(file, string_info)) {
                     return true;
@@ -765,13 +765,13 @@ bool GameTextFile::Write_STR_Label(FileRef &file, const StringInfo &string_info)
     return ok;
 }
 
-bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info)
+bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, Option options)
 {
     Utf16String text_utf16;
     Utf8String text_utf8;
 
     // Copy utf16 text and treat certain characters special.
-    const bool write_lf = static_cast<int>(m_options & Option::WRITEOUT_LF) != 0;
+    const bool write_lf = static_cast<int>(options & Option::WRITEOUT_LF) != 0;
 
     for (int i = 0, count = string_info.text.Get_Length(); i < count; ++i) {
         unichar_t c = string_info.text[i];
@@ -828,7 +828,7 @@ bool GameTextFile::Write_CSF_File(FileRef &file)
 
     bool success = false;
 
-    if (Write_CSF_Header(file)) {
+    if (Write_CSF_Header(file, m_language, m_stringInfos)) {
         success = true;
         unichar_t utf16buf[GAMETEXT_BUFFER_16_SIZE];
         auto utf16bufview = Utf16Buf::Create(utf16buf);
@@ -850,15 +850,15 @@ bool GameTextFile::Write_CSF_File(FileRef &file)
     return success;
 }
 
-bool GameTextFile::Write_CSF_Header(FileRef &file)
+bool GameTextFile::Write_CSF_Header(FileRef &file, const LanguageID &language, const StringInfos &strings)
 {
     CSFHeader header;
     header.id = FourCC_LE<'C', 'S', 'F', ' '>::value;
     header.version = 3;
-    header.num_labels = m_stringInfos.size();
-    header.num_strings = m_stringInfos.size();
+    header.num_labels = strings.size();
+    header.num_strings = strings.size();
     header.skip = FourCC_LE<'T', 'H', 'Y', 'M'>::value;
-    header.langid = m_language;
+    header.langid = language;
     htole_ref(header.id);
     htole_ref(header.version);
     htole_ref(header.num_labels);
