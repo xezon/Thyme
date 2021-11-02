@@ -31,14 +31,21 @@ const char GameTextFile::s_end[] = { 'E', 'N', 'D' };
 
 bool GameTextFile::Load(const char *filename, Type filetype)
 {
+    Unload();
+
     if (!filename || !filename[0]) {
         captainslog_error("String file without file name cannot be loaded");
         return false;
     }
 
+    FileRef file = g_theFileSystem->Open(filename, File::READ | File::BINARY);
+    if (!file.Is_Open()) {
+        captainslog_error("String file '%s' cannot be opened for load", filename);
+        return false;
+    }
+
     bool success = false;
 
-    Unload();
     filetype = Get_File_Type(filename, filetype);
 
     int string_count = 0;
@@ -53,12 +60,7 @@ bool GameTextFile::Load(const char *filename, Type filetype)
     auto bufview_trans = BufferView<unichar_t>::Create(buffer_trans);
 
     if (filetype == Type::CSF) {
-        if (Get_CSF_Info(filename, string_count, m_language)) {
-            m_stringInfos.resize(string_count);
-            if (Parse_CSF_File(filename, &m_stringInfos[0], max_label_len, bufview_trans, bufview_in)) {
-                success = true;
-            }
-        }
+        success = Read_CSF_File(file);
     } else if (filetype == Type::STR) {
         if (Get_String_Count(filename, string_count, bufview_in, bufview_out, bufview_ex)) {
             m_stringInfos.resize(string_count);
@@ -705,6 +707,46 @@ void GameTextFile::Check_Length_Info(const LengthInfo &len_info)
     captainslog_dbgassert(GAMETEXT_BUFFER_8_SIZE > len_info.max_speech_len, "Read buffer must be larger");
 }
 
+template<typename T> static bool GameTextFile::Read(FileRef &file, T &value)
+{
+    return file->Read(&value, sizeof(T)) == sizeof(T);
+}
+
+bool GameTextFile::Read(FileRef &file, Utf8String &string, int len)
+{
+    captainslog_assert(len >= 0);
+    if (len == 0)
+        return true;
+
+    char *buf = string.Get_Buffer_For_Read(len);
+    const int bytes = len * sizeof(char);
+    if (file->Read(buf, len) == len) {
+        buf[len] = '\0';
+        return true;
+    }
+    return false;
+}
+
+bool GameTextFile::Read(FileRef &file, Utf16String &string, int len)
+{
+    captainslog_assert(len >= 0);
+    if (len == 0)
+        return true;
+
+    unichar_t *buf = string.Get_Buffer_For_Read(len);
+    const int bytes = len * sizeof(unichar_t);
+    if (file->Read(buf, bytes) == bytes) {
+        buf[len] = U_CHAR('\0');
+        return true;
+    }
+    return false;
+}
+
+bool GameTextFile::Read(FileRef &file, void *data, int len)
+{
+    return file->Read(data, len) == len;
+}
+
 template<typename T> static bool GameTextFile::Write(FileRef &file, const T &value)
 {
     return file->Write(&value, sizeof(T)) == sizeof(T);
@@ -727,6 +769,126 @@ template<> bool GameTextFile::Write<Utf16String>(FileRef &file, const Utf16Strin
 bool GameTextFile::Write(FileRef &file, const void *data, int len)
 {
     return file->Write(data, len) == len;
+}
+
+bool GameTextFile::Read_CSF_File(FileRef &file)
+{
+    captainslog_info("Reading string file '%s' in CSF format", file->Get_File_Name().Str());
+
+    bool success = false;
+
+    if (Read_CSF_Header(file, m_language, m_stringInfos)) {
+        success = true;
+
+        for (StringInfo &string_info : m_stringInfos) {
+            if (!Read_CSF_Entry(file, string_info)) {
+                success = false;
+                break;
+            }
+        }
+    }
+    return success;
+}
+
+bool GameTextFile::Read_CSF_Header(FileRef &file, LanguageID &language, StringInfos &strings)
+{
+    CSFHeader header;
+
+    if (Read(file, header)) {
+        letoh_ref(header.id);
+        letoh_ref(header.langid);
+        letoh_ref(header.num_labels);
+        letoh_ref(header.num_strings);
+        letoh_ref(header.skip);
+        letoh_ref(header.version);
+
+        if (header.id == FourCC_LE<'C', 'S', 'F', ' '>::value) {
+            language = (header.version > 1) ? static_cast<LanguageID>(header.langid) : LanguageID::LANGUAGE_ID_US;
+            strings.resize(header.num_labels);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool GameTextFile::Read_CSF_Entry(FileRef &file, StringInfo &string_info)
+{
+    int32_t texts;
+
+    if (Read_CSF_Label(file, string_info, texts)) {
+        if (texts == 0) {
+            return true;
+        }
+        if (Read_CSF_Text(file, string_info)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool GameTextFile::Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_t &texts)
+{
+    CSFLabelHeader header;
+
+    if (Read(file, header)) {
+        letoh_ref(header.id);
+        letoh_ref(header.texts);
+        letoh_ref(header.length);
+
+        if (header.id == FourCC_LE<'L', 'B', 'L', ' '>::value) {
+            if (Read(file, string_info.label, header.length)) {
+                texts = header.texts;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
+{
+    bool text_ok = false;
+    bool speech_ok = false;
+    bool read_speech = false;
+
+    {
+        CSFTextHeader header;
+
+        if (Read(file, header)) {
+            letoh_ref(header.id);
+            letoh_ref(header.length);
+
+            read_speech = (header.id == FourCC_LE<'S', 'T', 'R', 'W'>::value);
+            const bool read_text = (header.id == FourCC_LE<'S', 'T', 'R', ' '>::value);
+
+            if (read_speech || read_text) {
+                if (Read(file, string_info.text, header.length)) {
+                    for (int32_t i = 0; i < header.length; ++i) {
+                        letoh_ref(string_info.text[i]);
+                        // Every char is binary flipped here by design.
+                        string_info.text[i] = ~string_info.text[i];
+                    }
+                    text_ok = true;
+                }
+            }
+        }
+    }
+
+    if (read_speech) {
+        CSFSpeechHeader header;
+
+        if (Read(file, header)) {
+            letoh_ref(header.length);
+
+            if (Read(file, string_info.speech, header.length)) {
+                speech_ok = true;
+            }
+        }
+    }
+
+    return text_ok && (speech_ok || !read_speech);
 }
 
 bool GameTextFile::Write_STR_File(FileRef &file)
