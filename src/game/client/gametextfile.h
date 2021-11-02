@@ -172,6 +172,9 @@ public:
     // Unloads current file data.
     void Unload();
 
+    // Merges another game text into this one. Identical labels will write their text contents from the other to this.
+    void Merge_And_Overwrite(const GameTextFile &other);
+
     // Retrieves all localization data.
     const StringInfos &Get_String_Infos() const { return m_stringInfos; }
 

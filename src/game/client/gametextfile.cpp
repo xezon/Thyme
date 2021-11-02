@@ -139,6 +139,30 @@ void GameTextFile::Unload()
     std::swap(m_stringInfos, StringInfos());
 }
 
+void GameTextFile::Merge_And_Overwrite(const GameTextFile &other)
+{
+    const size_t other_size = other.m_stringInfos.size();
+    StringInfos other_merge;
+    other_merge.reserve(other_size);
+
+    MutableGameTextLookup this_lookup(m_stringInfos);
+
+    for (const StringInfo &other_string : other.m_stringInfos) {
+        const MutableStringLookup *this_string_lookup = this_lookup.Find(other_string.label.Str());
+
+        if (this_string_lookup == nullptr) {
+            // Other string is new. Prepare to add.
+            other_merge.push_back(other_string);
+        } else {
+            // Other string already exists. Update this string.
+            this_string_lookup->string_info->text = other_string.text;
+            this_string_lookup->string_info->speech = other_string.speech;
+        }
+    }
+
+    m_stringInfos.insert(m_stringInfos.end(), other_merge.begin(), other_merge.end());
+}
+
 void GameTextFile::Read_To_End_Of_Quote(File *file, char *in, char *out, char *wave, int buff_len)
 {
     bool escape = false;
