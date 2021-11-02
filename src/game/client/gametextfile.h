@@ -17,6 +17,7 @@
 #include "asciistring.h"
 #include "fileref.h"
 #include "unicodestring.h"
+#include <stdlib.h>
 #include <vector>
 
 // https://www.rfc-editor.org/rfc/rfc3629
@@ -84,6 +85,20 @@ struct StringInfo
     Utf8String speech;
 };
 
+using StringInfos = std::vector<StringInfo>;
+
+struct ConstStringLookup
+{
+    const char *label;
+    const StringInfo *string_info;
+};
+
+struct MutableStringLookup
+{
+    const char *label;
+    StringInfo *string_info;
+};
+
 // #FEATURE BufferView allows to pass along a buffer and its size in one go.
 template<typename ValueType, typename SizeType = int> class BufferView
 {
@@ -141,7 +156,6 @@ class GameTextFile
     friend class GameTextManager;
 
 public:
-    using StringInfos = std::vector<StringInfo>;
     using LengthInfo = GameTextLengthInfo;
     using Option = GameTextOption;
     using Type = GameTextType;
@@ -236,3 +250,53 @@ private:
     static const char s_quo[];
     static const char s_end[];
 };
+
+template<typename StringLookup, typename StringInfos> class GameTextLookup
+{
+public:
+    GameTextLookup(StringInfos &stringInfos);
+
+    const StringLookup *Find(const char *label) const;
+
+private:
+    static int Compare_LUT(void const *a, void const *b);
+
+    std::vector<StringLookup> m_stringLUT;
+};
+
+template<typename StringLookup, typename StringInfos>
+GameTextLookup<StringLookup, StringInfos>::GameTextLookup(StringInfos &stringInfos)
+{
+    const size_t size = stringInfos.size();
+    m_stringLUT.resize(size);
+
+    for (size_t i = 0; i < size; ++i) {
+        m_stringLUT[i].label = stringInfos[i].label.Str();
+        m_stringLUT[i].string_info = &stringInfos[i];
+    }
+
+    qsort(&m_stringLUT[0], size, sizeof(StringLookup), Compare_LUT);
+}
+
+template<typename StringLookup, typename StringInfos>
+const StringLookup *GameTextLookup<StringLookup, StringInfos>::Find(const char *label) const
+{
+    StringLookup key;
+    key.label = label;
+    key.string_info = nullptr;
+
+    return static_cast<const StringLookup *>(
+        bsearch(&key, &m_stringLUT[0], m_stringLUT.size(), sizeof(StringLookup), Compare_LUT));
+}
+
+template<typename StringLookup, typename StringInfos>
+int GameTextLookup<StringLookup, StringInfos>::Compare_LUT(const void *a, const void *b)
+{
+    const char *ac = static_cast<const StringLookup *>(a)->label;
+    const char *bc = static_cast<const StringLookup *>(b)->label;
+
+    return strcasecmp(ac, bc);
+}
+
+using ConstGameTextLookup = GameTextLookup<ConstStringLookup, const StringInfos>;
+using MutableGameTextLookup = GameTextLookup<MutableStringLookup, StringInfos>;
