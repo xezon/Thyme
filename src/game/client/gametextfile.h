@@ -58,7 +58,7 @@ struct CSFHeader
 struct CSFLabelHeader
 {
     uint32_t id;
-    int32_t string_count;
+    int32_t texts;
     int32_t length;
 };
 

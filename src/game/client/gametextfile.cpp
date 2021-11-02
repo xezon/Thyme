@@ -713,15 +713,15 @@ template<typename T> static bool GameTextFile::Write(FileRef &file, const T &val
 template<> bool GameTextFile::Write<Utf8String>(FileRef &file, const Utf8String &string)
 {
     const void *buf = string.Str();
-    const int len = string.Get_Length() * sizeof(char);
-    return file->Write(buf, len) == len;
+    const int bytes = string.Get_Length() * sizeof(char);
+    return file->Write(buf, bytes) == bytes;
 }
 
 template<> bool GameTextFile::Write<Utf16String>(FileRef &file, const Utf16String &string)
 {
     const void *buf = string.Str();
-    const int len = string.Get_Length() * sizeof(unichar_t);
-    return file->Write(buf, len) == len;
+    const int bytes = string.Get_Length() * sizeof(unichar_t);
+    return file->Write(buf, bytes) == bytes;
 }
 
 bool GameTextFile::Write(FileRef &file, const void *data, int len)
@@ -832,12 +832,13 @@ bool GameTextFile::Write_CSF_File(FileRef &file)
         success = true;
         unichar_t utf16buf[GAMETEXT_BUFFER_16_SIZE];
         auto utf16bufview = Utf16Buf::Create(utf16buf);
+        int string_index = 0;
 
-        for (size_t line = 0, count = m_stringInfos.size(); line < count; ++line) {
-            const StringInfo &string_info = m_stringInfos[line];
+        for (const StringInfo &string_info : m_stringInfos) {
+            ++string_index;
 
             if (string_info.label.Is_Empty()) {
-                captainslog_error("String %d has no label", line);
+                captainslog_error("String %d has no label", string_index);
                 continue;
             }
 
@@ -883,10 +884,10 @@ bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info)
 {
     CSFLabelHeader header;
     header.id = FourCC_LE<'L', 'B', 'L', ' '>::value;
-    header.string_count = 1;
+    header.texts = 1;
     header.length = string_info.label.Get_Length();
     htole_ref(header.id);
-    htole_ref(header.string_count);
+    htole_ref(header.texts);
     htole_ref(header.length);
 
     if (Write(file, header)) {
