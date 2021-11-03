@@ -137,7 +137,7 @@ bool GameTextFile::Save(const char *filename, Type filetype)
 void GameTextFile::Unload()
 {
     m_language = LanguageID::LANGUAGE_ID_US;
-    std::swap(m_stringInfos, StringInfos());
+    StringInfos().swap(m_stringInfos);
 }
 
 void GameTextFile::Merge_And_Overwrite(const GameTextFile &other)

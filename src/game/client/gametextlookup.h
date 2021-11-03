@@ -35,15 +35,21 @@ struct MutableStringLookup
 // Prefer use the type aliases further down below.
 template<typename StringLookup, typename StringInfos> class GameTextLookup
 {
+    using StringLookups = std::vector<StringLookup>;
+
 public:
-    GameTextLookup(StringInfos &stringInfos);
+    explicit GameTextLookup() {}
+    explicit GameTextLookup(StringInfos &stringInfos);
+
+    void Load(StringInfos &stringInfos);
+    void Unload();
 
     const StringLookup *Find(const char *label) const;
 
 private:
     static int Compare_LUT(void const *a, void const *b);
 
-    std::vector<StringLookup> m_stringLUT;
+    StringLookups m_stringLookups;
 };
 
 // Aliases.
@@ -54,15 +60,26 @@ using MutableGameTextLookup = GameTextLookup<MutableStringLookup, StringInfos>;
 template<typename StringLookup, typename StringInfos>
 GameTextLookup<StringLookup, StringInfos>::GameTextLookup(StringInfos &stringInfos)
 {
+    Load(stringInfos);
+}
+
+template<typename StringLookup, typename StringInfos>
+void GameTextLookup<StringLookup, StringInfos>::Load(StringInfos &stringInfos)
+{
     const size_t size = stringInfos.size();
-    m_stringLUT.resize(size);
+    m_stringLookups.resize(size);
 
     for (size_t i = 0; i < size; ++i) {
-        m_stringLUT[i].label = stringInfos[i].label.Str();
-        m_stringLUT[i].string_info = &stringInfos[i];
+        m_stringLookups[i].label = stringInfos[i].label.Str();
+        m_stringLookups[i].string_info = &stringInfos[i];
     }
 
-    qsort(&m_stringLUT[0], size, sizeof(StringLookup), Compare_LUT);
+    qsort(&m_stringLookups[0], size, sizeof(StringLookup), Compare_LUT);
+}
+
+template<typename StringLookup, typename StringInfos> void GameTextLookup<StringLookup, StringInfos>::Unload()
+{
+    StringLookups().swap(m_stringLookups);
 }
 
 template<typename StringLookup, typename StringInfos>
@@ -73,7 +90,7 @@ const StringLookup *GameTextLookup<StringLookup, StringInfos>::Find(const char *
     key.string_info = nullptr;
 
     return static_cast<const StringLookup *>(
-        bsearch(&key, &m_stringLUT[0], m_stringLUT.size(), sizeof(StringLookup), Compare_LUT));
+        bsearch(&key, &m_stringLookups[0], m_stringLookups.size(), sizeof(StringLookup), Compare_LUT));
 }
 
 template<typename StringLookup, typename StringInfos>

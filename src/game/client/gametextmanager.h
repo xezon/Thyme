@@ -19,19 +19,16 @@
 #include "gametextcommon.h"
 #include "gametextfile.h"
 #include "gametextinterface.h"
+#include "gametextlookup.h"
 
 namespace Thyme
 {
-struct StringLookUp // TODO remove
-{
-    const Utf8String *label;
-    const StringInfo *info;
-};
-
 // #FEATURE New GameTextManager with new features. Can read UTF-8 STR Files. GameTextManager is self contained and will
 // automatically load and read generals.csf, generals.str and map.str files.
 class GameTextManager : public GameTextInterface
 {
+    using Utf8Strings = std::vector<Utf8String>;
+
 public:
     GameTextManager();
     virtual ~GameTextManager();
@@ -50,24 +47,23 @@ public:
     static GameTextInterface *Create_Game_Text_Interface();
 
 private:
-    bool m_initialized = false;
-    bool m_useStringFile = true;
-    Utf16String m_failed = U_CHAR("***FATAL*** String Manager failed to initialize properly");
+    static void Collect_Labels_With_Prefix(
+        Utf8Strings &found_labels, const Utf8String &search_label, const StringInfos &string_infos);
+
+    bool m_initialized;
+    bool m_useStringFile;
+    Utf16String m_failed;
 
     // Main localization
     GameTextFile m_textFile;
-    int m_textCount = 0;
-    const StringInfo *m_stringInfo = nullptr;
-    StringLookUp *m_stringLUT = nullptr;
+    ConstGameTextLookup m_textLookup;
 
     // Map localization
     GameTextFile m_mapTextFile;
-    int m_mapTextCount = 0;
-    const StringInfo *m_mapStringInfo = nullptr;
-    StringLookUp *m_mapStringLUT = nullptr;
+    ConstGameTextLookup m_mapTextLookup;
 
-    NoString *m_noStringList = nullptr;
-    std::vector<Utf8String> m_stringVector;
+    NoString *m_noStringList;
+    Utf8Strings m_stringVector;
 };
 } // namespace Thyme
 

@@ -110,6 +110,9 @@ public:
 
     GameTextFile() : m_options(Option::NONE), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
 
+    // Checks whether or not localization is loaded.
+    bool IsLoaded() const { return !m_stringInfos.empty(); }
+
     // Loads CSF or STR file from disk. Will always unload current file data.
     bool Load(const char *filename, Type filetype = Type::AUTO);
 
