@@ -102,8 +102,6 @@ struct GameTextLengthInfo
 // for more flexible localization file operations.
 class GameTextFile
 {
-    friend class GameTextManager;
-
 public:
     using LengthInfo = GameTextLengthInfo;
     using Option = GameTextOption;

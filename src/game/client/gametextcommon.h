@@ -55,3 +55,9 @@ struct StringInfo
     Utf16String text;
     Utf8String speech;
 };
+
+struct NoString
+{
+    NoString *next;
+    Utf16String text;
+};

@@ -13,6 +13,7 @@
  *            LICENSE
  */
 #include "gametext.h"
+#include "file.h"
 #include "filesystem.h"
 #include "main.h" // For g_applicationHWnd
 #include "registry.h"
@@ -32,11 +33,9 @@
 #include "hookcrt.h"
 #endif
 
+namespace Legacy
+{
 using rts::FourCC;
-
-#ifndef GAME_DLL
-GameTextInterface *g_theGameText = nullptr;
-#endif
 
 // Comparison function used for sorting and searching StringLookUp arrays.
 int GameTextManager::Compare_LUT(void const *a, void const *b)
@@ -51,8 +50,6 @@ GameTextInterface *GameTextManager::Create_Game_Text_Interface()
 {
     return new GameTextManager;
 }
-
-#if USE_LEGACY_GAMETEXT
 
 // Get a char from a file.
 char GameTextManager::Read_Char(File *file)
@@ -716,27 +713,6 @@ GameTextManager::GameTextManager() :
     memset(m_bufferEx, 0, sizeof(m_bufferEx));
 }
 
-#else
-
-GameTextManager::GameTextManager() :
-    m_initialized(false),
-    m_useStringFile(true),
-    m_failed(U_CHAR("***FATAL*** String Manager failed to initialize properly")),
-    m_textFile(),
-    m_textCount(0),
-    m_stringInfo(nullptr),
-    m_stringLUT(nullptr),
-    m_mapTextFile(),
-    m_mapTextCount(0),
-    m_mapStringInfo(nullptr),
-    m_mapStringLUT(nullptr),
-    m_noStringList(nullptr),
-    m_stringVector()
-{
-}
-
-#endif // USE_LEGACY_GAMETEXT
-
 GameTextManager::~GameTextManager()
 {
     Reset(); // #BUGFIX Full cleanup on destruction.
@@ -752,8 +728,6 @@ void GameTextManager::Init()
     if (m_initialized) {
         return;
     }
-
-#if USE_LEGACY_GAMETEXT
 
     Utf8String csfpath;
     bool use_csf = true;
@@ -800,30 +774,6 @@ void GameTextManager::Init()
         }
     }
 
-#else
-
-    bool loaded = false;
-
-    if (m_useStringFile && m_textFile.Load("data/Generals.str", GameTextType::STR)) {
-        loaded = true;
-    } else {
-        Utf8String csf_file;
-        csf_file.Format("data/%s/Generals.csf", Get_Registry_Language().Str());
-        if (m_textFile.Load(csf_file.Str(), GameTextType::CSF)) {
-            loaded = true;
-        }
-    }
-
-    if (!loaded) {
-        Deinit();
-        return;
-    }
-
-    m_textCount = m_textFile.Get_String_Infos().size();
-    m_stringInfo = &m_textFile.Get_String_Infos()[0];
-
-#endif // USE_LEGACY_GAMETEXT
-
     // Generate the lookup table and sort it for efficient search.
     m_stringLUT = new StringLookUp[m_textCount];
 
@@ -855,15 +805,10 @@ void GameTextManager::Reset()
 {
     m_mapTextCount = 0; // #BUGFIX Reset map text count as well.
 
-#if USE_LEGACY_GAMETEXT
     if (m_mapStringInfo != nullptr) {
         delete[] m_mapStringInfo;
         m_mapStringInfo = nullptr;
     }
-#else
-    m_mapStringInfo = nullptr;
-    m_mapTextFile.Unload();
-#endif
 
     if (m_mapStringLUT != nullptr) {
         delete[] m_mapStringLUT;
@@ -980,15 +925,9 @@ std::vector<Utf8String> *GameTextManager::Get_Strings_With_Prefix(Utf8String lab
 // allocated here are freed by GameTextManager::Reset()
 void GameTextManager::Init_Map_String_File(Utf8String const &filename)
 {
-#if USE_LEGACY_GAMETEXT
     Get_String_Count(filename.Str(), m_mapTextCount);
     m_mapStringInfo = new StringInfo[m_mapTextCount];
     Parse_Map_String_File(filename.Str());
-#else
-    m_mapTextFile.Load(filename.Str());
-    m_mapTextCount = m_mapTextFile.Get_String_Infos().size();
-    m_mapStringInfo = &m_mapTextFile.Get_String_Infos()[0];
-#endif
 
     // Generate the lookup table and sort it for efficient search.
     m_mapStringLUT = new StringLookUp[m_mapTextCount];
@@ -1004,15 +943,10 @@ void GameTextManager::Init_Map_String_File(Utf8String const &filename)
 // Destroys the main string file, doesn't affect loaded map strings.
 void GameTextManager::Deinit()
 {
-#if USE_LEGACY_GAMETEXT
     if (m_stringInfo != nullptr) {
         delete[] m_stringInfo;
         m_stringInfo = nullptr;
     }
-#else
-    m_stringInfo = nullptr;
-    m_textFile.Unload();
-#endif
 
     if (m_stringLUT != nullptr) {
         delete[] m_stringLUT;
@@ -1031,3 +965,4 @@ void GameTextManager::Deinit()
     m_noStringList = nullptr;
     m_initialized = false;
 }
+} // namespace Legacy

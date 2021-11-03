@@ -70,6 +70,8 @@ set(GAMEENGINE_SRC
     game/client/gameclient.cpp
     game/client/gametext.cpp
     game/client/gametextfile.cpp
+    game/client/gametextinterface.cpp
+    game/client/gametextmanager.cpp
     game/client/globallanguage.cpp
     game/client/ingameui.cpp
     game/client/optionpreferences.cpp

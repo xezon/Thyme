@@ -15,33 +15,17 @@
 #pragma once
 
 #include "always.h"
-#include "gametextfile.h"
-#include "subsysteminterface.h"
+#include "gametextcommon.h"
+#include "gametextinterface.h"
 
-#define USE_LEGACY_GAMETEXT 1
+class File;
 
-struct NoString
+namespace Legacy
 {
-    NoString *next;
-    Utf16String text;
-};
-
 struct StringLookUp
 {
     const Utf8String *label;
     const StringInfo *info;
-};
-
-class GameTextInterface : public SubsystemInterface
-{
-public:
-    virtual ~GameTextInterface() {}
-
-    virtual Utf16String Fetch(const char *args, bool *success = nullptr) = 0;
-    virtual Utf16String Fetch(Utf8String args, bool *success = nullptr) = 0;
-    virtual std::vector<Utf8String> *Get_Strings_With_Prefix(Utf8String label) = 0;
-    virtual void Init_Map_String_File(Utf8String const &filename) = 0;
-    virtual void Deinit() = 0;
 };
 
 // GameTextManager is self contained and will automatically load and read generals.csf,
@@ -64,8 +48,6 @@ public:
 
     static int Compare_LUT(void const *a, void const *b);
     static GameTextInterface *Create_Game_Text_Interface();
-
-#if USE_LEGACY_GAMETEXT
 
 private:
     void Read_To_End_Of_Quote(File *file, char *in, char *out, char *wave, int buff_len);
@@ -101,34 +83,7 @@ private:
     StringLookUp *m_mapStringLUT;
     int m_mapTextCount;
     std::vector<Utf8String> m_stringVector;
-
-#else // !USE_LEGACY_GAMETEXT
-
-private:
-    bool m_initialized = false;
-    bool m_useStringFile = true;
-    Utf16String m_failed = U_CHAR("***FATAL*** String Manager failed to initialize properly");
-
-    // Main localization
-    GameTextFile m_textFile;
-    int m_textCount = 0;
-    const StringInfo *m_stringInfo = nullptr;
-    StringLookUp *m_stringLUT = nullptr;
-
-    // Map localization
-    GameTextFile m_mapTextFile;
-    int m_mapTextCount = 0;
-    const StringInfo *m_mapStringInfo = nullptr;
-    StringLookUp *m_mapStringLUT = nullptr;
-
-    NoString *m_noStringList = nullptr;
-    std::vector<Utf8String> m_stringVector;
-
-#endif // USE_LEGACY_GAMETEXT
 };
+} // namespace Legacy
 
-#ifdef GAME_DLL
-extern GameTextInterface *&g_theGameText;
-#else
-extern GameTextInterface *g_theGameText;
-#endif
+using GameTextManager = Legacy::GameTextManager;

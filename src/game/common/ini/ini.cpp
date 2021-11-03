@@ -24,7 +24,7 @@
 #include "fpusetting.h"
 #include "gamelod.h"
 #include "gamemath.h"
-#include "gametext.h"
+#include "gametextinterface.h"
 #include "gametype.h"
 #include "globaldata.h"
 #include "globallanguage.h"
