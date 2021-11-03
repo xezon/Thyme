@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief Localization String file (Thyme Feature).
+ * @brief Game Localization file (Thyme Feature).
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License
@@ -15,6 +15,7 @@
 #include "always.h"
 #include "gametextfile.h"
 #include "filesystem.h"
+#include "gametextlookup.h"
 #include "rtsutils.h"
 #include <captainslog.h>
 

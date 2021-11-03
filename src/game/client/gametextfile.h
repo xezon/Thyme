@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief Localization String file (Thyme Feature).
+ * @brief Game Localization file (Thyme Feature).
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License
@@ -14,10 +14,9 @@
  */
 #pragma once
 
-#include "asciistring.h"
 #include "fileref.h"
+#include "gametextcommon.h"
 #include "unicodestring.h"
-#include <stdlib.h>
 #include <vector>
 
 // https://www.rfc-editor.org/rfc/rfc3629
@@ -25,35 +24,6 @@
 // accessible range) are encoded using sequences of 1 to 4 octets.
 constexpr size_t GAMETEXT_BUFFER_16_SIZE = 1024;
 constexpr size_t GAMETEXT_BUFFER_8_SIZE = GAMETEXT_BUFFER_16_SIZE * 4;
-
-// This enum applies to RA2/YR and Generals/ZH, BFME ID's are slightly different.
-enum class LanguageID : int32_t
-{
-    LANGUAGE_ID_US = 0,
-    LANGUAGE_ID_UK,
-    LANGUAGE_ID_GERMAN,
-    LANGUAGE_ID_FRENCH,
-    LANGUAGE_ID_SPANISH,
-    LANGUAGE_ID_ITALIAN,
-    LANGUAGE_ID_JAPANESE,
-    LANGUAGE_ID_JABBER,
-    LANGUAGE_ID_KOREAN,
-    LANGUAGE_ID_CHINESE,
-    LANGUAGE_ID_UNK1,
-    LANGUAGE_ID_BRAZILIAN,
-    LANGUAGE_ID_POLISH,
-    LANGUAGE_ID_UNKNOWN,
-};
-
-struct CSFHeader
-{
-    uint32_t id;
-    int32_t version;
-    int32_t num_labels;
-    int32_t num_strings;
-    int32_t skip;
-    LanguageID langid;
-};
 
 // #FEATURE Describes CSF Label header.
 struct CSFLabelHeader
@@ -76,28 +46,7 @@ struct CSFSpeechHeader
     int32_t length;
 };
 
-// #TODO Support reading and writing multiple strings.
-
-struct StringInfo
-{
-    Utf8String label;
-    Utf16String text;
-    Utf8String speech;
-};
-
 using StringInfos = std::vector<StringInfo>;
-
-struct ConstStringLookup
-{
-    const char *label;
-    const StringInfo *string_info;
-};
-
-struct MutableStringLookup
-{
-    const char *label;
-    StringInfo *string_info;
-};
 
 // #FEATURE BufferView allows to pass along a buffer and its size in one go.
 template<typename ValueType, typename SizeType = int> class BufferView
@@ -253,53 +202,3 @@ private:
     static const char s_quo[];
     static const char s_end[];
 };
-
-template<typename StringLookup, typename StringInfos> class GameTextLookup
-{
-public:
-    GameTextLookup(StringInfos &stringInfos);
-
-    const StringLookup *Find(const char *label) const;
-
-private:
-    static int Compare_LUT(void const *a, void const *b);
-
-    std::vector<StringLookup> m_stringLUT;
-};
-
-template<typename StringLookup, typename StringInfos>
-GameTextLookup<StringLookup, StringInfos>::GameTextLookup(StringInfos &stringInfos)
-{
-    const size_t size = stringInfos.size();
-    m_stringLUT.resize(size);
-
-    for (size_t i = 0; i < size; ++i) {
-        m_stringLUT[i].label = stringInfos[i].label.Str();
-        m_stringLUT[i].string_info = &stringInfos[i];
-    }
-
-    qsort(&m_stringLUT[0], size, sizeof(StringLookup), Compare_LUT);
-}
-
-template<typename StringLookup, typename StringInfos>
-const StringLookup *GameTextLookup<StringLookup, StringInfos>::Find(const char *label) const
-{
-    StringLookup key;
-    key.label = label;
-    key.string_info = nullptr;
-
-    return static_cast<const StringLookup *>(
-        bsearch(&key, &m_stringLUT[0], m_stringLUT.size(), sizeof(StringLookup), Compare_LUT));
-}
-
-template<typename StringLookup, typename StringInfos>
-int GameTextLookup<StringLookup, StringInfos>::Compare_LUT(const void *a, const void *b)
-{
-    const char *ac = static_cast<const StringLookup *>(a)->label;
-    const char *bc = static_cast<const StringLookup *>(b)->label;
-
-    return strcasecmp(ac, bc);
-}
-
-using ConstGameTextLookup = GameTextLookup<ConstStringLookup, const StringInfos>;
-using MutableGameTextLookup = GameTextLookup<MutableStringLookup, StringInfos>;
