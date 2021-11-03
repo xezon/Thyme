@@ -143,7 +143,6 @@ private:
         BufferView<char> buffer_in,
         BufferView<char> buffer_out,
         BufferView<char> buffer_ex);
-    static bool Get_CSF_Info(const char *filename, int &text_count, LanguageID &language);
     static bool Parse_String_File(const char *filename,
         StringInfo *string_info,
         int &max_label_len,
@@ -151,11 +150,6 @@ private:
         BufferView<char> buffer_in,
         BufferView<char> buffer_out,
         BufferView<char> buffer_ex);
-    static bool Parse_CSF_File(const char *filename,
-        StringInfo *string_info,
-        int &max_label_len,
-        BufferView<unichar_t> buffer_trans,
-        BufferView<char> buffer_in);
 
     static const char *Get_File_Extension(const char *filename);
     static Type Get_File_Type(const char *filename, Type filetype);
