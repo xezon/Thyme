@@ -159,14 +159,16 @@ private:
     static void Log_Length_Info(const LengthInfo &len_info);
     static void Check_Length_Info(const LengthInfo &len_info);
 
-    template<typename T> static bool Read(FileRef &file, T &value);
-    static bool Read(FileRef &file, Utf8String &string, int len);
-    static bool Read(FileRef &file, Utf16String &string, int len);
+    template<typename T> static T Get_Null();
+    template<> static char Get_Null<char>() { return '\0'; }
+    template<> static unichar_t Get_Null<unichar_t>() { return U_CHAR('\0'); }
+
+    template<typename T> static bool Read_Any(FileRef &file, T &value);
+    template<typename T> static bool Read_Str(FileRef &file, T &string, int len);
     static bool Read(FileRef &file, void *data, int len);
 
-    template<typename T> static bool Write(FileRef &file, const T &value);
-    template<> static bool Write<Utf8String>(FileRef &file, const Utf8String &string);
-    template<> static bool Write<Utf16String>(FileRef &file, const Utf16String &string);
+    template<typename T> static bool Write_Any(FileRef &file, const T &value);
+    template<typename T> static bool Write_Str(FileRef &file, const T &string);
     static bool Write(FileRef &file, const void *data, int len);
 
     static bool Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language);
