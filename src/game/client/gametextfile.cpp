@@ -954,7 +954,7 @@ bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info)
     return false;
 }
 
-bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview)
+bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf)
 {
     bool text_ok = false;
     bool speech_ok = false;
@@ -970,16 +970,16 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
         htole_ref(header.length);
 
         if (Write(file, header)) {
-            captainslog_dbgassert(utf16bufview.Size() >= text_len, "Buffer is expected to be larger or equal text");
-            text_len = std::min<int>(text_len, utf16bufview.Size());
+            captainslog_dbgassert(utf16buf.Size() >= text_len, "Buffer is expected to be larger or equal text");
+            text_len = std::min<int>(text_len, utf16buf.Size());
 
             for (int i = 0; i < text_len; ++i) {
                 // Every char is binary flipped here by design.
-                utf16bufview[i] = ~string_info.text[i];
-                htole_ref(utf16bufview[i]);
+                utf16buf[i] = ~string_info.text[i];
+                htole_ref(utf16buf[i]);
             }
 
-            if (Write(file, utf16bufview.Get(), text_len * sizeof(unichar_t))) {
+            if (Write(file, utf16buf.Get(), text_len * sizeof(unichar_t))) {
                 text_ok = true;
             }
         }

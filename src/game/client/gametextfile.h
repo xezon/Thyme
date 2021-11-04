@@ -184,9 +184,9 @@ private:
 
     static bool Write_CSF_File(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
     static bool Write_CSF_Header(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
-    static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
+    static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf);
     static bool Write_CSF_Label(FileRef &file, const StringInfo &string_info);
-    static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
+    static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf);
 
 private:
     Option m_options;
