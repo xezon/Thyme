@@ -169,21 +169,21 @@ private:
     template<> static bool Write<Utf16String>(FileRef &file, const Utf16String &string);
     static bool Write(FileRef &file, const void *data, int len);
 
-    bool Read_CSF_File(FileRef &file);
-    static bool Read_CSF_Header(FileRef &file, LanguageID &language, StringInfos &strings);
+    static bool Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language);
+    static bool Read_CSF_Header(FileRef &file, StringInfos &string_infos, LanguageID &language);
     static bool Read_CSF_Entry(FileRef &file, StringInfo &string_info);
     static bool Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_t &texts);
     static bool Read_CSF_Text(FileRef &file, StringInfo &string_info);
 
-    bool Write_STR_File(FileRef &file);
+    static bool Write_STR_File(FileRef &file, const StringInfos &string_infos, Option options);
     static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, Option options);
     static bool Write_STR_Label(FileRef &file, const StringInfo &string_info);
     static bool Write_STR_Text(FileRef &file, const StringInfo &string_info, Option options);
     static bool Write_STR_Speech(FileRef &file, const StringInfo &string_info);
     static bool Write_STR_End(FileRef &file, const StringInfo &string_info);
 
-    bool Write_CSF_File(FileRef &file);
-    static bool Write_CSF_Header(FileRef &file, const LanguageID &language, const StringInfos &strings);
+    static bool Write_CSF_File(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
+    static bool Write_CSF_Header(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
     static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
     static bool Write_CSF_Label(FileRef &file, const StringInfo &string_info);
     static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview);
