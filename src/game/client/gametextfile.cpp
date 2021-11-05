@@ -57,10 +57,10 @@ bool GameTextFile::Load(const char *filename, Type filetype)
     char buffer_out[512] = { 0 };
     char buffer_ex[512] = { 0 };
     unichar_t buffer_trans[1024] = { 0 };
-    auto bufview_in = BufferView<char>::Create(buffer_in);
-    auto bufview_out = BufferView<char>::Create(buffer_out);
-    auto bufview_ex = BufferView<char>::Create(buffer_ex);
-    auto bufview_trans = BufferView<unichar_t>::Create(buffer_trans);
+    auto bufview_in = array_view<char>::Create(buffer_in);
+    auto bufview_out = array_view<char>::Create(buffer_out);
+    auto bufview_ex = array_view<char>::Create(buffer_ex);
+    auto bufview_trans = array_view<unichar_t>::Create(buffer_trans);
 
     if (filetype == Type::CSF) {
         success = Read_CSF_File(file, m_stringInfos, m_language);
@@ -423,7 +423,7 @@ bool GameTextFile::Read_Line(char *buffer, int length, File *file)
 }
 
 bool GameTextFile::Get_String_Count(
-    const char *filename, int &count, BufferView<char> buffer_in, BufferView<char> buffer_out, BufferView<char> buffer_ex)
+    const char *filename, int &count, array_view<char> buffer_in, array_view<char> buffer_out, array_view<char> buffer_ex)
 {
     File *file = g_theFileSystem->Open(filename, File::TEXT | File::READ);
     count = 0;
@@ -432,15 +432,15 @@ bool GameTextFile::Get_String_Count(
         return false;
     }
 
-    while (Read_Line(buffer_in, buffer_in.Size() - 1, file)) {
-        Remove_Leading_And_Trailing(buffer_in);
+    while (Read_Line(buffer_in.data(), buffer_in.size() - 1, file)) {
+        Remove_Leading_And_Trailing(buffer_in.data());
 
         if (buffer_in[0] == '"') {
-            size_t len = strlen(buffer_in);
+            size_t len = strlen(buffer_in.data());
             buffer_in[len] = '\n';
             buffer_in[len + 1] = '\0';
-            Read_To_End_Of_Quote(file, &buffer_in[1], buffer_out, buffer_ex, buffer_out.Size());
-        } else if (strcasecmp(buffer_in, "END") == 0) {
+            Read_To_End_Of_Quote(file, &buffer_in[1], buffer_out.data(), buffer_ex.data(), buffer_out.size());
+        } else if (strcasecmp(buffer_in.data(), "END") == 0) {
             ++count;
         }
     }
@@ -455,10 +455,10 @@ bool GameTextFile::Get_String_Count(
 bool GameTextFile::Parse_String_File(const char *filename,
     StringInfo *string_info,
     int &max_label_len,
-    BufferView<unichar_t> buffer_trans,
-    BufferView<char> buffer_in,
-    BufferView<char> buffer_out,
-    BufferView<char> buffer_ex)
+    array_view<unichar_t> buffer_trans,
+    array_view<char> buffer_in,
+    array_view<char> buffer_out,
+    array_view<char> buffer_ex)
 {
     captainslog_info("Parsing string file '%s'.", filename);
     File *file = g_theFileSystem->Open(filename, File::TEXT | File::READ);
@@ -470,9 +470,9 @@ bool GameTextFile::Parse_String_File(const char *filename,
     int index = 0;
     bool end = false;
 
-    while (Read_Line(buffer_in, buffer_in.Size(), file)) {
-        Remove_Leading_And_Trailing(buffer_in);
-        captainslog_trace("We have '%s' buffered.", m_bufferIn);
+    while (Read_Line(buffer_in.data(), buffer_in.size(), file)) {
+        Remove_Leading_And_Trailing(buffer_in.data());
+        captainslog_trace("We have '%s' buffered.", m_bufferIn.data());
 
         // Skip line if it is empty or is a comment starting with "//".
         if (buffer_in[0] == '\0' || (buffer_in[0] == '/' && buffer_in[1] == '/')) {
@@ -485,44 +485,44 @@ bool GameTextFile::Parse_String_File(const char *filename,
 #if ASSERT_LEVEL >= ASSERTS_DEBUG
         if (index > 0) {
             for (int i = 0; i < index; ++i) {
-                captainslog_dbgassert(strcasecmp(string_info[i].label.Str(), buffer_in) != 0,
+                captainslog_dbgassert(strcasecmp(string_info[i].label.Str(), buffer_in.data()) != 0,
                     "String label '%s' is defined multiple times!",
                     buffer_in);
             }
         }
 #endif
 
-        string_info[index].label = buffer_in;
-        max_label_len = std::max<int>(strlen(buffer_in), max_label_len);
+        string_info[index].label = buffer_in.data();
+        max_label_len = std::max<int>(strlen(buffer_in.data()), max_label_len);
 
         bool read_string = false;
 
-        while (Read_Line(buffer_in, buffer_in.Size() - 1, file)) {
-            Remove_Leading_And_Trailing(buffer_in);
-            captainslog_trace("We have '%s' buffered.", m_bufferIn);
+        while (Read_Line(buffer_in.data(), buffer_in.size() - 1, file)) {
+            Remove_Leading_And_Trailing(buffer_in.data());
+            captainslog_trace("We have '%s' buffered.", m_bufferIn.data());
 
             if (buffer_in[0] == '"') {
-                size_t len = strlen(buffer_in);
+                size_t len = strlen(buffer_in.data());
                 buffer_in[len] = '\n';
                 buffer_in[len + 1] = '\0';
-                Read_To_End_Of_Quote(file, buffer_in + 1, buffer_out, buffer_ex, buffer_out.Size());
+                Read_To_End_Of_Quote(file, buffer_in.data() + 1, buffer_out.data(), buffer_ex.data(), buffer_out.size());
 
                 if (read_string) {
-                    captainslog_trace("String label '%s' has more than one string defined!", buffer_in);
+                    captainslog_trace("String label '%s' has more than one string defined!", buffer_in.data());
 
                     continue;
                 }
 
-                Translate_Copy(buffer_trans, buffer_out);
-                Strip_Spaces(buffer_trans);
+                Translate_Copy(buffer_trans.data(), buffer_out.data());
+                Strip_Spaces(buffer_trans.data());
 
                 // TODO maybe Windows build does something extra here not done in mac version.
 
-                string_info[index].text = buffer_trans;
-                string_info[index].speech = buffer_ex;
+                string_info[index].text = buffer_trans.data();
+                string_info[index].speech = buffer_ex.data();
 
                 read_string = true;
-            } else if (strcasecmp(buffer_in, "END") == 0) {
+            } else if (strcasecmp(buffer_in.data(), "END") == 0) {
                 ++index;
                 end = true;
 
@@ -908,8 +908,8 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
         htole_ref(header.length);
 
         if (rts::Write_Any(file, header)) {
-            captainslog_dbgassert(utf16buf.Size() >= text_len, "Buffer is expected to be larger or equal text");
-            text_len = std::min<int>(text_len, utf16buf.Size());
+            captainslog_dbgassert(utf16buf.size() >= text_len, "Buffer is expected to be larger or equal text");
+            text_len = std::min<int>(text_len, utf16buf.size());
 
             for (int i = 0; i < text_len; ++i) {
                 // Every char is binary flipped here by design.
@@ -917,7 +917,7 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
                 htole_ref(utf16buf[i]);
             }
 
-            if (rts::Write(file, utf16buf.Get(), text_len * sizeof(unichar_t))) {
+            if (rts::Write(file, utf16buf.data(), text_len * sizeof(unichar_t))) {
                 text_ok = true;
             }
         }

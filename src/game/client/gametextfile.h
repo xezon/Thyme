@@ -14,9 +14,9 @@
  */
 #pragma once
 
+#include "common/utility/arrayview.h"
 #include "fileref.h"
 #include "gametextcommon.h"
-#include "unicodestring.h"
 #include <vector>
 
 // https://www.rfc-editor.org/rfc/rfc3629
@@ -47,28 +47,6 @@ struct CSFSpeechHeader
 };
 
 using StringInfos = std::vector<StringInfo>;
-
-// #FEATURE BufferView allows to pass along a buffer and its size in one go.
-template<typename ValueType, typename SizeType = int> class BufferView
-{
-public:
-    using value_type = ValueType;
-    using size_type = SizeType;
-
-    template<size_t Size> static BufferView Create(value_type (&buf)[Size]) { return BufferView(buf, Size); }
-    static BufferView Create(std::vector<value_type> &vector) { return BufferView(&vector[0], vector.size()); }
-    static BufferView Create(value_type *buf, size_type size) { return BufferView(buf, size); }
-
-    inline BufferView(value_type *buf, size_type size) : m_buf(buf), m_size(size) {}
-
-    inline operator value_type *() { return m_buf; }
-    inline value_type *Get() { return m_buf; }
-    inline size_type Size() { return m_size; }
-
-private:
-    value_type *m_buf;
-    size_type m_size;
-};
 
 // #FEATURE Game text type.
 enum class GameTextType
@@ -106,7 +84,8 @@ public:
     using LengthInfo = GameTextLengthInfo;
     using Option = GameTextOption;
     using Type = GameTextType;
-    using Utf16Buf = BufferView<unichar_t>;
+    using Utf8Buf = array_view<char>;
+    using Utf16Buf = array_view<unichar_t>;
 
     GameTextFile() : m_options(Option::NONE), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
 
@@ -141,16 +120,16 @@ private:
     static bool Read_Line(char *buffer, int length, File *file);
     static bool Get_String_Count(const char *filename,
         int &count,
-        BufferView<char> buffer_in,
-        BufferView<char> buffer_out,
-        BufferView<char> buffer_ex);
+        array_view<char> buffer_in,
+        array_view<char> buffer_out,
+        array_view<char> buffer_ex);
     static bool Parse_String_File(const char *filename,
         StringInfo *string_info,
         int &max_label_len,
-        BufferView<unichar_t> buffer_trans,
-        BufferView<char> buffer_in,
-        BufferView<char> buffer_out,
-        BufferView<char> buffer_ex);
+        array_view<unichar_t> buffer_trans,
+        array_view<char> buffer_in,
+        array_view<char> buffer_out,
+        array_view<char> buffer_ex);
 
     static const char *Get_File_Extension(const char *filename);
     static Type Get_File_Type(const char *filename, Type filetype);
@@ -158,7 +137,6 @@ private:
     static void Collect_Length_Info(LengthInfo &len_info, const StringInfos &strings);
     static void Log_Length_Info(const LengthInfo &len_info);
     static void Check_Length_Info(const LengthInfo &len_info);
-
 
 
     static bool Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language);
