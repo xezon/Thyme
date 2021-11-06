@@ -18,6 +18,7 @@
 #include "critsection.h"
 #include <cstdarg>
 #include <cstddef>
+#include <cstring>
 
 #ifdef BUILD_WITH_ICU
 #include <unicode/ustdio.h>
