@@ -78,10 +78,6 @@ public:
     constexpr const_reference front() const { return *m_begin; }
     constexpr const_reference back() const { return *(m_end - 1); }
 
-
-    // Same as data(). Synonymous for function in game string class.
-    constexpr pointer Peek() { return m_begin; }
-    constexpr const_pointer Peek() const { return m_begin; }
     constexpr pointer data() noexcept { return m_begin; }
     constexpr const_pointer data() const noexcept { return m_begin; }
 
@@ -93,9 +89,6 @@ public:
 
     // Get the size of the array or the null terminated string length if value type is char, unichar_t.
     // This function is always safe to call even if the string is not null terminated.
-
-    // Same as length(). Synonymous for function in game string class.
-    constexpr size_type Get_Length() const { return size(); }
     constexpr size_type length() const noexcept { return size(); }
 
 private:

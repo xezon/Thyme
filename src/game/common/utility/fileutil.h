@@ -25,11 +25,11 @@ template<typename T> bool Read_Any(FileRef &file, T &value);
 template<typename T> bool Write_Any(File *file, const T &value);
 template<typename T> bool Write_Any(FileRef &file, const T &value);
 
-template<typename T> bool Read_Str(File *file, T &string, int len);
-template<typename T> bool Read_Str(FileRef &file, T &string, int len);
+template<typename StringType> bool Read_Str(File *file, StringType &string, int len);
+template<typename StringType> bool Read_Str(FileRef &file, StringType &string, int len);
 
-template<typename T> bool Write_Str(File *file, const T &string);
-template<typename T> bool Write_Str(FileRef &file, const T &string);
+template<typename StringType> bool Write_Str(File *file, const StringType &string);
+template<typename StringType> bool Write_Str(FileRef &file, const StringType &string);
 
 inline bool Read(File *file, void *data, int len);
 inline bool Read(FileRef &file, void *data, int len);
@@ -62,41 +62,43 @@ template<typename T> bool Write_Any(FileRef &file, const T &value)
 }
 
 // Read Utf8String or Utf16String from file.
-template<typename T> bool Read_Str(File *file, T &string, int len)
+template<typename StringType> bool Read_Str(File *file, StringType &string, int len)
 {
-    using char_type = typename T::value_type;
+    using char_type = typename StringType::value_type;
 
     captainslog_assert(len >= 0);
     if (len == 0)
         return true;
 
-    char_type *buf = string.Get_Buffer_For_Read(len);
+    string.resize(len);
+    char_type *buf = string.data();
     const int bytes = len * sizeof(char_type);
-    if (file->Read(buf, len) == len) {
-        buf[len] = rts::Get_Null<char_type>();
+
+    if (file->Read(buf, bytes) == bytes) {
         return true;
     }
     return false;
 }
 
 // Read Utf8String or Utf16String from file.
-template<typename T> bool Read_Str(FileRef &file, T &string, int len)
+template<typename StringType> bool Read_Str(FileRef &file, StringType &string, int len)
 {
     return Read_Str(file.Get(), string, len);
 }
 
 // Write Utf8String or Utf16String to file.
-template<typename T> bool Write_Str(File *file, const T &string)
+template<typename StringType> bool Write_Str(File *file, const StringType &string)
 {
-    using char_type = typename T::value_type;
+    using char_type = typename StringType::value_type;
 
-    const void *buf = string.Str();
-    const int bytes = string.Get_Length() * sizeof(char_type);
+    const void *buf = string.c_str();
+    const int bytes = string.length() * sizeof(char_type);
+
     return file->Write(buf, bytes) == bytes;
 }
 
 // Write Utf8String or Utf16String to file.
-template<typename T> bool Write_Str(FileRef &file, const T &string)
+template<typename StringType> bool Write_Str(FileRef &file, const StringType &string)
 {
     return Write_Str(file.Get(), string);
 }

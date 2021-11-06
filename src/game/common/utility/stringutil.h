@@ -153,16 +153,16 @@ template<typename StringType> int Strip_Whitespace(StringType &string, StripOpti
     if ((option & STRIP_LEADING_AND_TRAILING_ONLY) != 0) {
         // Run limited stripping mode. Requires full string length, including null terminator, to begin with.
 
-        CharType *begin = string.Peek();
-        CharType *end = string.Peek() + string.Get_Length() + 1;
+        CharType *begin = string.data();
+        CharType *end = string.data() + string.length() + 1;
 
         return Strip_Whitespace(begin, end, option);
     } else {
         // Run full stripping mode. Optimized for null terminated string.
 
         constexpr CharType null_char = Get_Null<CharType>();
-        CharType *reader = string.Peek();
-        CharType *inserter = string.Peek();
+        CharType *reader = string.data();
+        CharType *inserter = string.data();
 
         const bool replace_whitespace = (option & STRIP_REPLACE_WHITESPACE) != 0;
 
