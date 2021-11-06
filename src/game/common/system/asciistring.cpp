@@ -653,3 +653,99 @@ void Utf8String::Debug_Ignore_Leaks()
     // TODO, does not seem to be implemented anywhere? It is called though...
 }
 #endif // GAME_DEBUG
+
+Utf8String::reference Utf8String::at(size_type index)
+{
+    return Peek()[index];
+}
+
+Utf8String::reference Utf8String::front()
+{
+    return Peek()[0];
+}
+
+Utf8String::reference Utf8String::back()
+{
+    return Peek()[Get_Length() - 1];
+}
+
+Utf8String::const_reference Utf8String::at(size_type index) const
+{
+    return Peek()[index];
+}
+
+Utf8String::const_reference Utf8String::front() const
+{
+    return Peek()[0];
+}
+
+Utf8String::const_reference Utf8String::back() const
+{
+    return Peek()[Get_Length() - 1];
+}
+
+Utf8String::pointer Utf8String::data() noexcept
+{
+    return const_cast<pointer>(Str());
+}
+
+Utf8String::const_pointer Utf8String::data() const noexcept
+{
+    return Str();
+}
+
+Utf8String::const_pointer Utf8String::c_str() const noexcept
+{
+    return Str();
+}
+
+void Utf8String::clear() noexcept
+{
+    Clear();
+}
+
+bool Utf8String::empty() const noexcept
+{
+    return Is_Empty();
+}
+
+void Utf8String::reserve(size_type capacity)
+{
+    captainslog_assert(capacity >= 0);
+    if (capacity == 0)
+        return;
+    Ensure_Unique_Buffer_Of_Size(capacity + 1, true);
+}
+
+void Utf8String::resize(size_type size)
+{
+    resize(size, value_type());
+}
+
+void Utf8String::resize(size_type size, value_type ch)
+{
+    captainslog_assert(size >= 0);
+    if (size == 0)
+        return;
+    Ensure_Unique_Buffer_Of_Size(size + 1, true);
+    char *buf = m_data->Peek();
+    for (size_type len = length(); len < size; ++len) {
+        buf[len] = ch;
+    }
+    buf[size] = '\0';
+}
+
+Utf8String::size_type Utf8String::size() const
+{
+    return Get_Length();
+}
+
+Utf8String::size_type Utf8String::length() const
+{
+    return Get_Length();
+}
+
+Utf8String::size_type Utf8String::capacity() const noexcept
+{
+    return m_data != nullptr ? m_data->num_chars_allocated : 0;
+}
