@@ -31,6 +31,8 @@ public:
     using const_reference = const value_type &;
     using pointer = value_type *;
     using const_pointer = const value_type *;
+    using iterator = value_type *;
+    using const_iterator = const value_type *;
 
     ~array_view() = default;
 
@@ -55,10 +57,12 @@ public:
 
     constexpr operator bool() const { return m_begin != nullptr; }
 
-    constexpr pointer begin() { return m_begin; }
-    constexpr pointer end() { return m_end; }
-    constexpr const_pointer begin() const { return m_begin; }
-    constexpr const_pointer end() const { return m_end; }
+    constexpr iterator begin() { return m_begin; }
+    constexpr iterator end() { return m_end; }
+    constexpr const_iterator begin() const { return m_begin; }
+    constexpr const_iterator cbegin() const { return m_begin; }
+    constexpr const_iterator end() const { return m_end; }
+    constexpr const_iterator cend() const { return m_end; }
 
     constexpr reference front() { return *m_begin; }
     constexpr reference back() { return *(m_end - 1); }
