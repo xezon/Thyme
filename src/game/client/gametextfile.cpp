@@ -57,10 +57,10 @@ bool GameTextFile::Load(const char *filename, Type filetype)
     char buffer_out[512] = { 0 };
     char buffer_ex[512] = { 0 };
     unichar_t buffer_trans[1024] = { 0 };
-    auto bufview_in = array_view<char>::Create(buffer_in);
-    auto bufview_out = array_view<char>::Create(buffer_out);
-    auto bufview_ex = array_view<char>::Create(buffer_ex);
-    auto bufview_trans = array_view<unichar_t>::Create(buffer_trans);
+    auto bufview_in = array_view<char>::create(buffer_in);
+    auto bufview_out = array_view<char>::create(buffer_out);
+    auto bufview_ex = array_view<char>::create(buffer_ex);
+    auto bufview_trans = array_view<unichar_t>::create(buffer_trans);
 
     if (filetype == Type::CSF) {
         success = Read_CSF_File(file, m_stringInfos, m_language);
@@ -825,7 +825,7 @@ bool GameTextFile::Write_CSF_File(FileRef &file, const StringInfos &string_infos
     if (Write_CSF_Header(file, string_infos, language)) {
         success = true;
         unichar_t utf16buf[GAMETEXT_BUFFER_16_SIZE];
-        auto utf16bufview = Utf16Buf::Create(utf16buf);
+        auto utf16bufview = Utf16Buf::create(utf16buf);
         int string_index = 0;
 
         for (const StringInfo &string_info : string_infos) {
