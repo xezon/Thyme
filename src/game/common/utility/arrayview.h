@@ -14,9 +14,9 @@
  */
 #pragma once
 
+#include "captainslog.h"
 #include "stringutil.h"
 #include <cstddef>
-#include <string.h>
 
 // #FEATURE array_view allows to pass along a buffer and its size in one go.
 // Alternative is std::span<> with c++20
@@ -41,8 +41,14 @@ public:
     constexpr static array_view Create(value_type *begin, size_type size) { return array_view(begin, size); }
 
     constexpr array_view() : m_begin(nullptr), m_end(nullptr) {}
-    constexpr array_view(value_type *begin, size_type size) : m_begin(begin), m_end(begin + size) {}
-    constexpr array_view(value_type *begin, value_type *end) : m_begin(begin), m_end(end) {}
+    constexpr array_view(value_type *begin, size_type size) : m_begin(begin), m_end(begin + size)
+    {
+        captainslog_assert(m_end >= m_begin);
+    }
+    constexpr array_view(value_type *begin, value_type *end) : m_begin(begin), m_end(end)
+    {
+        captainslog_assert(m_end >= m_begin);
+    }
 
     constexpr array_view(const array_view &) = default;
     constexpr array_view &operator=(const array_view &) = default;
