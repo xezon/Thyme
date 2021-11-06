@@ -154,7 +154,7 @@ template<typename StringType> int Strip_Whitespace(StringType &string, StripOpti
         // Run limited stripping mode. Requires full string length, including null terminator, to begin with.
 
         CharType *begin = string.data();
-        CharType *end = string.data() + string.length() + 1;
+        CharType *end = string.data() + string.size() + 1;
 
         return Strip_Whitespace(begin, end, option);
     } else {

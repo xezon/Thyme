@@ -510,17 +510,21 @@ Utf16String::const_reference Utf16String::back() const
 
 Utf16String::pointer Utf16String::data() noexcept
 {
-    return const_cast<pointer>(Str());
+    if (m_data != nullptr) {
+        return Peek();
+    }
+    // Attempts to write to returned pointer will incur access violation.
+    return const_cast<pointer>(U_CHAR(""));
 }
 
 Utf16String::const_pointer Utf16String::data() const noexcept
 {
-    return Str();
+    return (m_data != nullptr) ? Peek() : U_CHAR("");
 }
 
 Utf16String::const_pointer Utf16String::c_str() const noexcept
 {
-    return Str();
+    return (m_data != nullptr) ? Peek() : U_CHAR("");
 }
 
 void Utf16String::clear() noexcept
@@ -552,12 +556,13 @@ void Utf16String::resize(size_type size, value_type ch)
         return;
     Ensure_Unique_Buffer_Of_Size(size + 1, true);
     unichar_t *buf = m_data->Peek();
-    for (size_type len = length(); len < size; ++len) {
+    for (size_type len = Get_Length(); len < size; ++len) {
         buf[len] = ch;
     }
     buf[size] = U_CHAR('\0');
 }
 
+#if 0
 Utf16String::size_type Utf16String::size() const
 {
     return Get_Length();
@@ -567,8 +572,9 @@ Utf16String::size_type Utf16String::length() const
 {
     return Get_Length();
 }
+#endif
 
 Utf16String::size_type Utf16String::capacity() const noexcept
 {
-    return m_data != nullptr ? m_data->num_chars_allocated : 0;
+    return m_data != nullptr ? m_data->num_chars_allocated - 1 : 0;
 }

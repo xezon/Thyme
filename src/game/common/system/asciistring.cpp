@@ -686,17 +686,21 @@ Utf8String::const_reference Utf8String::back() const
 
 Utf8String::pointer Utf8String::data() noexcept
 {
-    return const_cast<pointer>(Str());
+    if (m_data != nullptr) {
+        return Peek();
+    }
+    // Attempts to write to this will incur access violation.
+    return const_cast<pointer>("");
 }
 
 Utf8String::const_pointer Utf8String::data() const noexcept
 {
-    return Str();
+    return (m_data != nullptr) ? Peek() : "";
 }
 
 Utf8String::const_pointer Utf8String::c_str() const noexcept
 {
-    return Str();
+    return (m_data != nullptr) ? Peek() : "";
 }
 
 void Utf8String::clear() noexcept
@@ -729,12 +733,13 @@ void Utf8String::resize(size_type size, value_type ch)
         return;
     Ensure_Unique_Buffer_Of_Size(size + 1, true);
     char *buf = m_data->Peek();
-    for (size_type len = length(); len < size; ++len) {
+    for (size_type len = Get_Length(); len < size; ++len) {
         buf[len] = ch;
     }
     buf[size] = '\0';
 }
 
+#if 0
 Utf8String::size_type Utf8String::size() const
 {
     return Get_Length();
@@ -744,8 +749,9 @@ Utf8String::size_type Utf8String::length() const
 {
     return Get_Length();
 }
+#endif
 
 Utf8String::size_type Utf8String::capacity() const noexcept
 {
-    return m_data != nullptr ? m_data->num_chars_allocated : 0;
+    return m_data != nullptr ? m_data->num_chars_allocated - 1 : 0;
 }
