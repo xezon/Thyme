@@ -21,7 +21,7 @@ namespace rts
 {
 
 // Return the file extension of a given string.
-template<typename StringView> typename StringView::value_type *Get_File_Extension(StringView &filename)
+template<typename StringView> typename StringView::value_type *get_file_extension(StringView &filename)
 {
     const char *begin = filename.begin();
     const char *end = filename.end() - 1;
@@ -35,7 +35,7 @@ template<typename StringView> typename StringView::value_type *Get_File_Extensio
 
 // Read a line from a file until the next line break. Expects string with reserved space for null terminator past the end.
 // Always writes null terminator. Returns number of new characters read into the string.
-template<typename StringView> int Read_Line(File *file, StringView &string)
+template<typename StringView> int read_line(File *file, StringView &string)
 {
     using char_type = typename StringView::value_type;
 
@@ -68,19 +68,19 @@ template<typename StringView> int Read_Line(File *file, StringView &string)
 }
 
 // Read any type from file.
-template<typename T> bool Read_Any(File *file, T &value)
+template<typename T> bool read_any(File *file, T &value)
 {
     return file->Read(&value, sizeof(T)) == sizeof(T);
 }
 
 // Write any type to file.
-template<typename T> bool Write_Any(File *file, const T &value)
+template<typename T> bool write_any(File *file, const T &value)
 {
     return file->Write(&value, sizeof(T)) == sizeof(T);
 }
 
 // Read string buffer with given size from file.
-template<typename StringView> bool Read_Str(File *file, StringView &string)
+template<typename StringView> bool read_str(File *file, StringView &string)
 {
     using char_type = typename StringView::value_type;
     using size_type = typename StringView::size_type;
@@ -93,7 +93,7 @@ template<typename StringView> bool Read_Str(File *file, StringView &string)
 }
 
 // Write string buffer with given size to file.
-template<typename StringView> bool Write_Str(File *file, const StringView &string)
+template<typename StringView> bool write_str(File *file, const StringView &string)
 {
     using char_type = typename StringView::value_type;
     using size_type = typename StringView::size_type;
@@ -106,13 +106,13 @@ template<typename StringView> bool Write_Str(File *file, const StringView &strin
 }
 
 // Read Bytes from file.
-inline bool Read(File *file, void *data, int len)
+inline bool read(File *file, void *data, int len)
 {
     return file->Read(data, len) == len;
 }
 
 // Write Bytes to file.
-inline bool Write(File *file, const void *data, int len)
+inline bool write(File *file, const void *data, int len)
 {
     return file->Write(data, len) == len;
 }
