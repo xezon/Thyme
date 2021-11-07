@@ -20,8 +20,52 @@
 namespace rts
 {
 
+// Return the file extension of a given string.
+template<typename StringView> typename StringView::value_type *Get_File_Extension(StringView &filename)
+{
+    const char *begin = filename.begin();
+    const char *end = filename.end() - 1;
+    while (end != begin) {
+        if (*end == '.')
+            return end + 1;
+        --end;
+    }
+    return end;
+}
 
+// Read a line from a file until the next line break. Expects string with reserved space for null terminator past the end.
+// Always writes null terminator. Returns number of new characters read into the string.
+template<typename StringView> int Read_Line(File *file, StringView &string)
+{
+    using char_type = typename StringView::value_type;
 
+    if (string.empty())
+        return 0;
+
+    char_type *begin = string.data();
+    char_type *end = begin + string.size();
+    char_type *it = begin;
+
+    while (it != end) {
+        if (file->Read(it, sizeof(char_type)) != sizeof(char_type)) {
+            break;
+        }
+
+        if (*data == get_cr_char<char_type>()) {
+            continue;
+        }
+
+        if (*data == Get_LF<char_type>()) {
+            break;
+        }
+
+        ++it;
+    }
+
+    *it = get_null<char_type>();
+
+    return it - begin;
+}
 
 // Read any type from file.
 template<typename T> bool Read_Any(File *file, T &value)
