@@ -117,7 +117,7 @@ bool GameTextFile::Save(const char *filename, Type filetype)
     if (filetype == Type::CSF) {
         success = Write_CSF_File(file, m_stringInfos, m_language);
     } else if (filetype == Type::STR) {
-        success = Write_STR_File(file, m_stringInfos, m_options);
+        success = Write_STR_File(file, m_stringInfos);
     }
 
     if (success) {
@@ -714,13 +714,13 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
     return text_ok && (speech_ok || !read_speech);
 }
 
-bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos, Option options)
+bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos)
 {
     captainslog_info("Writing string file '%s' in STR format", file->Get_File_Name().Str());
 
     for (const StringInfo &string_info : string_infos) {
         if (!string_info.label.Is_Empty()) {
-            if (!Write_STR_Entry(file, string_info, options)) {
+            if (!Write_STR_Entry(file, string_info)) {
                 return false;
             }
         }
@@ -728,12 +728,12 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
     return true;
 }
 
-bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info, Option options)
+bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info)
 {
     if (Write_STR_Label(file, string_info)) {
-        if (Write_STR_Text(file, string_info, options)) {
+        if (Write_STR_Text(file, string_info)) {
             if (Write_STR_Speech(file, string_info)) {
-                if (Write_STR_End(file, string_info)) {
+                if (Write_STR_End(file)) {
                     return true;
                 }
             }
@@ -750,22 +750,23 @@ bool GameTextFile::Write_STR_Label(FileRef &file, const StringInfo &string_info)
     return ok;
 }
 
-bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, Option options)
+bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info)
 {
     Utf16String text_utf16;
     Utf8String text_utf8;
 
     // Copy utf16 text and treat certain characters special.
-    const bool write_lf = static_cast<int>(options & Option::WRITEOUT_LF) != 0;
 
     for (int i = 0, count = string_info.text.Get_Length(); i < count; ++i) {
         unichar_t c = string_info.text[i];
-        if (write_lf && c == U_CHAR('\n')) {
+        if (c == U_CHAR('\n')) {
             // Print an escaped line feed.
             text_utf16.Concat(U_CHAR('\\'));
             text_utf16.Concat(U_CHAR('n'));
             if (i != 0) {
-                // This is optional. Makes it easier to look at string in file.
+                // Write \r\n. Optional. Makes it easier to look at string in file.
+                // Will be discarded when read back into the system.
+                text_utf16.Concat(U_CHAR('\r'));
                 text_utf16.Concat(U_CHAR('\n'));
             }
         } else if (c == U_CHAR('"')) {
@@ -798,7 +799,7 @@ bool GameTextFile::Write_STR_Speech(FileRef &file, const StringInfo &string_info
     return ok;
 }
 
-bool GameTextFile::Write_STR_End(FileRef &file, const StringInfo &string_info)
+bool GameTextFile::Write_STR_End(FileRef &file)
 {
     bool ok = true;
     ok = ok && rts::write_any(file.Get(), s_end);

@@ -62,7 +62,6 @@ enum class GameTextOption
     NONE = 0,
     PRINT_LENGTH_INFO_ON_LOAD = BIT(0),
     PRINT_LENGTH_INFO_ON_SAVE = BIT(1),
-    WRITEOUT_LF = BIT(2),
 };
 
 DEFINE_ENUMERATION_BITWISE_OPERATORS(GameTextOption)
@@ -144,12 +143,12 @@ private:
     static bool Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_t &texts);
     static bool Read_CSF_Text(FileRef &file, StringInfo &string_info);
 
-    static bool Write_STR_File(FileRef &file, const StringInfos &string_infos, Option options);
-    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, Option options);
+    static bool Write_STR_File(FileRef &file, const StringInfos &string_infos);
+    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info);
     static bool Write_STR_Label(FileRef &file, const StringInfo &string_info);
-    static bool Write_STR_Text(FileRef &file, const StringInfo &string_info, Option options);
+    static bool Write_STR_Text(FileRef &file, const StringInfo &string_info);
     static bool Write_STR_Speech(FileRef &file, const StringInfo &string_info);
-    static bool Write_STR_End(FileRef &file, const StringInfo &string_info);
+    static bool Write_STR_End(FileRef &file);
 
     static bool Write_CSF_File(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
     static bool Write_CSF_Header(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
