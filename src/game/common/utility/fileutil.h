@@ -80,10 +80,10 @@ template<typename T> bool Write_Any(File *file, const T &value)
 }
 
 // Read string buffer with given size from file.
-template<typename StringType> bool Read_Str(File *file, StringType &string)
+template<typename StringView> bool Read_Str(File *file, StringView &string)
 {
-    using char_type = typename StringType::value_type;
-    using size_type = typename StringType::size_type;
+    using char_type = typename StringView::value_type;
+    using size_type = typename StringView::size_type;
 
     size_type size = string.size();
     void *data = string.data();
@@ -93,10 +93,10 @@ template<typename StringType> bool Read_Str(File *file, StringType &string)
 }
 
 // Write string buffer with given size to file.
-template<typename StringType> bool Write_Str(File *file, const StringType &string)
+template<typename StringView> bool Write_Str(File *file, const StringView &string)
 {
-    using char_type = typename StringType::value_type;
-    using size_type = typename StringType::size_type;
+    using char_type = typename StringView::value_type;
+    using size_type = typename StringView::size_type;
 
     size_type size = string.size();
     const void *data = string.data();
