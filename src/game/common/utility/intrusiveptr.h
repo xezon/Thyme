@@ -17,6 +17,8 @@
 #include "refcounter.h"
 #include <algorithm>
 
+namespace rts
+{
 // #FEATURE Intrusive reference counted smart pointer.
 // Works similar to std::shared_ptr<>, but does not hold reference counter by itself.
 // Can be assigned a raw pointer at any time without worrying about colliding with another reference counter.
@@ -156,3 +158,5 @@ public:
     // Get the count of how many times the pointer is referenced.
     integer_type use_count() const { return m_ptr->UseCount(); }
 };
+
+} // namespace rts

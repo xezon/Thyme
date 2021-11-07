@@ -67,8 +67,8 @@ public:
     bool Is_Open() const { return m_file.get() && m_file->m_access; }
 
 private:
-    nonintrusive_ptr_t<File, FileDeleter, Counter> m_file;
+    rts::nonintrusive_ptr_t<File, FileDeleter, Counter> m_file;
 };
 
-using FileRef = FileRefT<nonintrusive_counter>;
-using FileRefAtomic = FileRefT<nonintrusive_atomic_counter>;
+using FileRef = FileRefT<rts::nonintrusive_counter>;
+using FileRefAtomic = FileRefT<rts::nonintrusive_atomic_counter>;

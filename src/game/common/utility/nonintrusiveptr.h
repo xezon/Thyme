@@ -17,6 +17,8 @@
 #include "refcounter.h"
 #include <algorithm>
 
+namespace rts
+{
 // #FEATURE Non-intrusive reference counted smart pointer.
 // Works similar to std::shared_ptr<>. Prefer using intrusive_ptr<> over nonintrusive_ptr_t<>.
 // Provide a custom deleter when not using new & delete. Uses thread unsafe counter by default.
@@ -180,3 +182,5 @@ using nonintrusive_ptr = nonintrusive_ptr_t<Value, Deleter, nonintrusive_counter
 
 template<typename Value, typename Deleter = NewDeleter<Value>>
 using nonintrusive_atomic_ptr = nonintrusive_ptr_t<Value, Deleter, nonintrusive_atomic_counter>;
+
+} // namespace rts

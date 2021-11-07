@@ -33,7 +33,9 @@
 #endif
 #endif
 
-namespace Detail
+namespace rts
+{
+namespace detail
 {
 // #TODO Use sized integer here
 
@@ -128,7 +130,7 @@ template<typename Integer> inline Integer Release_Atomic(volatile Integer &count
     return new_counter;
 }
 
-} // namespace Detail
+} // namespace detail
 
 // #FEATURE Intrusive atomic counter for multi threaded use. Can be used with: intrusive_ptr<>.
 template<typename Integer, typename Derived, typename Deleter = NewDeleter<Derived>> class intrusive_atomic_counter_i
@@ -144,17 +146,17 @@ public:
 
 #if REFCOUNTER_CHECK
     // Virtual Destructor to make sure this is called always on any deletion attempt.
-    virtual ~intrusive_atomic_counter_i() { Detail::Destructor_Ref_Check(m_counter); }
+    virtual ~intrusive_atomic_counter_i() { detail::Destructor_Ref_Check(m_counter); }
 #else
     // Deleted destructor. This avoids forcing a virtual table in any derived class.
     // Not calling destructor is legal and will not break anything, because the destructor does not do anything anyway.
     ~intrusive_counter_i() = delete;
 #endif
 
-    integer_type AddRef() const { return Detail::AddRef_Atomic<integer_type>(m_counter); }
+    integer_type AddRef() const { return detail::AddRef_Atomic<integer_type>(m_counter); }
     integer_type Release() const
     {
-        return Detail::Release_Atomic<integer_type, derived_type, deleter_type>(
+        return detail::Release_Atomic<integer_type, derived_type, deleter_type>(
             m_counter, static_cast<const derived_type *>(this));
     }
     integer_type UseCount() const
@@ -176,10 +178,10 @@ public:
     nonintrusive_atomic_counter_i() = default;
     nonintrusive_atomic_counter_i(const nonintrusive_atomic_counter_i &) = delete;
     nonintrusive_atomic_counter_i &operator=(const nonintrusive_atomic_counter_i &) = delete;
-    ~nonintrusive_atomic_counter_i() { Detail::Destructor_Ref_Check(m_counter); }
+    ~nonintrusive_atomic_counter_i() { detail::Destructor_Ref_Check(m_counter); }
 
-    integer_type AddRef() const { return Detail::AddRef_Atomic<integer_type>(m_counter); }
-    integer_type Release() const { return Detail::Release_Atomic<integer_type>(m_counter); }
+    integer_type AddRef() const { return detail::AddRef_Atomic<integer_type>(m_counter); }
+    integer_type Release() const { return detail::Release_Atomic<integer_type>(m_counter); }
     integer_type UseCount() const
     {
         captainslog_dbgassert(false, "Use count cannot be used in multi threaded context");
@@ -205,17 +207,17 @@ public:
 
 #if REFCOUNTER_CHECK
     // Virtual Destructor to make sure this is called always on any deletion attempt.
-    virtual ~intrusive_counter_i() { Detail::Destructor_Ref_Check(m_counter); }
+    virtual ~intrusive_counter_i() { detail::Destructor_Ref_Check(m_counter); }
 #else
     // Deleted destructor. This avoids forcing a virtual table in any derived class.
     // Not calling destructor is legal and will not break anything, because the destructor does not do anything anyway.
     ~intrusive_counter_i() = delete;
 #endif
 
-    integer_type AddRef() const { return Detail::AddRef<integer_type>(m_counter); }
+    integer_type AddRef() const { return detail::AddRef<integer_type>(m_counter); }
     integer_type Release() const
     {
-        return Detail::Release<integer_type, derived_type, deleter_type>(
+        return detail::Release<integer_type, derived_type, deleter_type>(
             m_counter, static_cast<const derived_type *>(this));
     }
     integer_type UseCount() const { return m_counter; }
@@ -234,10 +236,10 @@ public:
     nonintrusive_counter_i() = default;
     nonintrusive_counter_i(const nonintrusive_counter_i &) = delete;
     nonintrusive_counter_i &operator=(const nonintrusive_counter_i &) = delete;
-    ~nonintrusive_counter_i() { Detail::Destructor_Ref_Check(m_counter); }
+    ~nonintrusive_counter_i() { detail::Destructor_Ref_Check(m_counter); }
 
-    integer_type AddRef() const { return Detail::AddRef<integer_type>(m_counter); }
-    integer_type Release() const { return Detail::Release<integer_type>(m_counter); }
+    integer_type AddRef() const { return detail::AddRef<integer_type>(m_counter); }
+    integer_type Release() const { return detail::Release<integer_type>(m_counter); }
     integer_type UseCount() const { return m_counter; }
 
 private:
@@ -255,3 +257,5 @@ using intrusive_counter = intrusive_counter_i<RefCounterInteger, Derived, Delete
 
 using nonintrusive_atomic_counter = nonintrusive_atomic_counter_i<RefCounterInteger>;
 using nonintrusive_counter = nonintrusive_counter_i<RefCounterInteger>;
+
+} // namespace rts
