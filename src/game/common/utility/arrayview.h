@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief Lightweight custom array view specialized for Thyme structures.
+ * @brief Lightweight custom array view catered to Thyme.
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License
@@ -14,8 +14,6 @@
  */
 #pragma once
 
-#include "asciistring.h"
-#include "unicodestring.h"
 #include <cstddef>
 
 namespace rts
@@ -101,96 +99,6 @@ template<typename ContainerType> constexpr array_view<const typename ContainerTy
 {
     using view_type = array_view<const typename ContainerType::value_type>;
     return view_type(instance.data(), instance.size());
-}
-
-// Create array_view<> from container and resize the container with the given size. Mostly useful for Utf8String and
-// Utf16String, because these classes have no concept of size and thus cannot hold size themselves.
-template<typename ContainerType> constexpr array_view<typename ContainerType::value_type>
-    resized_string_view(ContainerType &instance, typename ContainerType::size_type size)
-{
-    using view_type = array_view<typename ContainerType::value_type>;
-    instance.resize(size);
-    return view_type(instance.data(), size);
-}
-
-template<std::size_t Size> constexpr array_view<char>
-    stack_string_view(char (&string)[Size])
-{
-    return array_view<char>(string, Size - 1);
-}
-
-template<std::size_t Size> constexpr array_view<const char>
-    stack_string_view(const char (&string)[Size])
-{
-    return array_view<const char>(string, Size - 1);
-}
-
-template<std::size_t Size> constexpr array_view<unichar_t>
-    stack_string_view(unichar_t (&string)[Size])
-{
-    return array_view<unichar_t>(string, Size - 1);
-}
-
-template<std::size_t Size> constexpr array_view<const unichar_t>
-    stack_string_view(const unichar_t (&string)[Size])
-{
-    return array_view<const unichar_t>(string, Size - 1);
-}
-
-// Create array_view<> from Utf8String. Typically useful for reads only.
-constexpr array_view<typename Utf8String::value_type>
-    make_string_view(Utf8String &instance)
-{
-    using view_type = array_view<typename Utf8String::value_type>;
-    return view_type(instance.data(), instance.Get_Length());
-}
-
-// Create array_view<> from Utf8String (const). Typically useful for reads only.
-constexpr array_view<const typename Utf8String::value_type>
-    make_string_view(const Utf8String &instance)
-{
-    using view_type = array_view<const typename Utf8String::value_type>;
-    return view_type(instance.data(), instance.Get_Length());
-}
-
-// Create array_view<> from Utf16String. Typically useful for reads only.
-constexpr array_view<typename Utf16String::value_type>
-    make_string_view(Utf16String &instance)
-{
-    using view_type = array_view<typename Utf16String::value_type>;
-    return view_type(instance.data(), instance.Get_Length());
-}
-
-// Create array_view<> from Utf16String (const). Typically useful for reads only.
-constexpr array_view<const typename Utf16String::value_type>
-    make_string_view(const Utf16String &instance)
-{
-    using view_type = array_view<const typename Utf16String::value_type>;
-    return view_type(instance.data(), instance.Get_Length());
-}
-
-constexpr array_view<char>
-    make_string_view(char* string)
-{
-    return array_view<char>(string, string + strlen(string));
-}
-
-constexpr array_view<const char>
-    make_string_view(const char* string)
-{
-    return array_view<const char>(string, string + strlen(string));
-}
-
-constexpr array_view<unichar_t>
-    make_string_view(unichar_t* string)
-{
-    return array_view<unichar_t>(string, string + u_strlen(string));
-}
-
-constexpr array_view<const unichar_t>
-    make_string_view(const unichar_t* string)
-{
-    return array_view<const unichar_t>(string, string + u_strlen(string));
 }
 
 // clang-format on

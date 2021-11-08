@@ -83,8 +83,8 @@ public:
     using LengthInfo = GameTextLengthInfo;
     using Option = GameTextOption;
     using Type = GameTextType;
-    using Utf8Buf = rts::array_view<char>;
-    using Utf16Buf = rts::array_view<unichar_t>;
+    using Utf8Buf = rts::basic_string_view<char>;
+    using Utf16Buf = rts::basic_string_view<unichar_t>;
 
     GameTextFile() : m_options(Option::NONE), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
 
@@ -119,16 +119,16 @@ private:
     static bool Read_Line(char *buffer, int length, File *file);
     static bool Get_String_Count(const char *filename,
         int &count,
-        rts::array_view<char> buffer_in,
-        rts::array_view<char> buffer_out,
-        rts::array_view<char> buffer_ex);
+        rts::basic_string_view<char> buffer_in,
+        rts::basic_string_view<char> buffer_out,
+        rts::basic_string_view<char> buffer_ex);
     static bool Parse_String_File(const char *filename,
         StringInfo *string_info,
         int &max_label_len,
-        rts::array_view<unichar_t> buffer_trans,
-        rts::array_view<char> buffer_in,
-        rts::array_view<char> buffer_out,
-        rts::array_view<char> buffer_ex);
+        rts::basic_string_view<unichar_t> buffer_trans,
+        rts::basic_string_view<char> buffer_in,
+        rts::basic_string_view<char> buffer_out,
+        rts::basic_string_view<char> buffer_ex);
 
     static Type Get_File_Type(const char *filename, Type filetype);
 

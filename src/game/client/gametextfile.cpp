@@ -424,9 +424,9 @@ bool GameTextFile::Read_Line(char *buffer, int length, File *file)
 
 bool GameTextFile::Get_String_Count(const char *filename,
     int &count,
-    rts::array_view<char> buffer_in,
-    rts::array_view<char> buffer_out,
-    rts::array_view<char> buffer_ex)
+    rts::basic_string_view<char> buffer_in,
+    rts::basic_string_view<char> buffer_out,
+    rts::basic_string_view<char> buffer_ex)
 {
     File *file = g_theFileSystem->Open(filename, File::TEXT | File::READ);
     count = 0;
@@ -458,10 +458,10 @@ bool GameTextFile::Get_String_Count(const char *filename,
 bool GameTextFile::Parse_String_File(const char *filename,
     StringInfo *string_info,
     int &max_label_len,
-    rts::array_view<unichar_t> buffer_trans,
-    rts::array_view<char> buffer_in,
-    rts::array_view<char> buffer_out,
-    rts::array_view<char> buffer_ex)
+    rts::basic_string_view<unichar_t> buffer_trans,
+    rts::basic_string_view<char> buffer_in,
+    rts::basic_string_view<char> buffer_out,
+    rts::basic_string_view<char> buffer_ex)
 {
     captainslog_info("Parsing string file '%s'.", filename);
     File *file = g_theFileSystem->Open(filename, File::TEXT | File::READ);
