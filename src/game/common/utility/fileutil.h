@@ -21,7 +21,7 @@ namespace rts
 {
 
 // Return the file extension of a given string.
-template<typename StringView> typename StringView::value_type *get_file_extension(StringView &filename)
+template<typename StringType> typename StringType::value_type *get_file_extension(StringType &filename)
 {
     const char *begin = filename.begin();
     const char *end = filename.end() - 1;
@@ -36,23 +36,23 @@ template<typename StringView> typename StringView::value_type *get_file_extensio
 // Read from a file until the specified end character is reached. Will not stop reading at escaped end character. Expects
 // string with reserved space for null terminator past the end. Always writes null terminator. Returns true if the end of the
 // file was not yet reached.
-template<typename StringView>
+template<typename StringType>
 bool read_line(File *file,
-    StringView &string,
-    typename StringView::value_type eol_char = rts::get_char<typename StringView::value_type>('\n'),
-    typename StringView::size_type *num_copied = nullptr)
+    StringType &string,
+    typename StringType::value_type eol_char = get_char<typename StringType::value_type>('\n'),
+    typename StringType::size_type *num_copied = nullptr)
 {
-    using char_type = typename StringView::value_type;
+    using char_type = typename StringType::value_type;
 
-    char_type *begin = string.data();
-    char_type *end = begin + string.size();
-    char_type *it = begin;
+    const char_type *begin = string.data();
+    const char_type *end = begin + string.size();
+    char_type *writer = string.data();
 
     int total_bytes_read = 0;
     bool escaped = false;
 
-    while (it != end) {
-        const int bytes_read = file->Read(it, sizeof(char_type));
+    while (writer != end) {
+        const int bytes_read = file->Read(writer, sizeof(char_type));
         total_bytes_read += bytes_read;
 
         if (bytes_read != sizeof(char_type)) {
@@ -60,7 +60,7 @@ bool read_line(File *file,
         }
 
         // Stop at end character.
-        if (!escaped && *it == eol_char) {
+        if (!escaped && *writer == eol_char) {
             break;
         }
 
@@ -68,18 +68,18 @@ bool read_line(File *file,
         escaped = false;
 
         // Begin escaping.
-        if (*it == get_char<char_type>('\\')) {
+        if (*writer == get_char<char_type>('\\')) {
             escaped = !escaped;
         }
 
-        ++it;
+        ++writer;
     }
 
     // Write null terminator.
-    *it = get_char<char_type>('\0');
+    *writer = get_char<char_type>('\0');
 
     if (num_copied != nullptr) {
-        *num_copied = (it - begin) / sizeof(char_type);
+        *num_copied = (writer - begin) / sizeof(char_type);
     }
 
     return total_bytes_read != 0;
@@ -98,10 +98,10 @@ template<typename T> bool write_any(File *file, const T &value)
 }
 
 // Read string buffer with given size from file.
-template<typename StringView> bool read_str(File *file, StringView &string)
+template<typename StringType> bool read_str(File *file, StringType &string)
 {
-    using char_type = typename StringView::value_type;
-    using size_type = typename StringView::size_type;
+    using char_type = typename StringType::value_type;
+    using size_type = typename StringType::size_type;
 
     size_type size = string.size();
     void *data = string.data();
@@ -111,10 +111,10 @@ template<typename StringView> bool read_str(File *file, StringView &string)
 }
 
 // Write string buffer with given size to file.
-template<typename StringView> bool write_str(File *file, const StringView &string)
+template<typename StringType> bool write_str(File *file, const StringType &string)
 {
-    using char_type = typename StringView::value_type;
-    using size_type = typename StringView::size_type;
+    using char_type = typename StringType::value_type;
+    using size_type = typename StringType::size_type;
 
     size_type size = string.size();
     const void *data = string.data();

@@ -78,7 +78,7 @@ DEFINE_ENUMERATION_BITWISE_OPERATORS(StripOption);
 
 // Strips leading, trailing and duplicate whitespace. Can provide options to customize the stripping result. Returns count of
 // stripped characters. Writes null over all stripped characters at the end. Compatible with UTF-8 and UTF-16.
-template<typename StringView> std::size_t strip_obsolete_whitespace(StringView &string, StripOption option = STRIP_DEFAULT)
+template<typename StringType> std::size_t strip_obsolete_whitespace(StringType &string, StripOption option = STRIP_DEFAULT)
 {
     captainslog_assert(string.end() >= string.begin());
     captainslog_assert((string.end() - string.begin()) < 0x0fff);
@@ -86,11 +86,12 @@ template<typename StringView> std::size_t strip_obsolete_whitespace(StringView &
     if (string.empty())
         return 0;
 
-    using char_type = typename StringView::value_type;
+    using char_type = typename StringType::value_type;
     constexpr char_type null_char = get_char<char_type>('\0');
-    char_type *reader = string.begin();
-    char_type *reader_end = string.end();
-    char_type *inserter = string.begin();
+    constexpr char_type space_char = get_char<char_type>(' ');
+    const char_type *reader = string.begin();
+    const char_type *reader_end = string.end();
+    char_type *writer = string.begin();
 
     const bool replace_whitespace = (option & STRIP_REPLACE_WHITESPACE) != 0;
     const bool leading_and_trailing_only = (option & STRIP_LEADING_AND_TRAILING_ONLY) != 0;
@@ -115,18 +116,18 @@ template<typename StringView> std::size_t strip_obsolete_whitespace(StringView &
 
         // If this character is any whitespace, then turn it into a space character.
         if (replace_whitespace && curr_char_is_space) {
-            curr_char = get_char<char_type>(' ');
+            curr_char = space_char;
         }
 
         // Write out.
-        *inserter++ = curr_char;
+        *writer++ = curr_char;
     }
 
-    const std::size_t stripped_count = ((reader - inserter) + (string.end() - reader_end)) / sizeof(char_type);
+    const std::size_t stripped_count = ((reader - writer) + (string.end() - reader_end)) / sizeof(char_type);
 
     // Fill the rest with null.
-    while (inserter != string.end()) {
-        *inserter++ = null_char;
+    while (writer != string.end()) {
+        *writer++ = null_char;
     }
 
     // #TODO call a resize here if this is meant to be fully compatible with std::string like strings.
@@ -141,8 +142,8 @@ template<typename CharType> std::size_t strip_all_obsolete_whitespace(CharType *
     using char_type = CharType;
 
     constexpr char_type null_char = get_char<char_type>('\0');
-    char_type *reader = cstring;
-    char_type *inserter = cstring;
+    const char_type *reader = cstring;
+    char_type *writer = cstring;
 
     // Iterate to first non-whitespace character.
     for (; *reader != null_char && is_whitespace(*reader); ++reader) {
@@ -164,14 +165,14 @@ template<typename CharType> std::size_t strip_all_obsolete_whitespace(CharType *
         }
 
         // Write out.
-        *inserter++ = curr_char;
+        *writer++ = curr_char;
     }
 
-    const std::size_t stripped_count = (reader - inserter) / sizeof(char_type);
+    const std::size_t stripped_count = (reader - writer) / sizeof(char_type);
 
     // Fill the rest with null. Reader is the end by now.
-    while (inserter != reader) {
-        *inserter++ = null_char;
+    while (writer != reader) {
+        *writer++ = null_char;
     }
 
     // #TODO call a resize here if this is meant to be fully compatible with std::string like strings.
@@ -215,8 +216,8 @@ std::size_t convert_escaped_characters(
     using char_type = CharType;
 
     constexpr char_type null_char = get_char<char_type>('\0');
-    char_type *reader = cstring;
-    char_type *inserter = cstring;
+    const char_type *reader = cstring;
+    char_type *writer = cstring;
 
     while (*reader != null_char) {
         char_type curr_char = *reader;
@@ -226,7 +227,7 @@ std::size_t convert_escaped_characters(
 
         for (const escaped_char_alias<char_type> &escaped_char : characters) {
             if (curr_char == escaped_char.alias1 && next_char == escaped_char.alias2) {
-                *inserter++ = escaped_char.real;
+                *writer++ = escaped_char.real;
                 ++reader;
                 done = true;
                 break;
@@ -236,14 +237,14 @@ std::size_t convert_escaped_characters(
         if (done)
             continue;
 
-        *inserter++ = curr_char;
+        *writer++ = curr_char;
     }
 
-    const std::size_t stripped_count = (reader - inserter) / sizeof(char_type);
+    const std::size_t stripped_count = (reader - writer) / sizeof(char_type);
 
     // Fill the rest with null. Reader is the end by now.
-    while (inserter != reader) {
-        *inserter++ = null_char;
+    while (writer != reader) {
+        *writer++ = null_char;
     }
 
     return stripped_count;
