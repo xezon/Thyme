@@ -33,38 +33,56 @@ template<typename StringView> typename StringView::value_type *get_file_extensio
     return end;
 }
 
-// Read a line from a file until the next line break. Expects string with reserved space for null terminator past the end.
-// Always writes null terminator. Returns number of new characters read into the string.
-template<typename StringView> int read_line(File *file, StringView &string)
+// Read from a file until the specified end character is reached. Will not stop reading at escaped end character. Expects
+// string with reserved space for null terminator past the end. Always writes null terminator. Returns true if the end of the
+// file was not yet reached.
+template<typename StringView>
+bool read_line(File *file,
+    StringView &string,
+    typename StringView::value_type eol_char = rts::get_char<typename StringView::value_type>('\n'),
+    typename StringView::size_type *num_copied = nullptr)
 {
     using char_type = typename StringView::value_type;
-
-    if (string.empty())
-        return 0;
 
     char_type *begin = string.data();
     char_type *end = begin + string.size();
     char_type *it = begin;
 
+    int total_bytes_read = 0;
+    bool escaped = false;
+
     while (it != end) {
-        if (file->Read(it, sizeof(char_type)) != sizeof(char_type)) {
+        const int bytes_read = file->Read(it, sizeof(char_type));
+        total_bytes_read += bytes_read;
+
+        if (bytes_read != sizeof(char_type)) {
             break;
         }
 
-        if (*data == get_cr_char<char_type>()) {
-            continue;
+        // Stop at end character.
+        if (!escaped && *it == eol_char) {
+            break;
         }
 
-        if (*data == Get_LF<char_type>()) {
-            break;
+        // End escaping.
+        escaped = false;
+
+        // Begin escaping.
+        if (*it == get_char<char_type>('\\')) {
+            escaped = !escaped;
         }
 
         ++it;
     }
 
-    *it = get_null<char_type>();
+    // Write null terminator.
+    *it = get_char<char_type>('\0');
 
-    return it - begin;
+    if (num_copied != nullptr) {
+        *num_copied = (it - begin) / sizeof(char_type);
+    }
+
+    return total_bytes_read != 0;
 }
 
 // Read any type from file.

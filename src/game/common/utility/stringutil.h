@@ -14,6 +14,7 @@
  */
 #pragma once
 
+#include "arrayview.h"
 #include <captainslog.h>
 #include <locale>
 #include <macros.h>
@@ -21,64 +22,51 @@
 
 namespace rts
 {
+template<typename CharType> constexpr CharType get_char(char ch);
+
+template<> constexpr char get_char<char>(char ch)
+{
+    return ch;
+}
+
+template<> constexpr unichar_t get_char<unichar_t>(char ch)
+{
+    return static_cast<unichar_t>(static_cast<unsigned char>(ch));
+}
+
 // clang-format off
 
-template<typename CharType> constexpr CharType get_null_char();
-template<typename CharType> constexpr CharType get_tab_char();
-template<typename CharType> constexpr CharType get_lf_char();
-template<typename CharType> constexpr CharType get_vtab_char();
-template<typename CharType> constexpr CharType get_ff_char();
-template<typename CharType> constexpr CharType get_cr_char();
-template<typename CharType> constexpr CharType get_space_char();
-
-template<> constexpr char get_null_char<char>()  { return '\0'; }
-template<> constexpr char get_tab_char<char>()   { return '\t'; }
-template<> constexpr char get_lf_char<char>()    { return '\n'; }
-template<> constexpr char get_vtab_char<char>()  { return '\v'; }
-template<> constexpr char get_ff_char<char>()    { return '\f'; }
-template<> constexpr char get_cr_char<char>()    { return '\r'; }
-template<> constexpr char get_space_char<char>() { return ' '; }
-
-template<> constexpr unichar_t get_null_char<unichar_t>()  { return U_CHAR('\0'); }
-template<> constexpr unichar_t get_tab_char<unichar_t>()   { return U_CHAR('\t'); }
-template<> constexpr unichar_t get_lf_char<unichar_t>()    { return U_CHAR('\n'); }
-template<> constexpr unichar_t get_vtab_char<unichar_t>()  { return U_CHAR('\v'); }
-template<> constexpr unichar_t get_ff_char<unichar_t>()    { return U_CHAR('\f'); }
-template<> constexpr unichar_t get_cr_char<unichar_t>()    { return U_CHAR('\r'); }
-template<> constexpr unichar_t get_space_char<unichar_t>() { return U_CHAR(' '); }
-
 // Whitespace is any of these:
-// ' ' (0x20)space(SPC)
-// '\t'(0x09)horizontal tab(TAB)
-// '\n'(0x0a)newline(LF)
-// '\v'(0x0b)vertical tab(VT)
-// '\f'(0x0c)feed(FF)
+// ' ' (0x20)space (SPC)
+// '\t'(0x09)horizontal tab (TAB)
+// '\n'(0x0a)newline (LF)
+// '\v'(0x0b)vertical tab (VT)
+// '\f'(0x0c)feed (FF)
 // '\r'(0x0d)carriage return (CR)
 template<typename CharType> constexpr bool is_whitespace(CharType ch)
 {
 #ifdef THYME_USE_STLPORT
-    return ch == get_space_char<CharType>()
-        || ch == get_tab_char<CharType>()
-        || ch == get_lf_char<CharType>()
-        || ch == get_vtab_char<CharType>()
-        || ch == get_ff_char<CharType>()
-        || ch == get_cr_char<CharType>();
+    return ch == get_char<CharType>(' ')
+        || ch == get_char<CharType>('\t')
+        || ch == get_char<CharType>('\n')
+        || ch == get_char<CharType>('\v')
+        || ch == get_char<CharType>('\f')
+        || ch == get_char<CharType>('\r');
 #else
     return std::isspace(ch, std::locale());
 #endif
 }
+// clang-format on
 
 template<typename CharType> constexpr bool is_null(CharType ch)
 {
-    return ch == get_null_char<CharType>();
+    return ch == get_char<CharType>('\0');
 }
 
 template<typename CharType> constexpr bool is_null_or_whitespace(CharType ch)
 {
     return is_null(ch) || is_whitespace(ch);
 }
-
-// clang-format on
 
 enum StripOption
 {
@@ -90,7 +78,7 @@ DEFINE_ENUMERATION_BITWISE_OPERATORS(StripOption);
 
 // Strips leading, trailing and duplicate whitespace. Can provide options to customize the stripping result. Returns count of
 // stripped characters. Writes null over all stripped characters at the end. Compatible with UTF-8 and UTF-16.
-template<typename StringView> int strip_whitespace(StringView &string, StripOption option = STRIP_DEFAULT)
+template<typename StringView> std::size_t strip_obsolete_whitespace(StringView &string, StripOption option = STRIP_DEFAULT)
 {
     captainslog_assert(string.end() >= string.begin());
     captainslog_assert((string.end() - string.begin()) < 0x0fff);
@@ -99,7 +87,7 @@ template<typename StringView> int strip_whitespace(StringView &string, StripOpti
         return 0;
 
     using char_type = typename StringView::value_type;
-    constexpr char_type null_char = get_null_char<char_type>();
+    constexpr char_type null_char = get_char<char_type>('\0');
     char_type *reader = string.begin();
     char_type *reader_end = string.end();
     char_type *inserter = string.begin();
@@ -127,14 +115,14 @@ template<typename StringView> int strip_whitespace(StringView &string, StripOpti
 
         // If this character is any whitespace, then turn it into a space character.
         if (replace_whitespace && curr_char_is_space) {
-            curr_char = get_space_char<char_type>();
+            curr_char = get_char<char_type>(' ');
         }
 
         // Write out.
         *inserter++ = curr_char;
     }
 
-    const int stripped_count = (reader - inserter) + (string.end() - reader_end);
+    const std::size_t stripped_count = ((reader - inserter) + (string.end() - reader_end)) / sizeof(char_type);
 
     // Fill the rest with null.
     while (inserter != string.end()) {
@@ -148,11 +136,11 @@ template<typename StringView> int strip_whitespace(StringView &string, StripOpti
 
 // Simplified algorithm for null terminated strings. Strips leading, trailing and duplicate whitespace. Returns count of
 // stripped characters. Writes null over all stripped characters at the end. Compatible with UTF-8 and UTF-16.
-template<typename CharType> int strip_all_whitespace(CharType *cstring)
+template<typename CharType> std::size_t strip_all_obsolete_whitespace(CharType *cstring)
 {
     using char_type = CharType;
 
-    constexpr char_type null_char = get_null_char<char_type>();
+    constexpr char_type null_char = get_char<char_type>('\0');
     char_type *reader = cstring;
     char_type *inserter = cstring;
 
@@ -172,14 +160,14 @@ template<typename CharType> int strip_all_whitespace(CharType *cstring)
 
         // If this character is any whitespace, then turn it into a space character.
         if (curr_char_is_space) {
-            curr_char = get_space_char<char_type>();
+            curr_char = get_char<char_type>(' ');
         }
 
         // Write out.
         *inserter++ = curr_char;
     }
 
-    const int stripped_count = (reader - inserter);
+    const std::size_t stripped_count = (reader - inserter) / sizeof(char_type);
 
     // Fill the rest with null. Reader is the end by now.
     while (inserter != reader) {
