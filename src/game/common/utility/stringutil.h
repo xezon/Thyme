@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief String utility functions and similar
+ * @brief String utility functions.
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License
@@ -175,6 +175,76 @@ template<typename CharType> std::size_t strip_all_obsolete_whitespace(CharType *
     }
 
     // #TODO call a resize here if this is meant to be fully compatible with std::string like strings.
+
+    return stripped_count;
+}
+
+template<typename CharType> struct escaped_char_alias
+{
+    CharType real;
+    CharType alias1;
+    CharType alias2;
+};
+
+template<typename CharType> using escaped_char_alias_view = array_view<const escaped_char_alias<CharType>>;
+
+namespace detail
+{
+extern const escaped_char_alias<char> s_escapedCharactersA[8];
+extern const escaped_char_alias<unichar_t> s_escapedCharactersU[8];
+} // namespace detail
+
+template<typename CharType> constexpr escaped_char_alias_view<CharType> get_standard_escaped_characters();
+
+template<> constexpr escaped_char_alias_view<char> get_standard_escaped_characters<char>()
+{
+    return escaped_char_alias_view<char>(detail::s_escapedCharactersA);
+}
+
+template<> constexpr escaped_char_alias_view<unichar_t> get_standard_escaped_characters<unichar_t>()
+{
+    return escaped_char_alias_view<unichar_t>(detail::s_escapedCharactersU);
+}
+
+// Converts escaped characters. Returns count of stripped characters. Writes null over all stripped characters at the end.
+// Compatible with UTF-8 and UTF-16.
+template<typename CharType>
+std::size_t convert_escaped_characters(
+    CharType *cstring, escaped_char_alias_view<CharType> characters = get_standard_escaped_characters<CharType>())
+{
+    using char_type = CharType;
+
+    constexpr char_type null_char = get_char<char_type>('\0');
+    char_type *reader = cstring;
+    char_type *inserter = cstring;
+
+    while (*reader != null_char) {
+        char_type curr_char = *reader;
+        char_type next_char = *++reader;
+
+        bool done = false;
+
+        for (const escaped_char_alias<char_type> &escaped_char : characters) {
+            if (curr_char == escaped_char.alias1 && next_char == escaped_char.alias2) {
+                *inserter++ = escaped_char.real;
+                ++reader;
+                done = true;
+                break;
+            }
+        }
+
+        if (done)
+            continue;
+
+        *inserter++ = curr_char;
+    }
+
+    const std::size_t stripped_count = (reader - inserter) / sizeof(char_type);
+
+    // Fill the rest with null. Reader is the end by now.
+    while (inserter != reader) {
+        *inserter++ = null_char;
+    }
 
     return stripped_count;
 }

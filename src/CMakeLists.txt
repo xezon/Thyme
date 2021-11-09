@@ -200,6 +200,7 @@ set(GAMEENGINE_SRC
     game/common/thing/thing.cpp
     game/common/thing/thingfactory.cpp
     game/common/thing/thingtemplate.cpp
+    game/common/utility/stringutil.cpp
     game/logic/ai/ai.cpp
     game/logic/map/polygontrigger.cpp
     game/logic/map/terrainlogic.cpp
