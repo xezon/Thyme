@@ -14,6 +14,7 @@
  */
 #include "always.h"
 #include "gametextfile.h"
+#include "common/utility/arrayutil.h"
 #include "common/utility/fileutil.h"
 #include "common/utility/stringutil.h"
 #include "filesystem.h"
@@ -57,10 +58,10 @@ bool GameTextFile::Load(const char *filename, Type filetype)
     char buffer_out[512] = { 0 };
     char buffer_ex[512] = { 0 };
     unichar_t buffer_trans[1024] = { 0 };
-    auto bufview_in = rts::stack_string_view(buffer_in);
-    auto bufview_out = rts::stack_string_view(buffer_out);
-    auto bufview_ex = rts::stack_string_view(buffer_ex);
-    auto bufview_trans = rts::stack_string_view(buffer_trans);
+    auto bufview_in = rts::stack_array_view(buffer_in);
+    auto bufview_out = rts::stack_array_view(buffer_out);
+    auto bufview_ex = rts::stack_array_view(buffer_ex);
+    auto bufview_trans = rts::stack_array_view(buffer_trans);
 
     if (filetype == Type::CSF) {
         success = Read_CSF_File(file, m_stringInfos, m_language);
@@ -424,9 +425,9 @@ bool GameTextFile::Read_Line(char *buffer, int length, File *file)
 
 bool GameTextFile::Get_String_Count(const char *filename,
     int &count,
-    rts::basic_string_view<char> buffer_in,
-    rts::basic_string_view<char> buffer_out,
-    rts::basic_string_view<char> buffer_ex)
+    rts::array_view<char> buffer_in,
+    rts::array_view<char> buffer_out,
+    rts::array_view<char> buffer_ex)
 {
     File *file = g_theFileSystem->Open(filename, File::TEXT | File::READ);
     count = 0;
@@ -458,10 +459,10 @@ bool GameTextFile::Get_String_Count(const char *filename,
 bool GameTextFile::Parse_String_File(const char *filename,
     StringInfo *string_info,
     int &max_label_len,
-    rts::basic_string_view<unichar_t> buffer_trans,
-    rts::basic_string_view<char> buffer_in,
-    rts::basic_string_view<char> buffer_out,
-    rts::basic_string_view<char> buffer_ex)
+    rts::array_view<unichar_t> buffer_trans,
+    rts::array_view<char> buffer_in,
+    rts::array_view<char> buffer_out,
+    rts::array_view<char> buffer_ex)
 {
     captainslog_info("Parsing string file '%s'.", filename);
     File *file = g_theFileSystem->Open(filename, File::TEXT | File::READ);
@@ -548,7 +549,7 @@ bool GameTextFile::Parse_String_File(const char *filename,
 GameTextFile::Type GameTextFile::Get_File_Type(const char *filename, Type filetype)
 {
     if (filetype == Type::AUTO) {
-        const char *fileext = rts::get_file_extension(rts::make_string_view(filename));
+        const char *fileext = rts::get_file_extension(rts::make_array_view(filename));
         if (strcasecmp(fileext, "csf") == 0)
             filetype = Type::CSF;
         else if (strcasecmp(fileext, "str") == 0)
@@ -660,7 +661,7 @@ bool GameTextFile::Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_
         letoh_ref(header.length);
 
         if (header.id == FourCC_LE<'L', 'B', 'L', ' '>::value) {
-            if (rts::read_str(file.Get(), rts::resized_string_view(string_info.label, header.length))) {
+            if (rts::read_str(file.Get(), rts::resized_array_view(string_info.label, header.length))) {
                 texts = header.texts;
                 return true;
             }
@@ -687,7 +688,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
             const bool read_text = (header.id == FourCC_LE<'S', 'T', 'R', ' '>::value);
 
             if (read_speech || read_text) {
-                if (rts::read_str(file.Get(), rts::resized_string_view(string_info.text, header.length))) {
+                if (rts::read_str(file.Get(), rts::resized_array_view(string_info.text, header.length))) {
                     for (int32_t i = 0; i < header.length; ++i) {
                         letoh_ref(string_info.text[i]);
                         // Every char is binary flipped here by design.
@@ -705,7 +706,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
         if (rts::read_any(file.Get(), header)) {
             letoh_ref(header.length);
 
-            if (rts::read_str(file.Get(), rts::resized_string_view(string_info.speech, header.length))) {
+            if (rts::read_str(file.Get(), rts::resized_array_view(string_info.speech, header.length))) {
                 speech_ok = true;
             }
         }
@@ -745,7 +746,7 @@ bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info)
 bool GameTextFile::Write_STR_Label(FileRef &file, const StringInfo &string_info)
 {
     bool ok = true;
-    ok = ok && rts::write_str(file.Get(), rts::make_string_view(string_info.label));
+    ok = ok && rts::write_str(file.Get(), rts::make_array_view(string_info.label));
     ok = ok && rts::write_any(file.Get(), s_eol);
     return ok;
 }
@@ -783,7 +784,7 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info)
 
     bool ok = true;
     ok = ok && rts::write_any(file.Get(), s_quo);
-    ok = ok && rts::write_str(file.Get(), rts::make_string_view(text_utf8));
+    ok = ok && rts::write_str(file.Get(), rts::make_array_view(text_utf8));
     ok = ok && rts::write_any(file.Get(), s_quo);
     ok = ok && rts::write_any(file.Get(), s_eol);
     return ok;
@@ -793,7 +794,7 @@ bool GameTextFile::Write_STR_Speech(FileRef &file, const StringInfo &string_info
 {
     bool ok = true;
     if (!string_info.speech.Is_Empty()) {
-        ok = ok && rts::write_str(file.Get(), rts::make_string_view(string_info.speech));
+        ok = ok && rts::write_str(file.Get(), rts::make_array_view(string_info.speech));
         ok = ok && rts::write_any(file.Get(), s_eol);
     }
     return ok;
@@ -817,7 +818,7 @@ bool GameTextFile::Write_CSF_File(FileRef &file, const StringInfos &string_infos
     if (Write_CSF_Header(file, string_infos, language)) {
         success = true;
         unichar_t utf16buf[GAMETEXT_BUFFER_16_SIZE] = { 0 };
-        auto utf16bufview = rts::stack_string_view(utf16buf);
+        auto utf16bufview = rts::stack_array_view(utf16buf);
         int string_index = 0;
 
         for (const StringInfo &string_info : string_infos) {
@@ -877,7 +878,7 @@ bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info)
     htole_ref(header.length);
 
     if (rts::write_any(file.Get(), header)) {
-        if (rts::write_str(file.Get(), rts::make_string_view(string_info.label))) {
+        if (rts::write_str(file.Get(), rts::make_array_view(string_info.label))) {
             return true;
         }
     }
@@ -921,7 +922,7 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
         htole_ref(header.length);
 
         if (rts::write_any(file.Get(), header)) {
-            if (rts::write_str(file.Get(), rts::make_string_view(string_info.speech))) {
+            if (rts::write_str(file.Get(), rts::make_array_view(string_info.speech))) {
                 speech_ok = true;
             }
         }

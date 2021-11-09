@@ -18,7 +18,8 @@
 
 namespace rts
 {
-// #FEATURE array_view allows to pass along a buffer and its size in one go. Alternative is std::span<> with c++20.
+// #FEATURE array_view allows to pass along a buffer and its size in one go. Alternative is std::span<> with c++20. Not to be
+// confused with string_view, which is read and string only!
 template<typename ValueType> class array_view
 {
 public:
@@ -35,9 +36,13 @@ public:
 
     ~array_view() noexcept = default;
 
-    constexpr array_view() : m_begin(nullptr), m_end(nullptr) noexcept {}
-    constexpr array_view(pointer begin, size_type size) : m_begin(begin), m_end(begin + size) {}
-    constexpr array_view(pointer begin, pointer end) : m_begin(begin), m_end(end) {}
+    constexpr array_view() noexcept : m_begin(nullptr), m_size(0) {}
+    constexpr array_view(pointer begin, size_type size) :
+        m_begin(begin), m_size(size) {} // #TODO throw if size is too large?
+    constexpr array_view(pointer begin, pointer end) :
+        m_begin(begin), m_size(begin + size) {} // #TODO throw if end is too small?
+
+    template<size_type Size> constexpr array_view(element_type (&arr)[Size]) noexcept : m_begin(arr), m_size(Size) {}
 
     constexpr array_view(const array_view &) noexcept = default;
     constexpr array_view &operator=(const array_view &) noexcept = default;
@@ -49,58 +54,21 @@ public:
     constexpr operator bool() const noexcept { return m_begin != nullptr; }
 
     constexpr iterator begin() const noexcept { return m_begin; }
-    constexpr iterator end() const noexcept { return m_end; }
+    constexpr iterator end() const noexcept { return m_begin + m_size; }
 
     constexpr reference front() const { return *m_begin; }
-    constexpr reference back() const { return *(m_end - 1); }
+    constexpr reference back() const { return *(m_begin + m_size - 1); }
 
     constexpr pointer data() const noexcept { return m_begin; }
 
-    // Get the size of the array.
-    constexpr size_type size() const noexcept { return m_end - m_begin; }
-    constexpr size_type size_bytes() const noexcept { return size() * sizeof(value_type); }
+    constexpr size_type size() const noexcept { return m_size; }
+    constexpr size_type size_bytes() const noexcept { return m_size * sizeof(element_type); }
 
-    constexpr bool empty() const noexcept { return size() == 0; }
+    constexpr bool empty() const noexcept { return m_size == 0; }
 
 private:
     pointer m_begin;
-    pointer m_end;
+    size_type m_size;
 };
-
-// clang-format off
-
-template<typename ValueType, std::size_t Size> constexpr array_view<ValueType>
-    stack_array_view(ValueType (&array)[Size])
-{
-    return array_view<ValueType>(array, Size);
-}
-
-template<typename ValueType> constexpr array_view<ValueType>
-    make_array_view(ValueType *begin, std::size_t size)
-{
-    return array_view<ValueType>(begin, size);
-}
-
-template<typename ValueType> constexpr array_view<ValueType>
-    make_array_view(ValueType *begin, ValueType *end)
-{
-    return array_view<ValueType>(begin, end);
-}
-
-template<typename ContainerType> constexpr array_view<typename ContainerType::value_type>
-    make_array_view(ContainerType &instance)
-{
-    using view_type = array_view<typename ContainerType::value_type>;
-    return view_type(instance.data(), instance.size());
-}
-
-template<typename ContainerType> constexpr array_view<const typename ContainerType::value_type>
-    make_array_view(const ContainerType &instance)
-{
-    using view_type = array_view<const typename ContainerType::value_type>;
-    return view_type(instance.data(), instance.size());
-}
-
-// clang-format on
 
 } // namespace rts
