@@ -123,14 +123,12 @@ template<typename StringType> std::size_t strip_obsolete_whitespace(StringType &
         *writer++ = curr_char;
     }
 
-    const std::size_t stripped_count = ((reader - writer) + (string.end() - reader_end)) / sizeof(char_type);
+    const std::size_t stripped_count = ((reader - writer) + (string.end() - reader_end));
 
     // Fill the rest with null.
     while (writer != string.end()) {
         *writer++ = null_char;
     }
-
-    // #TODO call a resize here if this is meant to be fully compatible with std::string like strings.
 
     return stripped_count;
 }
@@ -142,6 +140,7 @@ template<typename CharType> std::size_t strip_all_obsolete_whitespace(CharType *
     using char_type = CharType;
 
     constexpr char_type null_char = get_char<char_type>('\0');
+    constexpr char_type space_char = get_char<char_type>(' ');
     const char_type *reader = cstring;
     char_type *writer = cstring;
 
@@ -161,21 +160,19 @@ template<typename CharType> std::size_t strip_all_obsolete_whitespace(CharType *
 
         // If this character is any whitespace, then turn it into a space character.
         if (curr_char_is_space) {
-            curr_char = get_char<char_type>(' ');
+            curr_char = space_char;
         }
 
         // Write out.
         *writer++ = curr_char;
     }
 
-    const std::size_t stripped_count = (reader - writer) / sizeof(char_type);
+    const std::size_t stripped_count = (reader - writer);
 
     // Fill the rest with null. Reader is the end by now.
     while (writer != reader) {
         *writer++ = null_char;
     }
-
-    // #TODO call a resize here if this is meant to be fully compatible with std::string like strings.
 
     return stripped_count;
 }
