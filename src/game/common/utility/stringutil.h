@@ -211,65 +211,113 @@ template<typename CharType> struct escaped_char_alias
 
 template<typename CharType> using escaped_char_alias_view = array_view<const escaped_char_alias<CharType>>;
 
-namespace detail
+template<typename CharType> escaped_char_alias_view<CharType> get_standard_escaped_characters()
 {
-extern const escaped_char_alias<char> s_escapedCharactersA[8];
-extern const escaped_char_alias<unichar_t> s_escapedCharactersU[8];
-} // namespace detail
-
-template<typename CharType> constexpr escaped_char_alias_view<CharType> get_standard_escaped_characters();
-
-template<> constexpr escaped_char_alias_view<char> get_standard_escaped_characters<char>()
-{
-    return escaped_char_alias_view<char>(detail::s_escapedCharactersA);
+    static const escaped_char_alias<CharType> escaped_chars[] = {
+        { get_char<CharType>('\0'), get_char<CharType>('\\'), get_char<CharType>('0') },
+        { get_char<CharType>('\a'), get_char<CharType>('\\'), get_char<CharType>('a') },
+        { get_char<CharType>('\b'), get_char<CharType>('\\'), get_char<CharType>('b') },
+        { get_char<CharType>('\t'), get_char<CharType>('\\'), get_char<CharType>('t') },
+        { get_char<CharType>('\n'), get_char<CharType>('\\'), get_char<CharType>('n') },
+        { get_char<CharType>('\v'), get_char<CharType>('\\'), get_char<CharType>('v') },
+        { get_char<CharType>('\f'), get_char<CharType>('\\'), get_char<CharType>('f') },
+        { get_char<CharType>('\r'), get_char<CharType>('\\'), get_char<CharType>('r') },
+    };
+    return escaped_char_alias_view<CharType>(escaped_chars);
 }
 
-template<> constexpr escaped_char_alias_view<unichar_t> get_standard_escaped_characters<unichar_t>()
-{
-    return escaped_char_alias_view<unichar_t>(detail::s_escapedCharactersU);
-}
-
-// Converts escaped characters. Returns count of stripped characters. Writes null over all stripped characters at the end.
-// Compatible with UTF-8 and UTF-16.
+// Converts from escaped characters, meaning a 2 character sequence is converted to a 1 character sequence. Returns count of
+// characters copied to destination string, not including null terminator. Writes null at the end. Compatible with UTF-8 and
+// UTF-16, if escaped character symbols are ASCII only.
 template<typename CharType>
-std::size_t convert_escaped_characters(
-    CharType *cstring, escaped_char_alias_view<CharType> characters = get_standard_escaped_characters<CharType>())
+std::size_t convert_from_escaped_characters(CharType *dest,
+    const CharType *src,
+    std::size_t size,
+    escaped_char_alias_view<CharType> escaped_chars_view = get_standard_escaped_characters<CharType>())
 {
     using char_type = CharType;
 
     constexpr char_type null_char = get_char<char_type>('\0');
-    const char_type *reader = cstring;
-    char_type *writer = cstring;
+    const char_type *reader = src;
+    const char_type *writer_end = dest + size - 1;
+    char_type *writer = dest;
 
-    while (*reader != null_char) {
+    while (*reader != null_char && writer != writer_end) {
         char_type curr_char = *reader;
         char_type next_char = *++reader;
 
         bool done = false;
 
-        for (const escaped_char_alias<char_type> &escaped_char : characters) {
+        for (const escaped_char_alias<char_type> &escaped_char : escaped_chars_view) {
             if (curr_char == escaped_char.alias1 && next_char == escaped_char.alias2) {
+                // Write out the read character.
                 *writer++ = escaped_char.real;
-                ++reader;
                 done = true;
                 break;
             }
         }
 
-        if (done)
+        if (done) {
             continue;
+        }
 
+        // Write out the character as is.
         *writer++ = curr_char;
     }
 
-    const std::size_t stripped_count = (reader - writer) / sizeof(char_type);
+    // Write null character.
+    *writer = null_char;
 
-    // Fill the rest with null. Reader is the end by now.
-    while (writer != reader) {
-        *writer++ = null_char;
+    const std::size_t num_copied = (writer - dest);
+
+    return num_copied;
+}
+
+// Converts to escaped characters, meaning a 1 character sequence is converted to a 2 character sequence. Returns count of
+// characters copied to destination string, not including null terminator. Writes null at the end. Compatible with UTF-8 and
+// UTF-16, if escaped character symbols are ASCII only.
+template<typename CharType>
+std::size_t convert_to_escaped_characters(CharType *dest,
+    const CharType *src,
+    std::size_t size,
+    escaped_char_alias_view<CharType> escaped_chars_view = get_standard_escaped_characters<CharType>())
+{
+    using char_type = CharType;
+
+    constexpr char_type null_char = rts::get_char<char_type>('\0');
+    const char_type *reader = src;
+    const char_type *writer_end = dest + size - 2; // -2 because we may print up to 2 characters in one iteration.
+    char_type *writer = dest;
+
+    while (*reader != null_char && writer != writer_end) {
+        char_type curr_char = *reader++;
+
+        bool done = false;
+
+        for (const escaped_char_alias<char_type> &escaped_char : escaped_chars_view) {
+            if (curr_char == escaped_char.real) {
+                // Write out the escaped character sequence.
+                *writer++ = escaped_char.alias1;
+                *writer++ = escaped_char.alias2;
+                done = true;
+                break;
+            }
+        }
+
+        if (done) {
+            continue;
+        }
+
+        // Write out the character as is.
+        *writer++ = curr_char;
     }
 
-    return stripped_count;
+    // Write null character.
+    *writer = null_char;
+
+    const std::size_t num_copied = (writer - dest);
+
+    return num_copied;
 }
 
 } // namespace rts
