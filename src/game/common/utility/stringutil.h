@@ -180,6 +180,31 @@ template<typename CharType> std::size_t strip_all_obsolete_whitespace(CharType *
     return stripped_count;
 }
 
+// Replace string characters by given search sequence with replacement character.
+template<typename CharType> std::size_t replace_characters(CharType *cstring, const CharType *search, CharType replace)
+{
+    using char_type = CharType;
+
+    constexpr char_type null_char = get_char<char_type>('\0');
+    char_type *writer = cstring;
+    std::size_t replaced_count = 0;
+
+    while (*writer != null_char) {
+        const char_type *reader = search;
+        while (*reader != null_char) {
+            if (*writer == *reader) {
+                *writer = replace;
+                replaced_count++;
+                break;
+            }
+            ++reader;
+        }
+        ++writer;
+    }
+
+    return replaced_count;
+}
+
 template<typename CharType> struct escaped_char_alias
 {
     CharType real;
