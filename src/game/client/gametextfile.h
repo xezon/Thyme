@@ -144,9 +144,9 @@ private:
     static bool Read_CSF_Text(FileRef &file, StringInfo &string_info);
 
     static bool Write_STR_File(FileRef &file, const StringInfos &string_infos);
-    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info);
+    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf);
     static bool Write_STR_Label(FileRef &file, const StringInfo &string_info);
-    static bool Write_STR_Text(FileRef &file, const StringInfo &string_info);
+    static bool Write_STR_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf);
     static bool Write_STR_Speech(FileRef &file, const StringInfo &string_info);
     static bool Write_STR_End(FileRef &file);
 
@@ -160,8 +160,4 @@ private:
     Option m_options;
     LanguageID m_language;
     StringInfos m_stringInfos;
-
-    static const char s_eol[];
-    static const char s_quo[];
-    static const char s_end[];
 };

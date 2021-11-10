@@ -29,9 +29,26 @@
 using rts::FourCC;
 using rts::FourCC_LE;
 
-const char GameTextFile::s_eol[] = { '\r', '\n' };
-const char GameTextFile::s_quo[] = { '"' };
-const char GameTextFile::s_end[] = { 'E', 'N', 'D' };
+namespace
+{
+template<typename CharType> rts::escaped_char_alias_view<CharType> Get_Escaped_Characters()
+{
+    static const rts::escaped_char_alias<CharType> escaped_chars[] = {
+        { rts::get_char<CharType>('\n'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('n') },
+        { rts::get_char<CharType>('\t'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('t') },
+        { rts::get_char<CharType>('"'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('"') },
+        { rts::get_char<CharType>('?'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('?') },
+        { rts::get_char<CharType>('\''), rts::get_char<CharType>('\\'), rts::get_char<CharType>('\'') },
+        { rts::get_char<CharType>('\\'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('\\') },
+    };
+    return rts::escaped_char_alias_view<CharType>(escaped_chars);
+}
+
+const char s_eol[] = { '\r', '\n' };
+const char s_quo[] = { '"' };
+const char s_end[] = { 'E', 'N', 'D' };
+
+} // namespace
 
 bool GameTextFile::Load(const char *filename, Type filetype)
 {
@@ -694,6 +711,9 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
                         // Every char is binary flipped here by design.
                         string_info.text[i] = ~string_info.text[i];
                     }
+
+                    // #TODO Strip spaces.
+
                     text_ok = true;
                 }
             }
@@ -719,9 +739,12 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
 {
     captainslog_info("Writing string file '%s' in STR format", file->Get_File_Name().Str());
 
+    unichar_t utf16buf[GAMETEXT_BUFFER_16_SIZE] = { 0 };
+    auto utf16bufview = rts::stack_array_view(utf16buf);
+
     for (const StringInfo &string_info : string_infos) {
         if (!string_info.label.Is_Empty()) {
-            if (!Write_STR_Entry(file, string_info)) {
+            if (!Write_STR_Entry(file, string_info, utf16bufview)) {
                 return false;
             }
         }
@@ -729,10 +752,10 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
     return true;
 }
 
-bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info)
+bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf)
 {
     if (Write_STR_Label(file, string_info)) {
-        if (Write_STR_Text(file, string_info)) {
+        if (Write_STR_Text(file, string_info, utf16buf)) {
             if (Write_STR_Speech(file, string_info)) {
                 if (Write_STR_End(file)) {
                     return true;
@@ -751,36 +774,16 @@ bool GameTextFile::Write_STR_Label(FileRef &file, const StringInfo &string_info)
     return ok;
 }
 
-bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info)
+bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf)
 {
-    Utf16String text_utf16;
-    Utf8String text_utf8;
-
-    // Copy utf16 text and treat certain characters special.
-
-    for (int i = 0, count = string_info.text.Get_Length(); i < count; ++i) {
-        unichar_t c = string_info.text[i];
-        if (c == U_CHAR('\n')) {
-            // Print an escaped line feed.
-            text_utf16.Concat(U_CHAR('\\'));
-            text_utf16.Concat(U_CHAR('n'));
-            if (i != 0) {
-                // Write \r\n. Optional. Makes it easier to look at string in file.
-                // Will be discarded when read back into the system.
-                text_utf16.Concat(U_CHAR('\r'));
-                text_utf16.Concat(U_CHAR('\n'));
-            }
-        } else if (c == U_CHAR('"')) {
-            // Print an escaped quote.
-            text_utf16.Concat(U_CHAR('\\'));
-            text_utf16.Concat(U_CHAR('"'));
-        } else {
-            text_utf16.Concat(c);
-        }
-    }
+    // STR does support escaped characters for special control characters (\n, \t, ...)
+    // Write them out as escaped characters so they are easily modifiable in text editor.
+    const auto escaped_chars_view = Get_Escaped_Characters<unichar_t>();
+    rts::convert_to_escaped_characters(utf16buf.data(), string_info.text.Str(), utf16buf.size(), escaped_chars_view);
 
     // Convert utf16 to utf8.
-    text_utf8.Translate(text_utf16);
+    Utf8String text_utf8;
+    text_utf8.Translate(utf16buf.data()); // #TODO allocates each time
 
     bool ok = true;
     ok = ok && rts::write_any(file.Get(), s_quo);
