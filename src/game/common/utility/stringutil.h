@@ -63,143 +63,112 @@ template<typename CharType> constexpr bool is_null(CharType ch)
     return ch == get_char<CharType>('\0');
 }
 
+template<typename CharType> constexpr bool is_space(CharType ch)
+{
+    return ch == get_char<CharType>(' ');
+}
+
 template<typename CharType> constexpr bool is_null_or_whitespace(CharType ch)
 {
     return is_null(ch) || is_whitespace(ch);
 }
 
-enum StripOption
+template<typename CharType> constexpr std::size_t strlen_tpl(const CharType *cstring)
 {
-    STRIP_DEFAULT = 0,
-    STRIP_REPLACE_WHITESPACE = BIT(0), // Stripping will replace all whitespace with space character.
-    STRIP_LEADING_AND_TRAILING_ONLY = BIT(1), // Stripping within a sentence is prevented.
-};
-DEFINE_ENUMERATION_BITWISE_OPERATORS(StripOption);
-
-// Strips leading, trailing and duplicate whitespace. Can provide options to customize the stripping result. Returns count of
-// stripped characters. Writes null over all stripped characters at the end. Compatible with UTF-8 and UTF-16.
-template<typename StringType> std::size_t strip_obsolete_whitespace(StringType &string, StripOption option = STRIP_DEFAULT)
-{
-    captainslog_assert(string.end() >= string.begin());
-    captainslog_assert((string.end() - string.begin()) < 0x0fff);
-
-    if (string.empty())
-        return 0;
-
-    using char_type = typename StringType::value_type;
+    using char_type = CharType;
     constexpr char_type null_char = get_char<char_type>('\0');
-    constexpr char_type space_char = get_char<char_type>(' ');
-    const char_type *reader = string.begin();
-    const char_type *reader_end = string.end();
-    char_type *writer = string.begin();
-
-    const bool replace_whitespace = (option & STRIP_REPLACE_WHITESPACE) != 0;
-    const bool leading_and_trailing_only = (option & STRIP_LEADING_AND_TRAILING_ONLY) != 0;
-
-    // Increment reader to first non-whitespace character.
-    for (; reader != reader_end && is_null_or_whitespace(*reader); ++reader) {
+    const char_type *end = cstring;
+    for (; *end != null_char; ++end) {
     }
-
-    // Decrement reader_end to first non-whitespace character.
-    for (; reader != reader_end && is_null_or_whitespace(*(reader_end - 1)); --reader_end) {
-    }
-
-    while (reader != reader_end) {
-        char_type curr_char = *reader;
-        char_type next_char = (++reader != reader_end) ? *reader : null_char;
-        const bool curr_char_is_space = is_whitespace(curr_char);
-
-        // If this and next character is any whitespace or null, then skip.
-        if (!leading_and_trailing_only && curr_char_is_space && is_null_or_whitespace(next_char)) {
-            continue;
-        }
-
-        // If this character is any whitespace, then turn it into a space character.
-        if (replace_whitespace && curr_char_is_space) {
-            curr_char = space_char;
-        }
-
-        // Write out.
-        *writer++ = curr_char;
-    }
-
-    const std::size_t stripped_count = ((reader - writer) + (string.end() - reader_end));
-
-    // Fill the rest with null.
-    while (writer != string.end()) {
-        *writer++ = null_char;
-    }
-
-    return stripped_count;
+    const std::size_t len = (end - cstring);
+    return len;
 }
 
-// Simplified algorithm for null terminated strings. Strips leading, trailing and duplicate whitespace. Returns count of
-// stripped characters. Writes null over all stripped characters at the end. Compatible with UTF-8 and UTF-16.
-template<typename CharType> std::size_t strip_all_obsolete_whitespace(CharType *cstring)
+// Strips leading and trailing spaces. Returns length of new string after strip. Writes null over all stripped characters at
+// the end. Compatible with UTF-8 and UTF-16.
+template<typename CharType> std::size_t strip_leading_and_trailing_spaces(CharType *cstring)
 {
     using char_type = CharType;
 
     constexpr char_type null_char = get_char<char_type>('\0');
-    constexpr char_type space_char = get_char<char_type>(' ');
+    const char_type *reader = cstring;
+    const char_type *reader_end = cstring + strlen_tpl(cstring);
+    char_type *writer = cstring;
+    const char_type *writer_end = reader_end;
+
+    for (; reader != reader_end && is_space(*reader); ++reader) {
+    }
+
+    for (; reader != reader_end && is_space(*(reader_end - 1)); --reader_end) {
+    }
+
+    while (reader != reader_end) {
+        *writer++ = *reader++;
+    }
+
+    const std::size_t len = writer - cstring;
+
+    while (writer != writer_end) {
+        *writer++ = null_char;
+    }
+
+    return len;
+}
+
+// Strips leading, trailing and duplicate spaces. Preserves other whitespace characters such as LF and strips surrounding
+// spaces. Returns length of new string after strip. Writes null over all stripped characters at the end. Compatible with
+// UTF-8 and UTF-16.
+template<typename CharType> std::size_t strip_obsolete_spaces(CharType *cstring)
+{
+    using char_type = CharType;
+
+    constexpr char_type null_char = get_char<char_type>('\0');
+    char_type prev_char = get_char<char_type>(' ');
     const char_type *reader = cstring;
     char_type *writer = cstring;
 
-    // Iterate to first non-whitespace character.
-    for (; *reader != null_char && is_whitespace(*reader); ++reader) {
+    for (; !is_null(*reader) && is_space(*reader); ++reader) {
     }
 
-    while (*reader != null_char) {
+    while (!is_null(*reader)) {
         char_type curr_char = *reader;
         char_type next_char = *++reader;
-        const bool curr_char_is_space = is_whitespace(curr_char);
 
-        // If this and next character is any whitespace or null, then skip.
-        if (curr_char_is_space && is_null_or_whitespace(next_char)) {
+        if (is_space(curr_char) && (is_null_or_whitespace(next_char) || is_whitespace(prev_char))) {
             continue;
         }
 
-        // If this character is any whitespace, then turn it into a space character.
-        if (curr_char_is_space) {
-            curr_char = space_char;
-        }
-
-        // Write out.
         *writer++ = curr_char;
+        prev_char = curr_char;
     }
 
-    const std::size_t stripped_count = (reader - writer);
+    const std::size_t len = (writer - cstring);
 
-    // Fill the rest with null. Reader is the end by now.
     while (writer != reader) {
         *writer++ = null_char;
     }
 
-    return stripped_count;
+    return len;
 }
 
 // Replace string characters by given search sequence with replacement character.
-template<typename CharType> std::size_t replace_characters(CharType *cstring, const CharType *search, CharType replace)
+template<typename CharType> void replace_characters(CharType *cstring, const CharType *search, CharType replace)
 {
     using char_type = CharType;
 
-    constexpr char_type null_char = get_char<char_type>('\0');
     char_type *writer = cstring;
-    std::size_t replaced_count = 0;
 
-    while (*writer != null_char) {
+    while (!is_null(*writer)) {
         const char_type *reader = search;
-        while (*reader != null_char) {
+        while (!is_null(*reader)) {
             if (*writer == *reader) {
                 *writer = replace;
-                replaced_count++;
                 break;
             }
             ++reader;
         }
         ++writer;
     }
-
-    return replaced_count;
 }
 
 template<typename CharType> struct escaped_char_alias
@@ -250,8 +219,9 @@ std::size_t convert_from_escaped_characters(CharType *dest,
 
         for (const escaped_char_alias<char_type> &escaped_char : escaped_chars_view) {
             if (curr_char == escaped_char.alias1 && next_char == escaped_char.alias2) {
-                // Write out the read character.
+                // Write out the real character.
                 *writer++ = escaped_char.real;
+                ++reader;
                 done = true;
                 break;
             }
@@ -265,7 +235,6 @@ std::size_t convert_from_escaped_characters(CharType *dest,
         *writer++ = curr_char;
     }
 
-    // Write null character.
     *writer = null_char;
 
     const std::size_t num_copied = (writer - dest);
@@ -312,7 +281,6 @@ std::size_t convert_to_escaped_characters(CharType *dest,
         *writer++ = curr_char;
     }
 
-    // Write null character.
     *writer = null_char;
 
     const std::size_t num_copied = (writer - dest);

@@ -31,6 +31,10 @@ template<typename ValueType, std::size_t Size> inline constexpr array_view<Value
     return array_view<ValueType>(array, Size);
 }
 
+// char arrays are passed on with size minus one intentionally.
+// It is a conservative approach to allow generous algorithms that may place null terminator at
+// array_view.data() + array_view.size() as opposed to at array_view.data() + array_view.size() - 1.
+
 template<std::size_t Size> inline constexpr array_view<char>
     stack_array_view(char (&cstring)[Size])
 {

@@ -14,6 +14,7 @@
  */
 #pragma once
 
+#include "always.h"
 #include "common/utility/arrayview.h"
 #include "fileref.h"
 #include "gametextcommon.h"
@@ -65,6 +66,17 @@ enum class GameTextOption
 };
 
 DEFINE_ENUMERATION_BITWISE_OPERATORS(GameTextOption)
+
+// #TODO Make enum class. Currently macro below does not support it.
+enum ReadStep
+{
+    READ_STEP_LABEL,
+    READ_STEP_TEXT_BEGIN,
+    READ_STEP_TEXT_END,
+    READ_STEP_END,
+};
+
+DEFINE_ENUMERATION_OPERATORS(ReadStep);
 
 // #FEATURE Stores information about localization text lengths.
 struct GameTextLengthInfo
@@ -136,6 +148,10 @@ private:
     static void Log_Length_Info(const LengthInfo &len_info);
     static void Check_Length_Info(const LengthInfo &len_info);
 
+    static bool Read_STR_File(FileRef &file, StringInfos &string_infos);
+    static bool Is_STR_Comment(const char *cstring);
+    static bool Is_STR_End(const char *cstring);
+    static void Next_Step(ReadStep &step, char &eol);
 
     static bool Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language);
     static bool Read_CSF_Header(FileRef &file, StringInfos &string_infos, LanguageID &language);
