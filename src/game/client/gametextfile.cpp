@@ -26,9 +26,6 @@
 #include <strings.h>
 #endif
 
-using rts::FourCC;
-using rts::FourCC_LE;
-
 namespace Thyme
 {
 
@@ -748,7 +745,7 @@ bool GameTextFile::Read_CSF_Header(FileRef &file, StringInfos &string_infos, Lan
         letoh_ref(header.skip);
         letoh_ref(header.version);
 
-        if (header.id == FourCC_LE<'C', 'S', 'F', ' '>::value) {
+        if (header.id == rts::FourCC_LE<'C', 'S', 'F', ' '>::value) {
             language = (header.version > 1) ? static_cast<LanguageID>(header.langid) : LanguageID::LANGUAGE_ID_US;
             string_infos.resize(header.num_labels);
             return true;
@@ -782,7 +779,7 @@ bool GameTextFile::Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_
         letoh_ref(header.texts);
         letoh_ref(header.length);
 
-        if (header.id == FourCC_LE<'L', 'B', 'L', ' '>::value) {
+        if (header.id == rts::FourCC_LE<'L', 'B', 'L', ' '>::value) {
             if (rts::read_str(file.Get(), rts::resized_array_view(string_info.label, header.length))) {
                 texts = header.texts;
                 return true;
@@ -806,8 +803,8 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
             letoh_ref(header.id);
             letoh_ref(header.length);
 
-            read_speech = (header.id == FourCC_LE<'S', 'T', 'R', 'W'>::value);
-            const bool read_text = (header.id == FourCC_LE<'S', 'T', 'R', ' '>::value);
+            read_speech = (header.id == rts::FourCC_LE<'S', 'T', 'R', 'W'>::value);
+            const bool read_text = (header.id == rts::FourCC_LE<'S', 'T', 'R', ' '>::value);
 
             if (read_speech || read_text) {
                 auto str = rts::resized_array_view(string_info.text, header.length);
@@ -954,11 +951,11 @@ bool GameTextFile::Write_CSF_File(FileRef &file, const StringInfos &string_infos
 bool GameTextFile::Write_CSF_Header(FileRef &file, const StringInfos &string_infos, const LanguageID &language)
 {
     CSFHeader header;
-    header.id = FourCC_LE<'C', 'S', 'F', ' '>::value;
+    header.id = rts::FourCC_LE<'C', 'S', 'F', ' '>::value;
     header.version = 3;
     header.num_labels = string_infos.size();
     header.num_strings = string_infos.size();
-    header.skip = FourCC_LE<'T', 'H', 'Y', 'M'>::value;
+    header.skip = rts::FourCC_LE<'T', 'H', 'Y', 'M'>::value;
     header.langid = language;
     htole_ref(header.id);
     htole_ref(header.version);
@@ -983,7 +980,7 @@ bool GameTextFile::Write_CSF_Entry(FileRef &file, const StringInfo &string_info,
 bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info)
 {
     CSFLabelHeader header;
-    header.id = FourCC_LE<'L', 'B', 'L', ' '>::value;
+    header.id = rts::FourCC_LE<'L', 'B', 'L', ' '>::value;
     header.texts = 1;
     header.length = string_info.label.Get_Length();
     htole_ref(header.id);
@@ -1008,7 +1005,7 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
         size_t text_len = string_info.text.Get_Length();
 
         CSFTextHeader header;
-        header.id = write_speech ? FourCC_LE<'S', 'T', 'R', 'W'>::value : FourCC_LE<'S', 'T', 'R', ' '>::value;
+        header.id = write_speech ? rts::FourCC_LE<'S', 'T', 'R', 'W'>::value : rts::FourCC_LE<'S', 'T', 'R', ' '>::value;
         header.length = text_len;
         htole_ref(header.id);
         htole_ref(header.length);
