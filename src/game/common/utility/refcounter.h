@@ -18,6 +18,7 @@
 #include "bittype.h"
 #include "captainslog.h"
 #include "deleter.h"
+#include "sizedinteger.h"
 
 // Functions follows naming convention of Windows referenced counted objects, such as DirectX, COM.
 
@@ -29,7 +30,7 @@
 
 #if !THYME_USE_STLPORT
 #ifndef REFCOUNTER_USE_STD_ATOMIC
-#define REFCOUNTER_USE_STD_ATOMIC 1
+#define REFCOUNTER_USE_STD_ATOMIC 1 // #TODO implement relevant functionality
 #endif
 #endif
 
@@ -37,45 +38,44 @@ namespace rts
 {
 namespace detail
 {
-// #TODO Use sized integer here
 
-// #FEATURE Helper function to check reference counter.
 template<typename Integer> inline void Destructor_Ref_Check(Integer counter, Integer expected_counter = Integer{ 0 })
 {
 #if REFCOUNTER_CHECK
-    if (static_cast<int>(counter) < static_cast<int>(expected_counter))
+    using signed_int = signed_integer<Integer>::type;
+    if (static_cast<signed_int>(counter) < static_cast<signed_int>(expected_counter))
         captainslog_dbgassert(false,
             "REFCOUNTER_CHECK Deleting reference counted object more than once. Counter %d is not equal %d.",
-            static_cast<int>(counter),
-            static_cast<int>(expected_counter));
+            static_cast<signed_int>(counter),
+            static_cast<signed_int>(expected_counter));
 
-    if (static_cast<int>(counter) > static_cast<int>(expected_counter))
+    if (static_cast<signed_int>(counter) > static_cast<signed_int>(expected_counter))
         captainslog_dbgassert(false,
             "REFCOUNTER_CHECK Deleting reference counted object without releasing all owners. Counter %d is not equal %d.",
-            static_cast<int>(counter),
-            static_cast<int>(expected_counter));
+            static_cast<signed_int>(counter),
+            static_cast<signed_int>(expected_counter));
 #endif
 }
 
-// #FEATURE Helper function to check reference counter.
 template<typename Integer> inline void AddRef_Check(Integer counter, Integer min_counter = Integer{ 1 })
 {
 #if REFCOUNTER_CHECK
-    captainslog_dbgassert(static_cast<int>(counter) >= static_cast<int>(min_counter),
+    using signed_int = signed_integer<Integer>::type;
+    captainslog_dbgassert(static_cast<signed_int>(counter) >= static_cast<signed_int>(min_counter),
         "REFCOUNTER_CHECK Unexpected reference add. Counter %d is smaller than %d.",
-        static_cast<int>(counter),
-        static_cast<int>(min_counter));
+        static_cast<signed_int>(counter),
+        static_cast<signed_int>(min_counter));
 #endif
 }
 
-// #FEATURE Helper function to check reference counter.
 template<typename Integer> inline void Release_Check(Integer counter, Integer min_counter = Integer{ 0 })
 {
 #if REFCOUNTER_CHECK
-    captainslog_dbgassert(static_cast<int>(counter) >= static_cast<int>(min_counter),
+    using signed_int = signed_integer<Integer>::type;
+    captainslog_dbgassert(static_cast<signed_int>(counter) >= static_cast<signed_int>(min_counter),
         "REFCOUNTER_CHECK Unexpected reference removal. Counter %d is smaller than %d.",
-        static_cast<int>(counter),
-        static_cast<int>(min_counter));
+        static_cast<signed_int>(counter),
+        static_cast<signed_int>(min_counter));
 #endif
 }
 
