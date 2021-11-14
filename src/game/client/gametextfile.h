@@ -14,8 +14,9 @@
  */
 #pragma once
 
-#include "always.h"
 #include "common/utility/arrayview.h"
+#include "common/utility/enumerator.h"
+#include "common/utility/flags.h"
 #include "fileref.h"
 #include "gametextcommon.h"
 #include <vector>
@@ -29,7 +30,6 @@ namespace Thyme
 constexpr size_t GAMETEXT_BUFFER_16_SIZE = 1024;
 constexpr size_t GAMETEXT_BUFFER_8_SIZE = GAMETEXT_BUFFER_16_SIZE * 4;
 
-// #FEATURE Describes CSF Label header.
 struct CSFLabelHeader
 {
     uint32_t id;
@@ -37,14 +37,12 @@ struct CSFLabelHeader
     int32_t length;
 };
 
-// #FEATURE Describes CSF Text header.
 struct CSFTextHeader
 {
     uint32_t id;
     int32_t length;
 };
 
-// #FEATURE Describes CSF Speech header.
 struct CSFSpeechHeader
 {
     int32_t length;
@@ -52,7 +50,6 @@ struct CSFSpeechHeader
 
 using StringInfos = std::vector<StringInfo>;
 
-// #FEATURE Game text type.
 enum class GameTextType
 {
     AUTO,
@@ -60,28 +57,21 @@ enum class GameTextType
     STR,
 };
 
-// #FEATURE Game text option flags.
-enum class GameTextOption
+enum class GameTextOption : uint8_t
 {
     NONE = 0,
     PRINT_LENGTH_INFO_ON_LOAD = BIT(0),
     PRINT_LENGTH_INFO_ON_SAVE = BIT(1),
 };
 
-DEFINE_ENUMERATION_BITWISE_OPERATORS(GameTextOption)
-
-// #TODO Make enum class. Currently macro below does not support it.
-enum ReadStep
+enum class GameTextReadStep : uint8_t
 {
-    READ_STEP_LABEL,
-    READ_STEP_TEXT_BEGIN,
-    READ_STEP_TEXT_END,
-    READ_STEP_END,
+    LABEL,
+    TEXT_BEGIN,
+    TEXT_END,
+    END,
 };
 
-DEFINE_ENUMERATION_OPERATORS(ReadStep);
-
-// #FEATURE Stores information about localization text lengths.
 struct GameTextLengthInfo
 {
     int max_label_len;
@@ -96,12 +86,13 @@ class GameTextFile
 {
 public:
     using LengthInfo = GameTextLengthInfo;
-    using Option = GameTextOption;
+    using Options = rts::bitflags<GameTextOption>;
     using Type = GameTextType;
     using Utf8Buf = rts::array_view<char>;
     using Utf16Buf = rts::array_view<unichar_t>;
+    using ReadStep = rts::enumerator<GameTextReadStep>;
 
-    GameTextFile() : m_options(Option::NONE), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
+    GameTextFile() : m_options(Options::Value::NONE), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
 
     // Checks whether or not localization is loaded.
     bool IsLoaded() const { return !m_stringInfos.empty(); }
@@ -122,8 +113,8 @@ public:
     const StringInfos &Get_String_Infos() const { return m_stringInfos; }
 
     // Sets and gets options for operations.
-    void SetOptions(Option options) { m_options = options; }
-    Option GetOptions() const { return m_options; }
+    void SetOptions(Options options) { m_options = options; }
+    Options GetOptions() const { return m_options; }
 
 private:
     static Type Get_File_Type(const char *filename, Type filetype);
@@ -157,7 +148,7 @@ private:
     static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf);
 
 private:
-    Option m_options;
+    Options m_options;
     LanguageID m_language;
     StringInfos m_stringInfos;
 };

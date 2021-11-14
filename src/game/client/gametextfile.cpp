@@ -87,8 +87,7 @@ bool GameTextFile::Load(const char *filename, Type filetype)
     }
 
     if (success) {
-        const bool collect = static_cast<int>(m_options & GameTextOption::PRINT_LENGTH_INFO_ON_LOAD) != 0;
-        if (collect) {
+        if (m_options.has(Options::Value::PRINT_LENGTH_INFO_ON_LOAD)) {
             LengthInfo len_info;
             Collect_Length_Info(len_info, m_stringInfos);
             Log_Length_Info(len_info);
@@ -132,8 +131,7 @@ bool GameTextFile::Save(const char *filename, Type filetype)
     }
 
     if (success) {
-        const bool collect = static_cast<int>(m_options & GameTextOption::PRINT_LENGTH_INFO_ON_SAVE) != 0;
-        if (collect) {
+        if (m_options.has(Options::Value::PRINT_LENGTH_INFO_ON_SAVE)) {
             LengthInfo len_info;
             Collect_Length_Info(len_info, m_stringInfos);
             Log_Length_Info(len_info);
@@ -239,7 +237,7 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos)
     StringInfos tmp_string_infos;
     tmp_string_infos.reserve(16384);
 
-    ReadStep step = READ_STEP_LABEL;
+    ReadStep step = ReadStep::Value::LABEL;
     size_t num_copied = 0;
     char eol = '\n';
 
@@ -249,7 +247,7 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos)
         rts::replace_characters(utf8view.data(), "\t\n\v\f\r", ' ');
         num_copied = rts::strip_leading_and_trailing_spaces(utf8view.data());
 
-        if (step == READ_STEP_LABEL) {
+        if (step == ReadStep::Value::LABEL) {
             if (num_copied == 0) {
                 continue;
             }
@@ -257,9 +255,9 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos)
                 continue;
             }
             string_info.label = utf8view.data();
-        } else if (step == READ_STEP_TEXT_BEGIN) {
+        } else if (step == ReadStep::Value::TEXT_BEGIN) {
             // String until text begin can be empty.
-        } else if (step == READ_STEP_TEXT_END) {
+        } else if (step == ReadStep::Value::TEXT_END) {
             // String until text end can be empty.
             // STR does support escaped characters for special control characters (\n, \t, ...)
             // When written out as 2 symbol sequence, it will be converted into single character here. Convert in place.
@@ -268,7 +266,7 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos)
             rts::strip_obsolete_spaces(utf8view.data());
 
             string_info.text.Translate(utf8view.data());
-        } else if (step == READ_STEP_END) {
+        } else if (step == ReadStep::Value::END) {
             if (num_copied == 0) {
                 continue;
             }
@@ -306,21 +304,21 @@ bool GameTextFile::Is_STR_End(const char *cstring)
 
 void GameTextFile::Next_Step(ReadStep &step, char &eol)
 {
-    if (++step > READ_STEP_END) {
-        step = READ_STEP_LABEL;
+    if (++step > ReadStep::Value::END) {
+        step = ReadStep::Value::LABEL;
     }
 
-    switch (step) {
-        case READ_STEP_LABEL:
+    switch (step.value()) {
+        case ReadStep::Value::LABEL:
             eol = '\n';
             break;
-        case READ_STEP_TEXT_BEGIN:
+        case ReadStep::Value::TEXT_BEGIN:
             eol = '"';
             break;
-        case READ_STEP_TEXT_END:
+        case ReadStep::Value::TEXT_END:
             eol = '"';
             break;
-        case READ_STEP_END:
+        case ReadStep::Value::END:
             eol = '\n';
             break;
     }
