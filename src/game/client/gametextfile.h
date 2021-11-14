@@ -126,25 +126,6 @@ public:
     Option GetOptions() const { return m_options; }
 
 private:
-    static void Read_To_End_Of_Quote(File *file, char *in, char *out, char *wave, int buff_len);
-    static void Translate_Copy(unichar_t *out, const char *in);
-    static void Remove_Leading_And_Trailing(char *buffer);
-    static void Strip_Spaces(unichar_t *buffer);
-    static char Read_Char(File *file);
-    static bool Read_Line(char *buffer, int length, File *file);
-    static bool Get_String_Count(const char *filename,
-        int &count,
-        rts::array_view<char> buffer_in,
-        rts::array_view<char> buffer_out,
-        rts::array_view<char> buffer_ex);
-    static bool Parse_String_File(const char *filename,
-        StringInfo *string_info,
-        int &max_label_len,
-        rts::array_view<unichar_t> buffer_trans,
-        rts::array_view<char> buffer_in,
-        rts::array_view<char> buffer_out,
-        rts::array_view<char> buffer_ex);
-
     static Type Get_File_Type(const char *filename, Type filetype);
 
     static void Collect_Length_Info(LengthInfo &len_info, const StringInfos &strings);
