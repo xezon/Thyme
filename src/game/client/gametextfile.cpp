@@ -29,6 +29,9 @@
 using rts::FourCC;
 using rts::FourCC_LE;
 
+namespace Thyme
+{
+
 namespace
 {
 template<typename CharType> rts::escaped_char_alias_view<CharType> Get_Escaped_Characters()
@@ -85,7 +88,7 @@ bool GameTextFile::Load(const char *filename, Type filetype)
     } else if (filetype == Type::STR) {
         success = Read_STR_File(file, m_stringInfos);
 
-        //if (Get_String_Count(filename, string_count, bufview_in, bufview_out, bufview_ex)) {
+        // if (Get_String_Count(filename, string_count, bufview_in, bufview_out, bufview_ex)) {
         //    m_stringInfos.resize(string_count);
 
         //    if (Parse_String_File(
@@ -1039,3 +1042,5 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
     }
     return text_ok && (speech_ok || !write_speech);
 }
+
+} // namespace Thyme

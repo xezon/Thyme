@@ -20,6 +20,9 @@
 #include "gametextcommon.h"
 #include <vector>
 
+namespace Thyme
+{
+
 // https://www.rfc-editor.org/rfc/rfc3629
 // In UTF-8, characters from the U+0000..U+10FFFF range (the UTF-16
 // accessible range) are encoded using sequences of 1 to 4 octets.
@@ -177,3 +180,5 @@ private:
     LanguageID m_language;
     StringInfos m_stringInfos;
 };
+
+} // namespace Thyme

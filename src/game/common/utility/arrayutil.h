@@ -20,10 +20,12 @@
 #include "unicodestring.h"
 #include <captainslog.h>
 
-// clang-format off
-
+namespace Thyme
+{
 namespace rts
 {
+
+// clang-format off
 
 template<typename ValueType, std::size_t Size> inline constexpr array_view<ValueType>
     stack_array_view(ValueType (&array)[Size])
@@ -158,6 +160,7 @@ inline constexpr array_view<const unichar_t>
     return array_view<const unichar_t>(cstring, u_strlen(cstring));
 }
 
-} // namespace rts
-
 // clang-format on
+
+} // namespace rts
+} // namespace Thyme

@@ -17,6 +17,8 @@
 #include "refcounter.h"
 #include <algorithm>
 
+namespace Thyme
+{
 namespace rts
 {
 // #FEATURE Non-intrusive reference counted smart pointer.
@@ -184,3 +186,4 @@ template<typename Value, typename Deleter = NewDeleter<Value>>
 using nonintrusive_atomic_ptr = nonintrusive_ptr_t<Value, Deleter, nonintrusive_atomic_counter>;
 
 } // namespace rts
+} // namespace Thyme

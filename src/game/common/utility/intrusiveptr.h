@@ -17,6 +17,8 @@
 #include "refcounter.h"
 #include <algorithm>
 
+namespace Thyme
+{
 namespace rts
 {
 // #FEATURE Intrusive reference counted smart pointer.
@@ -160,3 +162,4 @@ public:
 };
 
 } // namespace rts
+} // namespace Thyme

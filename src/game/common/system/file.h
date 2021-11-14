@@ -29,6 +29,7 @@ struct FileInfo
 namespace Thyme
 {
 // Thyme specific
+template<typename> class FileRefT;
 
 // Returns integer of given mode and BUFFERED flag and encoded buffer size.
 // Buffer size min: 0, max: 4194240, in 64 byte increments.
@@ -38,13 +39,11 @@ int Encode_Buffered_File_Mode(int mode, int buffer_size);
 bool Decode_Buffered_File_Mode(int mode, int &buffer_size);
 } // namespace Thyme
 
-template<typename> class FileRefT;
-
 // Game file class. Can read and write file data. When using File*, then call Close() function when done with it. Prefer
 // wrapping File* in FileRef when writing new feature code to avoid misuse.
 class File : public MemoryPoolObject
 {
-    template<typename> friend class FileRefT;
+    template<typename> friend class Thyme::FileRefT;
 
     IMPLEMENT_ABSTRACT_POOL(File);
 
@@ -107,4 +106,3 @@ protected:
     bool m_access;
     bool m_deleteOnClose;
 };
-

@@ -20,6 +20,8 @@
 #include <macros.h>
 #include <unichar.h>
 
+namespace Thyme
+{
 namespace rts
 {
 template<typename CharType> constexpr CharType get_char(char ch);
@@ -289,3 +291,4 @@ std::size_t convert_to_escaped_characters(CharType *dest,
 }
 
 } // namespace rts
+} // namespace Thyme

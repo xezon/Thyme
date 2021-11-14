@@ -33,6 +33,8 @@
 #endif
 #endif
 
+namespace Thyme
+{
 namespace rts
 {
 namespace detail
@@ -217,8 +219,7 @@ public:
     integer_type AddRef() const { return detail::AddRef<integer_type>(m_counter); }
     integer_type Release() const
     {
-        return detail::Release<integer_type, derived_type, deleter_type>(
-            m_counter, static_cast<const derived_type *>(this));
+        return detail::Release<integer_type, derived_type, deleter_type>(m_counter, static_cast<const derived_type *>(this));
     }
     integer_type UseCount() const { return m_counter; }
 
@@ -259,3 +260,4 @@ using nonintrusive_atomic_counter = nonintrusive_atomic_counter_i<RefCounterInte
 using nonintrusive_counter = nonintrusive_counter_i<RefCounterInteger>;
 
 } // namespace rts
+} // namespace Thyme

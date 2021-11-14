@@ -18,6 +18,9 @@
 
 class File;
 
+namespace Thyme
+{
+
 // #FEATURE File deleter
 struct FileDeleter
 {
@@ -72,3 +75,5 @@ private:
 
 using FileRef = FileRefT<rts::nonintrusive_counter>;
 using FileRefAtomic = FileRefT<rts::nonintrusive_atomic_counter>;
+
+} // namespace Thyme

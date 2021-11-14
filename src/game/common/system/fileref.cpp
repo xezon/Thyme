@@ -15,9 +15,14 @@
 #include "fileref.h"
 #include "file.h"
 
+namespace Thyme
+{
+
 void FileDeleter::Delete_Instance(File *instance)
 {
     instance->Set_Del_On_Close(false);
     instance->Close();
     instance->Delete_Instance();
 }
+
+} // namespace Thyme

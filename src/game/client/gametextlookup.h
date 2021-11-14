@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <vector>
 
+namespace Thyme
+{
+
 struct ConstStringLookup
 {
     const char *label;
@@ -101,3 +104,5 @@ int GameTextLookup<StringLookup, StringInfos>::Compare_LUT(const void *a, const 
 
     return strcasecmp(ac, bc);
 }
+
+} // namespace Thyme

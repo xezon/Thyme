@@ -17,6 +17,8 @@
 #include "common/system/file.h"
 #include "stringutil.h"
 
+namespace Thyme
+{
 namespace rts
 {
 
@@ -136,3 +138,4 @@ inline bool write(File *file, const void *data, int len)
 }
 
 } // namespace rts
+} // namespace Thyme
