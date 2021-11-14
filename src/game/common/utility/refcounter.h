@@ -33,8 +33,6 @@
 #endif
 #endif
 
-namespace Thyme
-{
 namespace rts
 {
 namespace detail
@@ -260,4 +258,3 @@ using nonintrusive_atomic_counter = nonintrusive_atomic_counter_i<RefCounterInte
 using nonintrusive_counter = nonintrusive_counter_i<RefCounterInteger>;
 
 } // namespace rts
-} // namespace Thyme

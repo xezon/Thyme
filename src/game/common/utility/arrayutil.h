@@ -20,8 +20,6 @@
 #include "unicodestring.h"
 #include <captainslog.h>
 
-namespace Thyme
-{
 namespace rts
 {
 
@@ -163,4 +161,3 @@ inline constexpr array_view<const unichar_t>
 // clang-format on
 
 } // namespace rts
-} // namespace Thyme

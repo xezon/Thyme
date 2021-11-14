@@ -16,8 +16,6 @@
 
 #include <cstddef>
 
-namespace Thyme
-{
 namespace rts
 {
 // #FEATURE array_view allows to pass along a buffer and its size in one go. Alternative is std::span<> with c++20. Not to be
@@ -74,4 +72,3 @@ private:
 };
 
 } // namespace rts
-} // namespace Thyme
