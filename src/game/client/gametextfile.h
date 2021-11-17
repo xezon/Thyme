@@ -89,8 +89,8 @@ public:
     using LengthInfo = GameTextLengthInfo;
     using Options = rts::bitflags<GameTextOption>;
     using Type = GameTextType;
-    using Utf8Buf = rts::array_view<char>;
-    using Utf16Buf = rts::array_view<unichar_t>;
+    using Utf8View = rts::array_view<char>;
+    using Utf16View = rts::array_view<unichar_t>;
     using ReadStep = rts::enumerator<GameTextReadStep>;
 
     GameTextFile() : m_options(Options::Value::NONE), m_language(LanguageID::LANGUAGE_ID_US), m_stringInfos(){};
@@ -125,10 +125,10 @@ private:
     static void Check_Length_Info(const LengthInfo &len_info);
 
     static bool Read_STR_File(FileRef &file, StringInfos &string_infos, Options options);
-    static bool Try_Parse_STR_Label(Utf8Buf read_view, StringInfo &string_info);
-    static void Parse_STR_Text_Begin(Utf8Buf read_view, StringInfo &string_info);
-    static void Parse_STR_Text_End(Utf8Buf read_view, StringInfo &string_info, Options options);
-    static bool Try_Parse_STR_End(Utf8Buf read_view, StringInfo &string_info);
+    static bool Try_Parse_STR_Label(Utf8View read8, StringInfo &string_info);
+    static void Parse_STR_Text_Begin(Utf8View read8, StringInfo &string_info);
+    static void Parse_STR_Text_End(Utf8View read8, StringInfo &string_info, Options options);
+    static bool Try_Parse_STR_End(Utf8View read8, StringInfo &string_info);
     static bool Is_STR_Comment(const char *cstring);
     static bool Is_STR_End(const char *cstring);
     static void Next_Step(ReadStep &step, char &eol);
@@ -140,17 +140,17 @@ private:
     static bool Read_CSF_Text(FileRef &file, StringInfo &string_info);
 
     static bool Write_STR_File(FileRef &file, const StringInfos &string_infos);
-    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf);
+    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, Utf16View write16, Utf8String &write8);
     static bool Write_STR_Label(FileRef &file, const StringInfo &string_info);
-    static bool Write_STR_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf);
+    static bool Write_STR_Text(FileRef &file, const StringInfo &string_info, Utf16View write16, Utf8String &write8);
     static bool Write_STR_Speech(FileRef &file, const StringInfo &string_info);
     static bool Write_STR_End(FileRef &file);
 
     static bool Write_CSF_File(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
     static bool Write_CSF_Header(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
-    static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf);
+    static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16View write16);
     static bool Write_CSF_Label(FileRef &file, const StringInfo &string_info);
-    static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf);
+    static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16View write16);
 
 private:
     Options m_options;

@@ -69,17 +69,6 @@ bool GameTextFile::Load(const char *filename, Type filetype)
 
     filetype = Get_File_Type(filename, filetype);
 
-    int string_count = 0;
-    int max_label_len = 0;
-    char buffer_in[512] = { 0 };
-    char buffer_out[512] = { 0 };
-    char buffer_ex[512] = { 0 };
-    unichar_t buffer_trans[1024] = { 0 };
-    auto bufview_in = rts::stack_array_view(buffer_in);
-    auto bufview_out = rts::stack_array_view(buffer_out);
-    auto bufview_ex = rts::stack_array_view(buffer_ex);
-    auto bufview_trans = rts::stack_array_view(buffer_trans);
-
     if (filetype == Type::CSF) {
         success = Read_CSF_File(file, m_stringInfos, m_language);
     } else if (filetype == Type::STR) {
@@ -229,7 +218,7 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Optio
     captainslog_info("Reading string file '%s' in STR format", file->Get_File_Name().Str());
 
     char read_buf[GAMETEXT_BUFFER_8_SIZE] = { 0 };
-    auto read_view = rts::stack_array_view(read_buf);
+    auto read8 = rts::stack_array_view(read_buf);
 
     // Instead of reading the file once from top to bottom to get the number of the entries, we will allocate a very generous
     // buffer to begin with and shrink it down afterwards. This will reduce algorithm complexity and file access.
@@ -241,17 +230,17 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Optio
     size_t num_copied = 0;
     char eol = '\n';
 
-    while (rts::read_line(file.Get(), read_view, eol)) {
+    while (rts::read_line(file.Get(), read8, eol)) {
         if (step == ReadStep::Value::LABEL) {
-            if (!Try_Parse_STR_Label(read_view, string_info)) {
+            if (!Try_Parse_STR_Label(read8, string_info)) {
                 continue;
             }
         } else if (step == ReadStep::Value::TEXT_BEGIN) {
-            Parse_STR_Text_Begin(read_view, string_info);
+            Parse_STR_Text_Begin(read8, string_info);
         } else if (step == ReadStep::Value::TEXT_END) {
-            Parse_STR_Text_End(read_view, string_info, options);
+            Parse_STR_Text_End(read8, string_info, options);
         } else if (step == ReadStep::Value::END) {
-            if (!Try_Parse_STR_End(read_view, string_info)) {
+            if (!Try_Parse_STR_End(read8, string_info)) {
                 // Is not end. Continue looking for end.
                 continue;
             }
@@ -268,65 +257,65 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Optio
     return !string_infos.empty();
 }
 
-bool GameTextFile::Try_Parse_STR_Label(Utf8Buf read_view, StringInfo &string_info)
+bool GameTextFile::Try_Parse_STR_Label(Utf8View read8, StringInfo &string_info)
 {
-    rts::strip_characters(read_view.data(), "\n\r");
-    const size_t len = rts::strip_leading_and_trailing_spaces(read_view.data());
+    rts::strip_characters(read8.data(), "\n\r");
+    const size_t len = rts::strip_leading_and_trailing_spaces(read8.data());
 
     if (len == 0) {
         return false;
     }
-    if (Is_STR_Comment(read_view.data())) {
+    if (Is_STR_Comment(read8.data())) {
         return false;
     }
-    string_info.label = read_view.data();
+    string_info.label = read8.data();
     return true;
 }
 
-void GameTextFile::Parse_STR_Text_Begin(Utf8Buf read_view, StringInfo &string_info)
+void GameTextFile::Parse_STR_Text_Begin(Utf8View read8, StringInfo &string_info)
 {
     // Read string can be empty.
 
-    rts::strip_characters(read_view.data(), "\n\r");
+    rts::strip_characters(read8.data(), "\n\r");
 }
 
-void GameTextFile::Parse_STR_Text_End(Utf8Buf read_view, StringInfo &string_info, Options options)
+void GameTextFile::Parse_STR_Text_End(Utf8View read8, StringInfo &string_info, Options options)
 {
     // Read string can be empty.
 
     const auto escaped_chars_view = Get_Escaped_Characters<char>();
 
-    rts::strip_characters(read_view.data(), "\n\r");
-    rts::replace_characters(read_view.data(), "\t\v\f", ' ');
+    rts::strip_characters(read8.data(), "\n\r");
+    rts::replace_characters(read8.data(), "\t\v\f", ' ');
 
     // STR does support escaped characters for special control characters (\n, \t, ...)
     // When written out as 2 symbol sequence, it will be converted into single character here. Convert in place.
-    rts::convert_from_escaped_characters(read_view.data(), read_view.data(), read_view.size(), escaped_chars_view);
+    rts::convert_from_escaped_characters(read8.data(), read8.data(), read8.size(), escaped_chars_view);
 
     if (!options.has(GameTextOption::KEEP_SPACES_ON_STR_READ)) {
         // Strip any remaining obsolete spaces for cleaner presentation in game.
-        rts::strip_obsolete_spaces(read_view.data());
+        rts::strip_obsolete_spaces(read8.data());
     }
 
     // Translate final UTF16 string.
-    string_info.text.Translate(read_view.data());
+    string_info.text.Translate(read8.data());
 }
 
-bool GameTextFile::Try_Parse_STR_End(Utf8Buf read_view, StringInfo &string_info)
+bool GameTextFile::Try_Parse_STR_End(Utf8View read8, StringInfo &string_info)
 {
-    rts::strip_characters(read_view.data(), "\n\r");
-    const size_t len = rts::strip_leading_and_trailing_spaces(read_view.data());
+    rts::strip_characters(read8.data(), "\n\r");
+    const size_t len = rts::strip_leading_and_trailing_spaces(read8.data());
 
     if (len == 0) {
         return false;
     }
-    if (Is_STR_Comment(read_view.data())) {
+    if (Is_STR_Comment(read8.data())) {
         return false;
     }
-    if (Is_STR_End(read_view.data())) {
+    if (Is_STR_End(read8.data())) {
         return true;
     }
-    string_info.speech = read_view.data();
+    string_info.speech = read8.data();
     return false;
 }
 
@@ -494,12 +483,15 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
 {
     captainslog_info("Writing string file '%s' in STR format", file->Get_File_Name().Str());
 
-    unichar_t utf16buf[GAMETEXT_BUFFER_16_SIZE] = { 0 };
-    auto utf16bufview = rts::stack_array_view(utf16buf);
+    Utf8String write8;
+    write8.Get_Buffer_For_Read(GAMETEXT_BUFFER_8_SIZE);
+
+    unichar_t write_buf[GAMETEXT_BUFFER_16_SIZE] = { 0 };
+    auto write16 = rts::stack_array_view(write_buf);
 
     for (const StringInfo &string_info : string_infos) {
         if (!string_info.label.Is_Empty()) {
-            if (!Write_STR_Entry(file, string_info, utf16bufview)) {
+            if (!Write_STR_Entry(file, string_info, write16, write8)) {
                 return false;
             }
         }
@@ -507,10 +499,10 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
     return true;
 }
 
-bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf)
+bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info, Utf16View write16, Utf8String &write8)
 {
     if (Write_STR_Label(file, string_info)) {
-        if (Write_STR_Text(file, string_info, utf16buf)) {
+        if (Write_STR_Text(file, string_info, write16, write8)) {
             if (Write_STR_Speech(file, string_info)) {
                 if (Write_STR_End(file)) {
                     return true;
@@ -529,20 +521,19 @@ bool GameTextFile::Write_STR_Label(FileRef &file, const StringInfo &string_info)
     return ok;
 }
 
-bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf)
+bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, Utf16View write16, Utf8String &write8)
 {
     // STR does support escaped characters for special control characters (\n, \t, ...)
     // Write them out as escaped characters so they are easily modifiable in text editor.
     const auto escaped_chars_view = Get_Escaped_Characters<unichar_t>();
-    rts::convert_to_escaped_characters(utf16buf.data(), string_info.text.Str(), utf16buf.size(), escaped_chars_view);
+    rts::convert_to_escaped_characters(write16.data(), string_info.text.Str(), write16.size(), escaped_chars_view);
 
     // Convert utf16 to utf8.
-    Utf8String text_utf8;
-    text_utf8.Translate(utf16buf.data()); // #TODO allocates each time
+    write8.Translate(write16.data());
 
     bool ok = true;
     ok = ok && rts::write_any(file.Get(), s_quo);
-    ok = ok && rts::write_str(file.Get(), rts::make_array_view(text_utf8));
+    ok = ok && rts::write_str(file.Get(), rts::make_array_view(write8));
     ok = ok && rts::write_any(file.Get(), s_quo);
     ok = ok && rts::write_any(file.Get(), s_eol);
     return ok;
@@ -575,8 +566,8 @@ bool GameTextFile::Write_CSF_File(FileRef &file, const StringInfos &string_infos
 
     if (Write_CSF_Header(file, string_infos, language)) {
         success = true;
-        unichar_t utf16buf[GAMETEXT_BUFFER_16_SIZE] = { 0 };
-        auto utf16bufview = rts::stack_array_view(utf16buf);
+        unichar_t write_buf[GAMETEXT_BUFFER_16_SIZE] = { 0 };
+        auto write16 = rts::stack_array_view(write_buf);
         int string_index = 0;
 
         for (const StringInfo &string_info : string_infos) {
@@ -587,7 +578,7 @@ bool GameTextFile::Write_CSF_File(FileRef &file, const StringInfos &string_infos
                 continue;
             }
 
-            if (!Write_CSF_Entry(file, string_info, utf16bufview)) {
+            if (!Write_CSF_Entry(file, string_info, write16)) {
                 success = false;
                 break;
             }
@@ -615,10 +606,10 @@ bool GameTextFile::Write_CSF_Header(FileRef &file, const StringInfos &string_inf
     return rts::write_any(file.Get(), header);
 }
 
-bool GameTextFile::Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Buf utf16bufview)
+bool GameTextFile::Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16View write16)
 {
     if (Write_CSF_Label(file, string_info)) {
-        if (Write_CSF_Text(file, string_info, utf16bufview)) {
+        if (Write_CSF_Text(file, string_info, write16)) {
             return true;
         }
     }
@@ -643,7 +634,7 @@ bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info)
     return false;
 }
 
-bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Buf utf16buf)
+bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16View write16)
 {
     bool text_ok = false;
     bool speech_ok = false;
@@ -659,16 +650,16 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
         htole_ref(header.length);
 
         if (rts::write_any(file.Get(), header)) {
-            captainslog_dbgassert(utf16buf.size() >= text_len, "Buffer is expected to be larger or equal text");
-            text_len = std::min(text_len, utf16buf.size());
+            captainslog_dbgassert(write16.size() >= text_len, "Buffer is expected to be larger or equal text");
+            text_len = std::min(text_len, write16.size());
 
             for (size_t i = 0; i < text_len; ++i) {
                 // Every char is binary flipped here by design.
-                utf16buf[i] = ~string_info.text[i];
-                htole_ref(utf16buf[i]);
+                write16[i] = ~string_info.text[i];
+                htole_ref(write16[i]);
             }
 
-            if (rts::write(file.Get(), utf16buf.data(), text_len * sizeof(Utf16Buf::value_type))) {
+            if (rts::write(file.Get(), write16.data(), text_len * sizeof(Utf16View::value_type))) {
                 text_ok = true;
             }
         }
