@@ -60,8 +60,9 @@ enum class GameTextType
 enum class GameTextOption : uint8_t
 {
     NONE = 0,
-    PRINT_LENGTH_INFO_ON_LOAD = BIT(0),
-    PRINT_LENGTH_INFO_ON_SAVE = BIT(1),
+    CHECK_BUFFER_LENGTH_ON_LOAD = BIT(0),
+    CHECK_BUFFER_LENGTH_ON_SAVE = BIT(1),
+    KEEP_SPACES_ON_STR_READ = BIT(2),
 };
 
 enum class GameTextReadStep : uint8_t
@@ -123,7 +124,11 @@ private:
     static void Log_Length_Info(const LengthInfo &len_info);
     static void Check_Length_Info(const LengthInfo &len_info);
 
-    static bool Read_STR_File(FileRef &file, StringInfos &string_infos);
+    static bool Read_STR_File(FileRef &file, StringInfos &string_infos, Options options);
+    static bool Try_Parse_STR_Label(Utf8Buf read_view, StringInfo &string_info);
+    static void Parse_STR_Text_Begin(Utf8Buf read_view, StringInfo &string_info);
+    static void Parse_STR_Text_End(Utf8Buf read_view, StringInfo &string_info, Options options);
+    static bool Try_Parse_STR_End(Utf8Buf read_view, StringInfo &string_info);
     static bool Is_STR_Comment(const char *cstring);
     static bool Is_STR_End(const char *cstring);
     static void Next_Step(ReadStep &step, char &eol);

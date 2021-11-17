@@ -16,7 +16,6 @@
 
 #include "arrayview.h"
 #include <captainslog.h>
-#include <locale>
 #include <macros.h>
 #include <unichar.h>
 
@@ -34,29 +33,18 @@ template<> constexpr unichar_t get_char<unichar_t>(char ch)
     return static_cast<unichar_t>(static_cast<unsigned char>(ch));
 }
 
-// clang-format off
-
-// Whitespace is any of these:
-// ' ' (0x20)space (SPC)
-// '\t'(0x09)horizontal tab (TAB)
-// '\n'(0x0a)newline (LF)
-// '\v'(0x0b)vertical tab (VT)
-// '\f'(0x0c)feed (FF)
-// '\r'(0x0d)carriage return (CR)
-template<typename CharType> constexpr bool is_whitespace(CharType ch)
+// Ascii whitespace is any of these
+// ' ' (0x20)(SPC)space
+// '\t'(0x09)(TAB)horizontal tab
+// '\n'(0x0a)(LF)newline
+// '\v'(0x0b)(VT)vertical tab
+// '\f'(0x0c)(FF)feed
+// '\r'(0x0d)(CR)carriage return
+template<typename CharType> constexpr bool is_asciiwhitespace(CharType ch)
 {
-#ifdef THYME_USE_STLPORT
-    return ch == get_char<CharType>(' ')
-        || ch == get_char<CharType>('\t')
-        || ch == get_char<CharType>('\n')
-        || ch == get_char<CharType>('\v')
-        || ch == get_char<CharType>('\f')
-        || ch == get_char<CharType>('\r');
-#else
-    return std::isspace(ch, std::locale());
-#endif
+    return ch == get_char<CharType>(' ') || ch == get_char<CharType>('\t') || ch == get_char<CharType>('\n')
+        || ch == get_char<CharType>('\v') || ch == get_char<CharType>('\f') || ch == get_char<CharType>('\r');
 }
-// clang-format on
 
 template<typename CharType> constexpr bool is_null(CharType ch)
 {
@@ -68,9 +56,9 @@ template<typename CharType> constexpr bool is_space(CharType ch)
     return ch == get_char<CharType>(' ');
 }
 
-template<typename CharType> constexpr bool is_null_or_whitespace(CharType ch)
+template<typename CharType> constexpr bool is_null_or_asciiwhitespace(CharType ch)
 {
-    return is_null(ch) || is_whitespace(ch);
+    return is_null(ch) || is_asciiwhitespace(ch);
 }
 
 template<typename CharType> constexpr std::size_t strlen_tpl(const CharType *cstring)
@@ -134,7 +122,7 @@ template<typename CharType> std::size_t strip_obsolete_spaces(CharType *cstring)
         char_type curr_char = *reader;
         char_type next_char = *++reader;
 
-        if (is_space(curr_char) && (is_null_or_whitespace(next_char) || is_whitespace(prev_char))) {
+        if (is_space(curr_char) && (is_null_or_asciiwhitespace(next_char) || is_asciiwhitespace(prev_char))) {
             continue;
         }
 
@@ -151,23 +139,56 @@ template<typename CharType> std::size_t strip_obsolete_spaces(CharType *cstring)
     return len;
 }
 
-// Replace string characters by given search sequence with replacement character.
+// Replaces string characters by given search characters with replacement character. Compatible with UTF-8 and UTF-16 if
+// search and replace are ASCII characters.
 template<typename CharType> void replace_characters(CharType *cstring, const CharType *search, CharType replace)
 {
     using char_type = CharType;
 
     char_type *writer = cstring;
 
-    while (!is_null(*writer)) {
-        const char_type *reader = search;
-        while (!is_null(*reader)) {
-            if (*writer == *reader) {
+    for (; !is_null(*writer); ++writer) {
+        const char_type *searcher = search;
+
+        for (; !is_null(*searcher); ++searcher) {
+            if (*writer == *searcher) {
                 *writer = replace;
                 break;
             }
-            ++reader;
         }
-        ++writer;
+    }
+}
+
+// Strips string characters by given search characters. Compatible with UTF-8 and UTF-16 if search and replace are ASCII
+// characters.
+template<typename CharType> void strip_characters(CharType *cstring, const CharType *search)
+{
+    using char_type = CharType;
+
+    constexpr char_type null_char = get_char<char_type>('\0');
+    const char_type *reader = cstring;
+    char_type *writer = cstring;
+
+    for (; !is_null(*reader); ++reader) {
+        bool skip = false;
+        const char_type *searcher = search;
+
+        for (; !is_null(*searcher); ++searcher) {
+            if (*reader == *searcher) {
+                skip = true;
+                break;
+            }
+        }
+
+        if (skip) {
+            continue;
+        }
+
+        *writer++ = *reader;
+    }
+
+    while (writer != reader) {
+        *writer++ = null_char;
     }
 }
 

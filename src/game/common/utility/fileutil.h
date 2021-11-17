@@ -75,11 +75,10 @@ bool read_line(File *file,
         ++writer;
     }
 
-    // Write null terminator.
     *writer = get_char<char_type>('\0');
 
     if (num_copied != nullptr) {
-        *num_copied = (writer - begin) / sizeof(char_type);
+        *num_copied = (writer - begin);
     }
 
     return total_bytes_read != 0;

@@ -83,11 +83,11 @@ bool GameTextFile::Load(const char *filename, Type filetype)
     if (filetype == Type::CSF) {
         success = Read_CSF_File(file, m_stringInfos, m_language);
     } else if (filetype == Type::STR) {
-        success = Read_STR_File(file, m_stringInfos);
+        success = Read_STR_File(file, m_stringInfos, m_options);
     }
 
     if (success) {
-        if (m_options.has(Options::Value::PRINT_LENGTH_INFO_ON_LOAD)) {
+        if (m_options.has(Options::Value::CHECK_BUFFER_LENGTH_ON_LOAD)) {
             LengthInfo len_info;
             Collect_Length_Info(len_info, m_stringInfos);
             Log_Length_Info(len_info);
@@ -131,7 +131,7 @@ bool GameTextFile::Save(const char *filename, Type filetype)
     }
 
     if (success) {
-        if (m_options.has(Options::Value::PRINT_LENGTH_INFO_ON_SAVE)) {
+        if (m_options.has(Options::Value::CHECK_BUFFER_LENGTH_ON_SAVE)) {
             LengthInfo len_info;
             Collect_Length_Info(len_info, m_stringInfos);
             Log_Length_Info(len_info);
@@ -224,12 +224,12 @@ void GameTextFile::Check_Length_Info(const LengthInfo &len_info)
     captainslog_dbgassert(GAMETEXT_BUFFER_8_SIZE > len_info.max_speech_len, "Read buffer must be larger");
 }
 
-bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos)
+bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Options options)
 {
     captainslog_info("Reading string file '%s' in STR format", file->Get_File_Name().Str());
 
-    char utf8buf[GAMETEXT_BUFFER_8_SIZE] = { 0 };
-    auto utf8view = rts::stack_array_view(utf8buf);
+    char read_buf[GAMETEXT_BUFFER_8_SIZE] = { 0 };
+    auto read_view = rts::stack_array_view(read_buf);
 
     // Instead of reading the file once from top to bottom to get the number of the entries, we will allocate a very generous
     // buffer to begin with and shrink it down afterwards. This will reduce algorithm complexity and file access.
@@ -241,46 +241,22 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos)
     size_t num_copied = 0;
     char eol = '\n';
 
-    const auto escaped_chars_view = Get_Escaped_Characters<char>();
-
-    while (rts::read_line(file.Get(), utf8view, eol, &num_copied)) {
-        rts::replace_characters(utf8view.data(), "\t\n\v\f\r", ' ');
-        num_copied = rts::strip_leading_and_trailing_spaces(utf8view.data());
-
+    while (rts::read_line(file.Get(), read_view, eol)) {
         if (step == ReadStep::Value::LABEL) {
-            if (num_copied == 0) {
+            if (!Try_Parse_STR_Label(read_view, string_info)) {
                 continue;
             }
-            if (Is_STR_Comment(utf8view.data())) {
-                continue;
-            }
-            string_info.label = utf8view.data();
         } else if (step == ReadStep::Value::TEXT_BEGIN) {
-            // String until text begin can be empty.
+            Parse_STR_Text_Begin(read_view, string_info);
         } else if (step == ReadStep::Value::TEXT_END) {
-            // String until text end can be empty.
-            // STR does support escaped characters for special control characters (\n, \t, ...)
-            // When written out as 2 symbol sequence, it will be converted into single character here. Convert in place.
-            rts::convert_from_escaped_characters(utf8view.data(), utf8view.data(), utf8view.size(), escaped_chars_view);
-            // Strip any remaining obsolete spaces for cleaner presentation in game.
-            rts::strip_obsolete_spaces(utf8view.data());
-
-            string_info.text.Translate(utf8view.data());
+            Parse_STR_Text_End(read_view, string_info, options);
         } else if (step == ReadStep::Value::END) {
-            if (num_copied == 0) {
+            if (!Try_Parse_STR_End(read_view, string_info)) {
+                // Is not end. Continue looking for end.
                 continue;
             }
-            if (Is_STR_Comment(utf8view.data())) {
-                continue;
-            }
-            if (Is_STR_End(utf8view.data())) {
-                // Is end. Push to container and continue with next label.
-                tmp_string_infos.push_back(string_info);
-            } else {
-                // Is not end. Take speech string and continue looking for end.
-                string_info.speech = utf8view.data();
-                continue;
-            }
+            // Is end. Push to container and continue with next label.
+            tmp_string_infos.push_back(string_info);
         }
 
         Next_Step(step, eol);
@@ -290,6 +266,68 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos)
     string_infos.insert(string_infos.end(), tmp_string_infos.begin(), tmp_string_infos.end());
 
     return !string_infos.empty();
+}
+
+bool GameTextFile::Try_Parse_STR_Label(Utf8Buf read_view, StringInfo &string_info)
+{
+    rts::strip_characters(read_view.data(), "\n\r");
+    const size_t len = rts::strip_leading_and_trailing_spaces(read_view.data());
+
+    if (len == 0) {
+        return false;
+    }
+    if (Is_STR_Comment(read_view.data())) {
+        return false;
+    }
+    string_info.label = read_view.data();
+    return true;
+}
+
+void GameTextFile::Parse_STR_Text_Begin(Utf8Buf read_view, StringInfo &string_info)
+{
+    // Read string can be empty.
+
+    rts::strip_characters(read_view.data(), "\n\r");
+}
+
+void GameTextFile::Parse_STR_Text_End(Utf8Buf read_view, StringInfo &string_info, Options options)
+{
+    // Read string can be empty.
+
+    const auto escaped_chars_view = Get_Escaped_Characters<char>();
+
+    rts::strip_characters(read_view.data(), "\n\r");
+    rts::replace_characters(read_view.data(), "\t\v\f", ' ');
+
+    // STR does support escaped characters for special control characters (\n, \t, ...)
+    // When written out as 2 symbol sequence, it will be converted into single character here. Convert in place.
+    rts::convert_from_escaped_characters(read_view.data(), read_view.data(), read_view.size(), escaped_chars_view);
+
+    if (!options.has(GameTextOption::KEEP_SPACES_ON_STR_READ)) {
+        // Strip any remaining obsolete spaces for cleaner presentation in game.
+        rts::strip_obsolete_spaces(read_view.data());
+    }
+
+    // Translate final UTF16 string.
+    string_info.text.Translate(read_view.data());
+}
+
+bool GameTextFile::Try_Parse_STR_End(Utf8Buf read_view, StringInfo &string_info)
+{
+    rts::strip_characters(read_view.data(), "\n\r");
+    const size_t len = rts::strip_leading_and_trailing_spaces(read_view.data());
+
+    if (len == 0) {
+        return false;
+    }
+    if (Is_STR_Comment(read_view.data())) {
+        return false;
+    }
+    if (Is_STR_End(read_view.data())) {
+        return true;
+    }
+    string_info.speech = read_view.data();
+    return false;
 }
 
 bool GameTextFile::Is_STR_Comment(const char *cstring)
