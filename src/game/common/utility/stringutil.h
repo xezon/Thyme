@@ -173,9 +173,17 @@ template<typename CharType> void replace_characters(CharType *cstring, const Cha
 
 template<typename CharType> struct escaped_char_alias
 {
+    static constexpr escaped_char_alias make_real_alias2(char real, char alias1, char alias2)
+    {
+        escaped_char_alias inst;
+        inst.real = get_char<CharType>(real);
+        inst.alias[0] = get_char<CharType>(alias1);
+        inst.alias[1] = get_char<CharType>(alias2);
+        return inst;
+    }
+
     CharType real;
-    CharType alias1;
-    CharType alias2;
+    CharType alias[2];
 };
 
 template<typename CharType> using escaped_char_alias_view = array_view<const escaped_char_alias<CharType>>;
@@ -183,14 +191,14 @@ template<typename CharType> using escaped_char_alias_view = array_view<const esc
 template<typename CharType> escaped_char_alias_view<CharType> get_standard_escaped_characters()
 {
     static const escaped_char_alias<CharType> escaped_chars[] = {
-        { get_char<CharType>('\0'), get_char<CharType>('\\'), get_char<CharType>('0') },
-        { get_char<CharType>('\a'), get_char<CharType>('\\'), get_char<CharType>('a') },
-        { get_char<CharType>('\b'), get_char<CharType>('\\'), get_char<CharType>('b') },
-        { get_char<CharType>('\t'), get_char<CharType>('\\'), get_char<CharType>('t') },
-        { get_char<CharType>('\n'), get_char<CharType>('\\'), get_char<CharType>('n') },
-        { get_char<CharType>('\v'), get_char<CharType>('\\'), get_char<CharType>('v') },
-        { get_char<CharType>('\f'), get_char<CharType>('\\'), get_char<CharType>('f') },
-        { get_char<CharType>('\r'), get_char<CharType>('\\'), get_char<CharType>('r') },
+        escaped_char_alias<CharType>::make_real_alias2('\0', '\\', '0'),
+        escaped_char_alias<CharType>::make_real_alias2('\a', '\\', 'a'),
+        escaped_char_alias<CharType>::make_real_alias2('\b', '\\', 'b'),
+        escaped_char_alias<CharType>::make_real_alias2('\t', '\\', 't'),
+        escaped_char_alias<CharType>::make_real_alias2('\n', '\\', 'n'),
+        escaped_char_alias<CharType>::make_real_alias2('\v', '\\', 'v'),
+        escaped_char_alias<CharType>::make_real_alias2('\f', '\\', 'f'),
+        escaped_char_alias<CharType>::make_real_alias2('\r', '\\', 'r'),
     };
     return escaped_char_alias_view<CharType>(escaped_chars);
 }
@@ -218,7 +226,7 @@ std::size_t convert_from_escaped_characters(CharType *dest,
         bool done = false;
 
         for (const escaped_char_alias<char_type> &escaped_char : escaped_chars_view) {
-            if (curr_char == escaped_char.alias1 && next_char == escaped_char.alias2) {
+            if (curr_char == escaped_char.alias[0] && next_char == escaped_char.alias[1]) {
                 // Write out the real character.
                 *writer++ = escaped_char.real;
                 ++reader;
@@ -266,8 +274,8 @@ std::size_t convert_to_escaped_characters(CharType *dest,
         for (const escaped_char_alias<char_type> &escaped_char : escaped_chars_view) {
             if (curr_char == escaped_char.real) {
                 // Write out the escaped character sequence.
-                *writer++ = escaped_char.alias1;
-                *writer++ = escaped_char.alias2;
+                *writer++ = escaped_char.alias[0];
+                *writer++ = escaped_char.alias[1];
                 done = true;
                 break;
             }

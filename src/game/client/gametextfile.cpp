@@ -34,12 +34,12 @@ namespace
 template<typename CharType> rts::escaped_char_alias_view<CharType> Get_Escaped_Characters()
 {
     static const rts::escaped_char_alias<CharType> escaped_chars[] = {
-        { rts::get_char<CharType>('\n'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('n') },
-        { rts::get_char<CharType>('\t'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('t') },
-        { rts::get_char<CharType>('"'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('"') },
-        { rts::get_char<CharType>('?'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('?') },
-        { rts::get_char<CharType>('\''), rts::get_char<CharType>('\\'), rts::get_char<CharType>('\'') },
-        { rts::get_char<CharType>('\\'), rts::get_char<CharType>('\\'), rts::get_char<CharType>('\\') },
+        rts::escaped_char_alias<CharType>::make_real_alias2('\n', '\\', 'n'),
+        rts::escaped_char_alias<CharType>::make_real_alias2('\t', '\\', 't'),
+        rts::escaped_char_alias<CharType>::make_real_alias2('"', '\\', '"'),
+        rts::escaped_char_alias<CharType>::make_real_alias2('?', '\\', '?'),
+        rts::escaped_char_alias<CharType>::make_real_alias2('\'', '\\', '\''),
+        rts::escaped_char_alias<CharType>::make_real_alias2('\\', '\\', '\\'),
     };
     return rts::escaped_char_alias_view<CharType>(escaped_chars);
 }
