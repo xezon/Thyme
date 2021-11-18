@@ -63,6 +63,7 @@ enum class GameTextOption : uint8_t
     CHECK_BUFFER_LENGTH_ON_LOAD = BIT(0),
     CHECK_BUFFER_LENGTH_ON_SAVE = BIT(1),
     KEEP_SPACES_ON_STR_READ = BIT(2),
+    PRINT_LINEBREAKS_ON_STR_WRITE = BIT(3),
 };
 
 enum class GameTextReadStep : uint8_t
@@ -139,10 +140,10 @@ private:
     static bool Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_t &texts);
     static bool Read_CSF_Text(FileRef &file, StringInfo &string_info);
 
-    static bool Write_STR_File(FileRef &file, const StringInfos &string_infos);
-    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, Utf16View write16, Utf8String &write8);
+    static bool Write_STR_File(FileRef &file, const StringInfos &string_infos, Options options);
+    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, Options options, Utf8View w1, Utf8String &w2);
     static bool Write_STR_Label(FileRef &file, const StringInfo &string_info);
-    static bool Write_STR_Text(FileRef &file, const StringInfo &string_info, Utf16View write16, Utf8String &write8);
+    static bool Write_STR_Text(FileRef &file, const StringInfo &string_info, Options options, Utf8View w1, Utf8String &w2);
     static bool Write_STR_Speech(FileRef &file, const StringInfo &string_info);
     static bool Write_STR_End(FileRef &file);
 

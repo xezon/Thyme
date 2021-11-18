@@ -15,8 +15,7 @@
 #pragma once
 
 #include "arrayview.h"
-#include <captainslog.h>
-#include <macros.h>
+#include "sizedinteger.h"
 #include <unichar.h>
 
 namespace rts
@@ -61,27 +60,62 @@ template<typename CharType> constexpr bool is_null_or_asciiwhitespace(CharType c
     return is_null(ch) || is_asciiwhitespace(ch);
 }
 
-template<typename CharType> constexpr std::size_t strlen_tpl(const CharType *cstring)
+template<typename CharType> constexpr std::size_t strlen_tpl(const CharType *src)
 {
     using char_type = CharType;
     constexpr char_type null_char = get_char<char_type>('\0');
-    const char_type *end = cstring;
-    for (; *end != null_char; ++end) {
+    const char_type *end = src;
+    while (*end != null_char) {
+        ++end;
     }
-    const std::size_t len = (end - cstring);
-    return len;
+    return (end - src);
+}
+
+template<typename CharType> constexpr int strcmp_tpl(const CharType *s1, const CharType *s2)
+{
+    using char_type = CharType;
+    using unsigned_type = typename unsigned_integer_for_size<sizeof(CharType)>::type;
+    constexpr char_type null_char = get_char<char_type>('\0');
+
+    while (*s1 != null_char && *s1 == *s2) {
+        ++s1;
+        ++s2;
+    }
+    const auto i1 = *reinterpret_cast<const unsigned_type *>(s1);
+    const auto i2 = *reinterpret_cast<const unsigned_type *>(s2);
+    return (i1 > i2) - (i2 > i1);
+}
+
+template<typename CharType> constexpr int strncmp_tpl(const CharType *s1, const CharType *s2, std::size_t count)
+{
+    using char_type = CharType;
+    using unsigned_type = typename unsigned_integer_for_size<sizeof(CharType)>::type;
+    constexpr char_type null_char = get_char<char_type>('\0');
+
+    while (count != 0 && *s1 != null_char && *s1 == *s2) {
+        ++s1;
+        ++s2;
+        --count;
+    }
+    if (count == 0) {
+        return 0;
+    } else {
+        const auto i1 = *reinterpret_cast<const unsigned_type *>(s1);
+        const auto i2 = *reinterpret_cast<const unsigned_type *>(s2);
+        return (i1 > i2) - (i2 > i1);
+    }
 }
 
 // Strips leading and trailing spaces. Returns length of new string after strip. Writes null over all stripped characters at
 // the end. Compatible with UTF-8 and UTF-16.
-template<typename CharType> std::size_t strip_leading_and_trailing_spaces(CharType *cstring)
+template<typename CharType> std::size_t strip_leading_and_trailing_spaces(CharType *dest)
 {
     using char_type = CharType;
 
     constexpr char_type null_char = get_char<char_type>('\0');
-    const char_type *reader = cstring;
-    const char_type *reader_end = cstring + strlen_tpl(cstring);
-    char_type *writer = cstring;
+    const char_type *reader = dest;
+    const char_type *reader_end = dest + strlen_tpl(dest);
+    char_type *writer = dest;
     const char_type *writer_end = reader_end;
 
     for (; reader != reader_end && is_space(*reader); ++reader) {
@@ -94,7 +128,7 @@ template<typename CharType> std::size_t strip_leading_and_trailing_spaces(CharTy
         *writer++ = *reader++;
     }
 
-    const std::size_t len = writer - cstring;
+    const std::size_t len = writer - dest;
 
     while (writer != writer_end) {
         *writer++ = null_char;
@@ -106,14 +140,14 @@ template<typename CharType> std::size_t strip_leading_and_trailing_spaces(CharTy
 // Strips leading, trailing and duplicate spaces. Preserves other whitespace characters such as LF and strips surrounding
 // spaces. Returns length of new string after strip. Writes null over all stripped characters at the end. Compatible with
 // UTF-8 and UTF-16.
-template<typename CharType> std::size_t strip_obsolete_spaces(CharType *cstring)
+template<typename CharType> std::size_t strip_obsolete_spaces(CharType *dest)
 {
     using char_type = CharType;
 
     constexpr char_type null_char = get_char<char_type>('\0');
     char_type prev_char = get_char<char_type>(' ');
-    const char_type *reader = cstring;
-    char_type *writer = cstring;
+    const char_type *reader = dest;
+    char_type *writer = dest;
 
     for (; !is_null(*reader) && is_space(*reader); ++reader) {
     }
@@ -130,7 +164,7 @@ template<typename CharType> std::size_t strip_obsolete_spaces(CharType *cstring)
         prev_char = curr_char;
     }
 
-    const std::size_t len = (writer - cstring);
+    const std::size_t len = (writer - dest);
 
     while (writer != reader) {
         *writer++ = null_char;
@@ -139,13 +173,13 @@ template<typename CharType> std::size_t strip_obsolete_spaces(CharType *cstring)
     return len;
 }
 
-// Replaces string characters by given search characters with replacement character. Compatible with UTF-8 and UTF-16 if
-// search and replace are ASCII characters.
-template<typename CharType> void replace_characters(CharType *cstring, const CharType *search, CharType replace)
+// Replaces string characters by given search characters with replacement character. Compatible with UTF-16.
+// Compatible with UTF-8 if search and replace are ASCII characters.
+template<typename CharType> void replace_characters(CharType *dest, const CharType *search, CharType replace)
 {
     using char_type = CharType;
 
-    char_type *writer = cstring;
+    char_type *writer = dest;
 
     for (; !is_null(*writer); ++writer) {
         const char_type *searcher = search;
@@ -159,15 +193,50 @@ template<typename CharType> void replace_characters(CharType *cstring, const Cha
     }
 }
 
-// Strips string characters by given search characters. Compatible with UTF-8 and UTF-16 if search and replace are ASCII
-// characters.
-template<typename CharType> void strip_characters(CharType *cstring, const CharType *search)
+// Replaces string characters by given search character sequence with replacement character sequence. Returns count of
+// characters copied to destination string, not including null terminator Compatible with UTF-16. Compatible with UTF-8 if
+// search and replace are ASCII characters.
+template<typename CharType>
+std::size_t replace_character_sequence(
+    CharType *dest, const CharType *src, std::size_t size, const CharType *search, const CharType *replace)
 {
     using char_type = CharType;
 
     constexpr char_type null_char = get_char<char_type>('\0');
-    const char_type *reader = cstring;
-    char_type *writer = cstring;
+    const std::size_t search_len = strlen_tpl(search);
+    const std::size_t replace_len = strlen_tpl(replace);
+    const char_type *reader = src;
+    const char_type *writer_end = dest + size - 1;
+    char_type *writer = dest;
+    std::size_t replace_count = 0;
+
+    while (*reader != null_char && writer != writer_end) {
+        if (replace_count > 0) {
+            *writer++ = *(replace + replace_len - replace_count);
+            if (--replace_count == 0) {
+                reader += search_len;
+            }
+        } else if (strncmp_tpl(reader, search, search_len) == 0) {
+            replace_count = replace_len;
+        } else {
+            *writer++ = *reader++;
+        }
+    }
+
+    *writer = null_char;
+
+    return (writer - dest);
+}
+
+// Strips string characters by given search characters. Compatible with UTF-16. Compatible with UTF-8 if search and replace
+// are ASCII characters.
+template<typename CharType> void strip_characters(CharType *dest, const CharType *search)
+{
+    using char_type = CharType;
+
+    constexpr char_type null_char = get_char<char_type>('\0');
+    const char_type *reader = dest;
+    char_type *writer = dest;
 
     for (; !is_null(*reader); ++reader) {
         bool skip = false;
@@ -225,8 +294,8 @@ template<typename CharType> escaped_char_alias_view<CharType> get_standard_escap
 }
 
 // Converts from escaped characters, meaning a 2 character sequence is converted to a 1 character sequence. Returns count of
-// characters copied to destination string, not including null terminator. Writes null at the end. Compatible with UTF-8 and
-// UTF-16, if escaped character symbols are ASCII only.
+// characters copied to destination string, not including null terminator. Writes null at the end. Compatible with UTF-16.
+// Compatible with UTF-8 if escaped character symbols are ASCII only.
 template<typename CharType>
 std::size_t convert_from_escaped_characters(CharType *dest,
     const CharType *src,
@@ -266,14 +335,12 @@ std::size_t convert_from_escaped_characters(CharType *dest,
 
     *writer = null_char;
 
-    const std::size_t num_copied = (writer - dest);
-
-    return num_copied;
+    return (writer - dest);
 }
 
 // Converts to escaped characters, meaning a 1 character sequence is converted to a 2 character sequence. Returns count of
-// characters copied to destination string, not including null terminator. Writes null at the end. Compatible with UTF-8 and
-// UTF-16, if escaped character symbols are ASCII only.
+// characters copied to destination string, not including null terminator. Writes null at the end. Compatible with UTF-16.
+// Compatible with UTF-8 if escaped character symbols are ASCII only.
 template<typename CharType>
 std::size_t convert_to_escaped_characters(CharType *dest,
     const CharType *src,
@@ -312,9 +379,7 @@ std::size_t convert_to_escaped_characters(CharType *dest,
 
     *writer = null_char;
 
-    const std::size_t num_copied = (writer - dest);
-
-    return num_copied;
+    return (writer - dest);
 }
 
 } // namespace rts

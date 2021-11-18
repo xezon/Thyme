@@ -31,7 +31,7 @@ namespace Thyme
 
 namespace
 {
-template<typename CharType> rts::escaped_char_alias_view<CharType> Get_Escaped_Characters()
+template<typename CharType> rts::escaped_char_alias_view<CharType> Escaped_Characters_For_STR_Read()
 {
     static const rts::escaped_char_alias<CharType> escaped_chars[] = {
         rts::escaped_char_alias<CharType>::make_real_alias2('\n', '\\', 'n'),
@@ -39,6 +39,19 @@ template<typename CharType> rts::escaped_char_alias_view<CharType> Get_Escaped_C
         rts::escaped_char_alias<CharType>::make_real_alias2('"', '\\', '"'),
         rts::escaped_char_alias<CharType>::make_real_alias2('?', '\\', '?'),
         rts::escaped_char_alias<CharType>::make_real_alias2('\'', '\\', '\''),
+        rts::escaped_char_alias<CharType>::make_real_alias2('\\', '\\', '\\'),
+    };
+    return rts::escaped_char_alias_view<CharType>(escaped_chars);
+}
+
+template<typename CharType> rts::escaped_char_alias_view<CharType> Escaped_Characters_For_STR_Write()
+{
+    static const rts::escaped_char_alias<CharType> escaped_chars[] = {
+        rts::escaped_char_alias<CharType>::make_real_alias2('\n', '\\', 'n'),
+        rts::escaped_char_alias<CharType>::make_real_alias2('\t', '\\', 't'),
+        rts::escaped_char_alias<CharType>::make_real_alias2('"', '\\', '"'),
+        // rts::escaped_char_alias<CharType>::make_real_alias2('?', '\\', '?'),
+        // rts::escaped_char_alias<CharType>::make_real_alias2('\'', '\\', '\''),
         rts::escaped_char_alias<CharType>::make_real_alias2('\\', '\\', '\\'),
     };
     return rts::escaped_char_alias_view<CharType>(escaped_chars);
@@ -116,7 +129,7 @@ bool GameTextFile::Save(const char *filename, Type filetype)
     if (filetype == Type::CSF) {
         success = Write_CSF_File(file, m_stringInfos, m_language);
     } else if (filetype == Type::STR) {
-        success = Write_STR_File(file, m_stringInfos);
+        success = Write_STR_File(file, m_stringInfos, m_options);
     }
 
     if (success) {
@@ -283,13 +296,13 @@ void GameTextFile::Parse_STR_Text_End(Utf8View read8, StringInfo &string_info, O
 {
     // Read string can be empty.
 
-    const auto escaped_chars_view = Get_Escaped_Characters<char>();
+    const auto escaped_chars_view = Escaped_Characters_For_STR_Read<char>();
 
     rts::strip_characters(read8.data(), "\n\r");
     rts::replace_characters(read8.data(), "\t\v\f", ' ');
 
-    // STR does support escaped characters for special control characters (\n, \t, ...)
-    // When written out as 2 symbol sequence, it will be converted into single character here. Convert in place.
+    // STR does support escaped characters for special control characters. When written out as 2 symbol sequence, it will be
+    // converted into single character here. Convert in place.
     rts::convert_from_escaped_characters(read8.data(), read8.data(), read8.size(), escaped_chars_view);
 
     if (!options.has(GameTextOption::KEEP_SPACES_ON_STR_READ)) {
@@ -479,19 +492,19 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
     return text_ok && (speech_ok || !read_speech);
 }
 
-bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos)
+bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos, Options options)
 {
     captainslog_info("Writing string file '%s' in STR format", file->Get_File_Name().Str());
 
-    Utf8String write8;
-    write8.Get_Buffer_For_Read(GAMETEXT_BUFFER_8_SIZE);
+    Utf8String w2;
+    w2.Get_Buffer_For_Read(GAMETEXT_BUFFER_8_SIZE);
 
-    unichar_t write_buf[GAMETEXT_BUFFER_16_SIZE] = { 0 };
-    auto write16 = rts::stack_array_view(write_buf);
+    char write_buf[GAMETEXT_BUFFER_8_SIZE] = { 0 };
+    auto w1 = rts::stack_array_view(write_buf);
 
     for (const StringInfo &string_info : string_infos) {
         if (!string_info.label.Is_Empty()) {
-            if (!Write_STR_Entry(file, string_info, write16, write8)) {
+            if (!Write_STR_Entry(file, string_info, options, w1, w2)) {
                 return false;
             }
         }
@@ -499,10 +512,11 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
     return true;
 }
 
-bool GameTextFile::Write_STR_Entry(FileRef &file, const StringInfo &string_info, Utf16View write16, Utf8String &write8)
+bool GameTextFile::Write_STR_Entry(
+    FileRef &file, const StringInfo &string_info, Options options, Utf8View w1, Utf8String &w2)
 {
     if (Write_STR_Label(file, string_info)) {
-        if (Write_STR_Text(file, string_info, write16, write8)) {
+        if (Write_STR_Text(file, string_info, options, w1, w2)) {
             if (Write_STR_Speech(file, string_info)) {
                 if (Write_STR_End(file)) {
                     return true;
@@ -521,19 +535,26 @@ bool GameTextFile::Write_STR_Label(FileRef &file, const StringInfo &string_info)
     return ok;
 }
 
-bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, Utf16View write16, Utf8String &write8)
+bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, Options options, Utf8View w1, Utf8String &w2)
 {
-    // STR does support escaped characters for special control characters (\n, \t, ...)
-    // Write them out as escaped characters so they are easily modifiable in text editor.
-    const auto escaped_chars_view = Get_Escaped_Characters<unichar_t>();
-    rts::convert_to_escaped_characters(write16.data(), string_info.text.Str(), write16.size(), escaped_chars_view);
-
     // Convert utf16 to utf8.
-    write8.Translate(write16.data());
+    w2.Translate(string_info.text.Str());
+
+    // STR does support escaped characters for special control characters. Write them out as escaped characters so they are
+    // easily modifiable in text editor.
+    const auto escaped_chars_view = Escaped_Characters_For_STR_Write<char>();
+    size_t len = rts::convert_to_escaped_characters(w1.data(), w2.Str(), w1.size(), escaped_chars_view);
+
+    if (options.has(Options::Value::PRINT_LINEBREAKS_ON_STR_WRITE)) {
+        // Add CR LF characters behind each written out line feed for better readability. These characters will be ignored
+        // when read back from the STR file.
+        w2 = w1.data();
+        len = rts::replace_character_sequence(w1.data(), w2.Str(), w1.size(), "\\n", "\\n\r\n");
+    }
 
     bool ok = true;
     ok = ok && rts::write_any(file.Get(), s_quo);
-    ok = ok && rts::write_str(file.Get(), rts::make_array_view(write8));
+    ok = ok && rts::write_str(file.Get(), rts::make_array_view(w1.data(), len));
     ok = ok && rts::write_any(file.Get(), s_quo);
     ok = ok && rts::write_any(file.Get(), s_eol);
     return ok;
