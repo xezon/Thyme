@@ -14,6 +14,7 @@
  */
 #pragma once
 
+#include "typetraits.h"
 #include <cstddef>
 
 namespace rts
@@ -24,15 +25,15 @@ template<typename ValueType> class array_view
 {
 public:
     using element_type = ValueType;
-    using value_type = ValueType;
+    using value_type = remove_cv_t<ValueType>;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
-    using reference = value_type &;
-    using const_reference = const value_type &;
-    using pointer = value_type *;
-    using const_pointer = const value_type *;
-    using iterator = value_type *;
-    using const_iterator = const value_type *;
+    using reference = element_type &;
+    using const_reference = const element_type &;
+    using pointer = element_type *;
+    using const_pointer = const element_type *;
+    using iterator = element_type *;
+    using const_iterator = const element_type *;
 
     ~array_view() noexcept = default;
 
