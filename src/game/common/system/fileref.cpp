@@ -18,7 +18,7 @@
 namespace Thyme
 {
 
-void FileDeleter::Delete_Instance(File *instance)
+void FileDeleter::operator()(File *instance) const
 {
     instance->Set_Del_On_Close(false);
     instance->Close();

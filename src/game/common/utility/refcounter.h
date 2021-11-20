@@ -90,7 +90,7 @@ template<typename Integer, typename Instance, typename Deleter>
 inline Integer Release(Integer &counter, const Instance *instance)
 {
     if (--counter == Integer{ 0 }) {
-        Deleter::Delete_Instance(const_cast<Instance *>(instance));
+        Invoke_Deleter<Deleter>(const_cast<Instance *>(instance));
     } else {
         Release_Check(counter);
     }
@@ -116,7 +116,7 @@ inline Integer Release_Atomic(volatile Integer &counter, const Instance *instanc
 {
     const Integer new_counter = Atomic_Decrement(&counter);
     if (new_counter == Integer{ 0 }) {
-        Deleter::Delete_Instance(const_cast<Instance *>(instance));
+        Invoke_Deleter<Deleter>(const_cast<Instance *>(instance));
     } else {
         Release_Check(new_counter);
     }

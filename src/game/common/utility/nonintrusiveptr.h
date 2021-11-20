@@ -166,7 +166,7 @@ private:
         if (counter != nullptr) {
             const integer_type ref = counter->Release();
             if (ref == 0) {
-                Deleter::Delete_Instance(ptr);
+                Invoke_Deleter<Deleter>(ptr);
                 delete counter;
                 ptr = nullptr;
                 counter = nullptr;

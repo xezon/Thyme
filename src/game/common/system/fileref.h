@@ -24,7 +24,8 @@ namespace Thyme
 // #FEATURE File deleter
 struct FileDeleter
 {
-    static void Delete_Instance(File *instance);
+    using DeleteType = File;
+    void operator()(File *instance) const;
 };
 
 // #FEATURE Reference counted file class that automatically closes the assigned file when all references are destroyed.

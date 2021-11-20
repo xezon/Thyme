@@ -17,23 +17,33 @@
 // #FEATURE Deleter for objects created by 'new'
 template<typename Type> struct NewDeleter
 {
-    static void Delete_Instance(Type *instance) { delete instance; }
+    using DeleteType = Type;
+    void operator()(Type *instance) const { delete instance; }
 };
 
 // #FEATURE Deleter for objects created by 'new[]'
 template<typename Type> struct NewArrayDeleter
 {
-    static void Delete_Instance(Type *instance) { delete[] instance; }
+    using DeleteType = Type;
+    void operator()(Type *instance) const { delete[] instance; }
 };
 
 // #FEATURE Deleter for objects created by 'malloc()'
 template<typename Type> struct AllocDeleter
 {
-    static void Delete_Instance(Type *instance) { free(instance); }
+    using DeleteType = Type;
+    void operator()(Type *instance) const { free(instance); }
 };
 
 // #FEATURE Deleter for objects created by 'NEW_POOL_OBJ'
 template<typename Type> struct MemoryPoolObjectDeleter
 {
-    static void Delete_Instance(Type *instance) { instance->Delete_Instance(); }
+    using DeleteType = Type;
+    void operator()(Type *instance) const { instance->Delete_Instance(); }
 };
+
+template<typename Deleter> inline void Invoke_Deleter(typename Deleter::DeleteType *instance)
+{
+    Deleter deleter;
+    deleter(instance);
+}
