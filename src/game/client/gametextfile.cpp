@@ -240,10 +240,9 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Optio
     tmp_string_infos.reserve(16384);
 
     ReadStep step = ReadStep::Value::LABEL;
-    size_t num_copied = 0;
     char eol = '\n';
 
-    while (rts::read_line(file.Get(), read8, eol)) {
+    while (rts::read_line(file.Get(), read8.data(), read8.size(), nullptr, eol)) {
         if (step == ReadStep::Value::LABEL) {
             if (!Try_Parse_STR_Label(read8, string_info)) {
                 continue;
@@ -303,7 +302,7 @@ void GameTextFile::Parse_STR_Text_End(Utf8View read8, StringInfo &string_info, O
 
     // STR does support escaped characters for special control characters. When written out as 2 symbol sequence, it will be
     // converted into single character here. Convert in place.
-    rts::convert_from_escaped_characters(read8.data(), read8.data(), read8.size(), escaped_chars_view);
+    rts::convert_from_escaped_characters(read8.data(), read8.size(), read8.data(), escaped_chars_view);
 
     if (!options.has(GameTextOption::KEEP_SPACES_ON_STR_READ)) {
         // Strip any remaining obsolete spaces for cleaner presentation in game.
@@ -540,16 +539,22 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const StringInfo &string_info, 
     // Convert utf16 to utf8.
     w2.Translate(string_info.text.Str());
 
+    size_t len;
+
     // STR does support escaped characters for special control characters. Write them out as escaped characters so they are
     // easily modifiable in text editor.
-    const auto escaped_chars_view = Escaped_Characters_For_STR_Write<char>();
-    size_t len = rts::convert_to_escaped_characters(w1.data(), w2.Str(), w1.size(), escaped_chars_view);
+    {
+        const auto escaped_chars_view = Escaped_Characters_For_STR_Write<char>();
+        len = rts::convert_to_escaped_characters(w1.data(), w1.size(), w2.Str(), escaped_chars_view);
+    }
 
     if (options.has(Options::Value::PRINT_LINEBREAKS_ON_STR_WRITE)) {
         // Add CR LF characters behind each written out line feed for better readability. These characters will be ignored
         // when read back from the STR file.
         w2 = w1.data();
-        len = rts::replace_character_sequence(w1.data(), w2.Str(), w1.size(), "\\n", "\\n\r\n");
+        const char *search = "\\n";
+        const char *rplace = "\\n\r\n";
+        len = rts::replace_character_sequence(w1.data(), w1.size(), w2.Str(), search, rplace);
     }
 
     bool ok = true;

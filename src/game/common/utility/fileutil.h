@@ -21,37 +21,50 @@ namespace rts
 {
 
 // Return the file extension of a given string.
-template<typename StringType> typename StringType::value_type *get_file_extension(StringType &filename)
-{
-    const char *begin = filename.begin();
-    const char *end = filename.end() - 1;
-    while (end != begin) {
-        if (*end == '.')
-            return end + 1;
-        --end;
-    }
-    return end;
-}
-
-// Read from a file until the specified end character is reached. Will not stop reading at escaped end character. Expects
-// string with reserved space for null terminator past the end. Always writes null terminator. Returns true if the end of the
-// file was not yet reached.
-template<typename StringType>
-bool read_line(File *file,
-    StringType &string,
-    typename StringType::value_type eol_char = get_char<typename StringType::value_type>('\n'),
-    typename StringType::size_type *num_copied = nullptr)
+template<typename StringType> const typename StringType::value_type *get_file_extension(const StringType &filename)
 {
     using char_type = typename StringType::value_type;
 
-    const char_type *begin = string.data();
-    const char_type *end = begin + string.size();
-    char_type *writer = string.data();
+    const char *begin = filename.begin();
+    const char *end = filename.end() - 1;
+
+    char_type ext_char = get_char<char_type>('.');
+    char_type dir1_char = get_char<char_type>(':');
+    char_type dir2_char = get_char<char_type>('/');
+    char_type dir3_char = get_char<char_type>('\\');
+
+    while (end != begin) {
+        char_type curr_char = *end;
+        if (curr_char == ext_char) {
+            return end + 1;
+        }
+        if (curr_char == dir1_char || curr_char == dir2_char || curr_char == dir3_char) {
+            return get_null_str<char_type>();
+        }
+        --end;
+    }
+    return get_null_str<char_type>();
+}
+
+// Read from a file until the specified end character is reached. Will not stop reading at escaped end character. Writes to
+// destination string until size minus 1. Always writes null terminator. Returns true, unless no line was read and the end of
+// the file was reached.
+template<typename CharType>
+bool read_line(File *file,
+    CharType *dest,
+    std::size_t size,
+    std::size_t *num_copied = nullptr,
+    CharType eol_char = get_char<CharType>('\n'))
+{
+    using char_type = CharType;
+
+    const char_type *writer_end = dest + size - 1;
+    char_type *writer = dest;
 
     int total_bytes_read = 0;
     bool escaped = false;
 
-    while (writer != end) {
+    while (writer != writer_end) {
         const int bytes_read = file->Read(writer, sizeof(char_type));
         total_bytes_read += bytes_read;
 
@@ -78,7 +91,7 @@ bool read_line(File *file,
     *writer = get_char<char_type>('\0');
 
     if (num_copied != nullptr) {
-        *num_copied = (writer - begin);
+        *num_copied = (writer - dest);
     }
 
     return total_bytes_read != 0;

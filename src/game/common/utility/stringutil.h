@@ -16,20 +16,48 @@
 
 #include "arrayview.h"
 #include "sizedinteger.h"
+#include <string>
 #include <unichar.h>
+
+#if defined(THYME_USE_STLPORT)
+#define CHAR_TRAITS_CONSTEXPR
+#elif defined(_MSC_VER) && (__cplusplus <= 201402L)
+// MSVC++14 char traits should be fully constexpr, but it appears not to be for some reason.
+// MSVC\14.29.30133\include\xstring(466,43): message : failure was caused by a read of a variable outside its lifetime
+#define CHAR_TRAITS_CONSTEXPR
+#else
+#define CHAR_TRAITS_CONSTEXPR constexpr
+#endif
 
 namespace rts
 {
-template<typename CharType> constexpr CharType get_char(char ch);
 
-template<> constexpr char get_char<char>(char ch)
+// Get a single character. For use in templates.
+template<typename CharType> inline CHAR_TRAITS_CONSTEXPR CharType get_char(const char ch);
+
+template<> inline CHAR_TRAITS_CONSTEXPR char get_char<char>(const char ch)
 {
     return ch;
 }
 
-template<> constexpr unichar_t get_char<unichar_t>(char ch)
+template<> inline CHAR_TRAITS_CONSTEXPR unichar_t get_char<unichar_t>(const char ch)
 {
-    return static_cast<unichar_t>(static_cast<unsigned char>(ch));
+    CHAR_TRAITS_CONSTEXPR int i_ch = std::char_traits<char>::to_int_type(ch);
+    CHAR_TRAITS_CONSTEXPR unichar_t u_ch = std::char_traits<unichar_t>::to_char_type(i_ch);
+    return u_ch;
+}
+
+// Get an empty null terminated c string. For use in templates.
+template<typename CharType> inline constexpr const CharType *get_null_str();
+
+template<> inline constexpr const char *get_null_str<char>()
+{
+    return "";
+}
+
+template<> inline constexpr const unichar_t *get_null_str<unichar_t>()
+{
+    return U_CHAR("");
 }
 
 // Ascii whitespace is any of these
@@ -39,31 +67,31 @@ template<> constexpr unichar_t get_char<unichar_t>(char ch)
 // '\v'(0x0b)(VT)vertical tab
 // '\f'(0x0c)(FF)feed
 // '\r'(0x0d)(CR)carriage return
-template<typename CharType> constexpr bool is_asciiwhitespace(CharType ch)
+template<typename CharType> CHAR_TRAITS_CONSTEXPR bool is_asciiwhitespace(CharType ch)
 {
     return ch == get_char<CharType>(' ') || ch == get_char<CharType>('\t') || ch == get_char<CharType>('\n')
         || ch == get_char<CharType>('\v') || ch == get_char<CharType>('\f') || ch == get_char<CharType>('\r');
 }
 
-template<typename CharType> constexpr bool is_null(CharType ch)
+template<typename CharType> CHAR_TRAITS_CONSTEXPR bool is_null(CharType ch)
 {
     return ch == get_char<CharType>('\0');
 }
 
-template<typename CharType> constexpr bool is_space(CharType ch)
+template<typename CharType> CHAR_TRAITS_CONSTEXPR bool is_space(CharType ch)
 {
     return ch == get_char<CharType>(' ');
 }
 
-template<typename CharType> constexpr bool is_null_or_asciiwhitespace(CharType ch)
+template<typename CharType> CHAR_TRAITS_CONSTEXPR bool is_null_or_asciiwhitespace(CharType ch)
 {
     return is_null(ch) || is_asciiwhitespace(ch);
 }
 
-template<typename CharType> constexpr std::size_t strlen_tpl(const CharType *src)
+template<typename CharType> CHAR_TRAITS_CONSTEXPR std::size_t strlen_tpl(const CharType *src)
 {
     using char_type = CharType;
-    constexpr char_type null_char = get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = get_char<char_type>('\0');
     const char_type *end = src;
     while (*end != null_char) {
         ++end;
@@ -71,11 +99,11 @@ template<typename CharType> constexpr std::size_t strlen_tpl(const CharType *src
     return (end - src);
 }
 
-template<typename CharType> constexpr int strcmp_tpl(const CharType *s1, const CharType *s2)
+template<typename CharType> CHAR_TRAITS_CONSTEXPR int strcmp_tpl(const CharType *s1, const CharType *s2)
 {
     using char_type = CharType;
     using unsigned_type = typename unsigned_integer_for_size<sizeof(CharType)>::type;
-    constexpr char_type null_char = get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = get_char<char_type>('\0');
 
     while (*s1 != null_char && *s1 == *s2) {
         ++s1;
@@ -86,11 +114,11 @@ template<typename CharType> constexpr int strcmp_tpl(const CharType *s1, const C
     return (i1 > i2) - (i2 > i1);
 }
 
-template<typename CharType> constexpr int strncmp_tpl(const CharType *s1, const CharType *s2, std::size_t count)
+template<typename CharType> CHAR_TRAITS_CONSTEXPR int strncmp_tpl(const CharType *s1, const CharType *s2, std::size_t count)
 {
     using char_type = CharType;
     using unsigned_type = typename unsigned_integer_for_size<sizeof(CharType)>::type;
-    constexpr char_type null_char = get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = get_char<char_type>('\0');
 
     while (count != 0 && *s1 != null_char && *s1 == *s2) {
         ++s1;
@@ -112,7 +140,7 @@ template<typename CharType> std::size_t strip_leading_and_trailing_spaces(CharTy
 {
     using char_type = CharType;
 
-    constexpr char_type null_char = get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = get_char<char_type>('\0');
     const char_type *reader = dest;
     const char_type *reader_end = dest + strlen_tpl(dest);
     char_type *writer = dest;
@@ -144,7 +172,7 @@ template<typename CharType> std::size_t strip_obsolete_spaces(CharType *dest)
 {
     using char_type = CharType;
 
-    constexpr char_type null_char = get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = get_char<char_type>('\0');
     char_type prev_char = get_char<char_type>(' ');
     const char_type *reader = dest;
     char_type *writer = dest;
@@ -198,11 +226,11 @@ template<typename CharType> void replace_characters(CharType *dest, const CharTy
 // search and replace are ASCII characters.
 template<typename CharType>
 std::size_t replace_character_sequence(
-    CharType *dest, const CharType *src, std::size_t size, const CharType *search, const CharType *replace)
+    CharType *dest, std::size_t size, const CharType *src, const CharType *search, const CharType *replace)
 {
     using char_type = CharType;
 
-    constexpr char_type null_char = get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = get_char<char_type>('\0');
     const std::size_t search_len = strlen_tpl(search);
     const std::size_t replace_len = strlen_tpl(replace);
     const char_type *reader = src;
@@ -234,7 +262,7 @@ template<typename CharType> void strip_characters(CharType *dest, const CharType
 {
     using char_type = CharType;
 
-    constexpr char_type null_char = get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = get_char<char_type>('\0');
     const char_type *reader = dest;
     char_type *writer = dest;
 
@@ -263,7 +291,7 @@ template<typename CharType> void strip_characters(CharType *dest, const CharType
 
 template<typename CharType> struct escaped_char_alias
 {
-    static constexpr escaped_char_alias make_real_alias2(char real, char alias1, char alias2)
+    static CHAR_TRAITS_CONSTEXPR escaped_char_alias make_real_alias2(char real, char alias1, char alias2)
     {
         escaped_char_alias inst;
         inst.real = get_char<CharType>(real);
@@ -298,13 +326,13 @@ template<typename CharType> escaped_char_alias_view<CharType> get_standard_escap
 // Compatible with UTF-8 if escaped character symbols are ASCII only.
 template<typename CharType>
 std::size_t convert_from_escaped_characters(CharType *dest,
-    const CharType *src,
     std::size_t size,
+    const CharType *src,
     escaped_char_alias_view<CharType> escaped_chars_view = get_standard_escaped_characters<CharType>())
 {
     using char_type = CharType;
 
-    constexpr char_type null_char = get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = get_char<char_type>('\0');
     const char_type *reader = src;
     const char_type *writer_end = dest + size - 1;
     char_type *writer = dest;
@@ -343,15 +371,15 @@ std::size_t convert_from_escaped_characters(CharType *dest,
 // Compatible with UTF-8 if escaped character symbols are ASCII only.
 template<typename CharType>
 std::size_t convert_to_escaped_characters(CharType *dest,
-    const CharType *src,
     std::size_t size,
+    const CharType *src,
     escaped_char_alias_view<CharType> escaped_chars_view = get_standard_escaped_characters<CharType>())
 {
     using char_type = CharType;
 
-    constexpr char_type null_char = rts::get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = rts::get_char<char_type>('\0');
     const char_type *reader = src;
-    const char_type *writer_end = dest + size - 2; // -2 because we may print up to 2 characters in one iteration.
+    const char_type *writer_end = dest + size - 1;
     char_type *writer = dest;
 
     while (*reader != null_char && writer != writer_end) {
@@ -363,7 +391,9 @@ std::size_t convert_to_escaped_characters(CharType *dest,
             if (curr_char == escaped_char.real) {
                 // Write out the escaped character sequence.
                 *writer++ = escaped_char.alias[0];
-                *writer++ = escaped_char.alias[1];
+                if (writer != writer_end) {
+                    *writer++ = escaped_char.alias[1];
+                }
                 done = true;
                 break;
             }
