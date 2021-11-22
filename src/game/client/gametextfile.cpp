@@ -33,7 +33,7 @@ namespace
 {
 template<typename CharType> rts::escaped_char_alias_view<CharType> Escaped_Characters_For_STR_Read()
 {
-    static const rts::escaped_char_alias<CharType> escaped_chars[] = {
+    static CHAR_TRAITS_CONSTEXPR rts::escaped_char_alias<CharType> escaped_chars[] = {
         rts::escaped_char_alias<CharType>::make_real_alias2('\n', '\\', 'n'),
         rts::escaped_char_alias<CharType>::make_real_alias2('\t', '\\', 't'),
         rts::escaped_char_alias<CharType>::make_real_alias2('"', '\\', '"'),
@@ -46,12 +46,10 @@ template<typename CharType> rts::escaped_char_alias_view<CharType> Escaped_Chara
 
 template<typename CharType> rts::escaped_char_alias_view<CharType> Escaped_Characters_For_STR_Write()
 {
-    static const rts::escaped_char_alias<CharType> escaped_chars[] = {
+    static CHAR_TRAITS_CONSTEXPR rts::escaped_char_alias<CharType> escaped_chars[] = {
         rts::escaped_char_alias<CharType>::make_real_alias2('\n', '\\', 'n'),
         rts::escaped_char_alias<CharType>::make_real_alias2('\t', '\\', 't'),
         rts::escaped_char_alias<CharType>::make_real_alias2('"', '\\', '"'),
-        // rts::escaped_char_alias<CharType>::make_real_alias2('?', '\\', '?'),
-        // rts::escaped_char_alias<CharType>::make_real_alias2('\'', '\\', '\''),
         rts::escaped_char_alias<CharType>::make_real_alias2('\\', '\\', '\\'),
     };
     return rts::escaped_char_alias_view<CharType>(escaped_chars);
