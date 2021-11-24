@@ -86,17 +86,6 @@ template<typename Integer> inline Integer AddRef(Integer &counter)
     return counter;
 }
 
-template<typename Integer, typename Instance, typename Deleter>
-inline Integer Release(Integer &counter, const Instance *instance)
-{
-    if (--counter == Integer{ 0 }) {
-        Invoke_Deleter<Deleter>(const_cast<Instance *>(instance));
-    } else {
-        Release_Check(counter);
-    }
-    return counter;
-}
-
 template<typename Integer> inline Integer Release(Integer &counter)
 {
     --counter;
@@ -109,18 +98,6 @@ template<typename Integer> inline Integer AddRef_Atomic(volatile Integer &counte
     const Integer new_count = Atomic_Increment(&counter);
     AddRef_Check(new_count);
     return new_count;
-}
-
-template<typename Integer, typename Instance, typename Deleter>
-inline Integer Release_Atomic(volatile Integer &counter, const Instance *instance)
-{
-    const Integer new_counter = Atomic_Decrement(&counter);
-    if (new_counter == Integer{ 0 }) {
-        Invoke_Deleter<Deleter>(const_cast<Instance *>(instance));
-    } else {
-        Release_Check(new_counter);
-    }
-    return new_counter;
 }
 
 template<typename Integer> inline Integer Release_Atomic(volatile Integer &counter)
@@ -148,16 +125,24 @@ public:
     // Virtual Destructor to make sure this is called always on any deletion attempt.
     virtual ~intrusive_atomic_counter_i() { detail::Destructor_Ref_Check(m_counter); }
 #else
-    // Deleted destructor. This avoids forcing a virtual table in any derived class.
-    // Not calling destructor is legal and will not break anything, because the destructor does not do anything anyway.
-    ~intrusive_counter_i() = delete;
+    // Non virtual destructor to avoid forcing virtual table on derived type.
+    // Destructor could also be deleted in this class, but we keep it for good measure.
+    ~intrusive_atomic_counter_i() {}
 #endif
 
     integer_type AddRef() const { return detail::AddRef_Atomic<integer_type>(m_counter); }
     integer_type Release() const
     {
-        return detail::Release_Atomic<integer_type, derived_type, deleter_type>(
-            m_counter, static_cast<const derived_type *>(this));
+        const integer_type new_counter = Atomic_Decrement(&m_counter);
+        if (new_counter == integer_type{ 0 }) {
+#if !REFCOUNTER_CHECK
+            this->~intrusive_atomic_counter_i();
+#endif
+            Invoke_Deleter<deleter_type>(const_cast<derived_type *>(static_cast<const derived_type *>(this)));
+        } else {
+            detail::Release_Check(new_counter);
+        }
+        return new_counter;
     }
     integer_type UseCount() const
     {
@@ -166,7 +151,7 @@ public:
     }
 
 private:
-    mutable volatile integer_type m_counter = { 0 };
+    mutable volatile integer_type m_counter = integer_type{ 0 };
 };
 
 // #FEATURE Non-intrusive atomic counter for multi threaded use. Can be used with: nonintrusive_ptr<>.
@@ -189,7 +174,7 @@ public:
     }
 
 private:
-    mutable volatile integer_type m_counter = { 0 };
+    mutable volatile integer_type m_counter = integer_type{ 0 };
 };
 
 // #FEATURE Intrusive counter for single threaded use. Can be used with intrusive_ptr<>.
@@ -209,20 +194,29 @@ public:
     // Virtual Destructor to make sure this is called always on any deletion attempt.
     virtual ~intrusive_counter_i() { detail::Destructor_Ref_Check(m_counter); }
 #else
-    // Deleted destructor. This avoids forcing a virtual table in any derived class.
-    // Not calling destructor is legal and will not break anything, because the destructor does not do anything anyway.
-    ~intrusive_counter_i() = delete;
+    // Non virtual destructor to avoid forcing virtual table on derived type.
+    // Destructor could also be deleted in this class, but we keep it for good measure.
+    ~intrusive_counter_i() {}
 #endif
 
     integer_type AddRef() const { return detail::AddRef<integer_type>(m_counter); }
     integer_type Release() const
     {
-        return detail::Release<integer_type, derived_type, deleter_type>(m_counter, static_cast<const derived_type *>(this));
+        integer_type counter = --m_counter;
+        if (counter == integer_type{ 0 }) {
+#if !REFCOUNTER_CHECK
+            this->~intrusive_counter_i();
+#endif
+            Invoke_Deleter<deleter_type>(const_cast<derived_type *>(static_cast<const derived_type *>(this)));
+        } else {
+            detail::Release_Check(counter);
+        }
+        return counter;
     }
     integer_type UseCount() const { return m_counter; }
 
 private:
-    mutable integer_type m_counter = { 0 };
+    mutable integer_type m_counter = integer_type{ 0 };
 };
 
 // #FEATURE Non-intrusive counter for single threaded use. Can be used with nonintrusive_ptr<>.
@@ -242,7 +236,7 @@ public:
     integer_type UseCount() const { return m_counter; }
 
 private:
-    mutable integer_type m_counter = { 0 };
+    mutable integer_type m_counter = integer_type{ 0 };
 };
 
 // Additional aliases for convenience.
