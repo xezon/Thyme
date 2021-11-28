@@ -17,24 +17,34 @@
 #include "asciistring.h"
 #include "bittype.h"
 #include "unicodestring.h"
+#include <vector>
 
 // This enum applies to RA2/YR and Generals/ZH, BFME ID's are slightly different.
 enum class LanguageID : int32_t
 {
-    LANGUAGE_ID_US = 0,
-    LANGUAGE_ID_UK,
-    LANGUAGE_ID_GERMAN,
-    LANGUAGE_ID_FRENCH,
-    LANGUAGE_ID_SPANISH,
-    LANGUAGE_ID_ITALIAN,
-    LANGUAGE_ID_JAPANESE,
-    LANGUAGE_ID_JABBER,
-    LANGUAGE_ID_KOREAN,
-    LANGUAGE_ID_CHINESE,
-    LANGUAGE_ID_UNK1,
-    LANGUAGE_ID_BRAZILIAN,
-    LANGUAGE_ID_POLISH,
-    LANGUAGE_ID_UNKNOWN,
+    // Official game languages.
+    US = 0,
+    UK = 1,
+    GERMAN = 2,
+    FRENCH = 3,
+    SPANISH = 4,
+    ITALIAN = 5,
+    JAPANESE = 6,
+    JABBER = 7,
+    KOREAN = 8,
+    CHINESE = 9,
+    UNUSED_1 = 10,
+    BRAZILIAN = 11,
+    POLISH = 12,
+
+    // Unspecified language. Default in GameTextFile class.
+    UNKNOWN = 13,
+
+    // Community game languages.
+    RUSSIAN = 14,
+    ARABIC = 15,
+
+    COUNT
 };
 
 struct CSFHeader
@@ -47,8 +57,6 @@ struct CSFHeader
     LanguageID langid;
 };
 
-// #TODO Support reading and writing multiple strings.
-
 struct StringInfo
 {
     Utf8String label;
@@ -56,8 +64,19 @@ struct StringInfo
     Utf8String speech;
 };
 
+// #FEATURE
+struct MultiStringInfo
+{
+    Utf8String label;
+    Utf16String text[size_t(LanguageID::COUNT)];
+    Utf8String speech[size_t(LanguageID::COUNT)];
+};
+
 struct NoString
 {
     NoString *next;
     Utf16String text;
 };
+
+using StringInfos = std::vector<StringInfo>;
+using MultiStringInfos = std::vector<MultiStringInfo>;

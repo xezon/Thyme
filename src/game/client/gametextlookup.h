@@ -17,7 +17,6 @@
 #include "always.h"
 #include "gametextcommon.h"
 #include <stdlib.h>
-#include <vector>
 
 namespace Thyme
 {
@@ -34,8 +33,20 @@ struct MutableStringLookup
     StringInfo *string_info;
 };
 
-// #FEATURE Template class to help find strings by their label within a given string info container.
-// Prefer use the type aliases further down below.
+struct ConstMultiStringLookup
+{
+    const char *label;
+    const MultiStringInfo *string_info;
+};
+
+struct MutableMultiStringLookup
+{
+    const char *label;
+    MultiStringInfo *string_info;
+};
+
+// #FEATURE Template class to help find strings by their label within a given string info container. Prefer using the type
+// aliases further down below.
 template<typename StringLookup, typename StringInfos> class GameTextLookup
 {
     using StringLookups = std::vector<StringLookup>;
@@ -58,6 +69,8 @@ private:
 // Aliases.
 using ConstGameTextLookup = GameTextLookup<ConstStringLookup, const StringInfos>;
 using MutableGameTextLookup = GameTextLookup<MutableStringLookup, StringInfos>;
+using ConstMultiGameTextLookup = GameTextLookup<ConstMultiStringLookup, const MultiStringInfos>;
+using MutableMultiGameTextLookup = GameTextLookup<MutableMultiStringLookup, MultiStringInfos>;
 
 // Implementation...
 template<typename StringLookup, typename StringInfos>

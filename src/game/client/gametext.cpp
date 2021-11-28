@@ -407,7 +407,7 @@ bool GameTextManager::Get_CSF_Info(const char *filename)
     m_textCount = le32toh(header.num_labels);
 
     if (le32toh(header.version) <= 1) {
-        m_language = LanguageID::LANGUAGE_ID_US;
+        m_language = LanguageID::US;
     } else {
         m_language = letoh(header.langid);
     }
