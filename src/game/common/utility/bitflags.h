@@ -41,7 +41,7 @@ private:
 
 public:
     constexpr bitflags() noexcept : m_value(0) {}
-    constexpr explicit bitflags(value_type value) noexcept { set(value); }
+    constexpr explicit bitflags(value_type value) noexcept : m_value(0) { set(value); }
     constexpr bitflags(const bitflags &other) noexcept : m_value(other.m_value) {}
 
     template<typename... Values> constexpr bitflags(Values... values) noexcept

@@ -71,6 +71,7 @@ public:
     constexpr void reset()                             noexcept { m_value = underlying_type(0); }
 
     constexpr value_type value()                 const noexcept { return static_cast<value_type>(m_value); }
+    constexpr underlying_type underlying()       const noexcept { return m_value; }
 
 private:
     underlying_type m_value;

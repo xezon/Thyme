@@ -43,9 +43,9 @@ template<typename IntegerType, std::size_t Bytes> constexpr IntegerType Bit_Buck
 
 // clang-format on
 
-template<typename ValueType, std::size_t Bits> class numflags
+template<typename ValueType, ValueType ValueCount> class numflags
 {
-    template<typename, std::size_t> friend class numflags;
+    template<typename ValueType, ValueType> friend class numflags;
     using storage_type = uint32_t;
 
 public:
@@ -63,7 +63,7 @@ public:
 
     constexpr numflags(const numflags &other) noexcept { copy(m_values, other.m_values, bucket_size()); }
 
-    template<std::size_t OtherBits> constexpr numflags(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount> constexpr numflags(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         const std::size_t shared_bucket_size = std::min(bucket_size(), other.bucket_size());
         copy(m_values, other.m_values, shared_bucket_size);
@@ -84,7 +84,8 @@ public:
         return *this;
     }
 
-    template<std::size_t OtherBits> constexpr numflags &operator=(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount>
+    constexpr numflags &operator=(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         const std::size_t shared_bucket_size = std::min(bucket_size(), other.bucket_size());
         copy(m_values, other.m_values, shared_bucket_size);
@@ -99,7 +100,8 @@ public:
         return *this;
     }
 
-    template<std::size_t OtherBits> constexpr numflags &operator|=(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount>
+    constexpr numflags &operator|=(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         const std::size_t shared_bucket_size = std::min(bucket_size(), other.bucket_size());
         for (std::size_t i = 0; i < shared_bucket_size; ++i) {
@@ -116,7 +118,8 @@ public:
         return *this;
     }
 
-    template<std::size_t OtherBits> constexpr numflags &operator&=(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount>
+    constexpr numflags &operator&=(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         const std::size_t shared_bucket_size = std::min(bucket_size(), other.bucket_size());
         for (std::size_t i = 0; i < shared_bucket_size; ++i) {
@@ -133,7 +136,8 @@ public:
         return *this;
     }
 
-    template<std::size_t OtherBits> constexpr numflags &operator^=(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount>
+    constexpr numflags &operator^=(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         const std::size_t shared_bucket_size = std::min(bucket_size(), other.bucket_size());
         for (std::size_t i = 0; i < shared_bucket_size; ++i) {
@@ -150,7 +154,8 @@ public:
         return 0 == compare(m_values, other.m_values, sizeof(m_values));
     }
 
-    template<std::size_t OtherBits> constexpr bool operator==(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount>
+    constexpr bool operator==(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         const std::size_t shared_bucket_bytes = std::min(bucket_bytes(), other.bucket_bytes());
         return 0 == compare(m_values, other.m_values, shared_bucket_bytes);
@@ -158,7 +163,8 @@ public:
 
     constexpr bool operator!=(const numflags &other) const noexcept { return !operator==(other); }
 
-    template<std::size_t OtherBits> constexpr bool operator!=(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount>
+    constexpr bool operator!=(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         return !operator==(other);
     }
@@ -181,7 +187,8 @@ public:
         return inst;
     }
 
-    template<std::size_t OtherBits> constexpr numflags operator|(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount>
+    constexpr numflags operator|(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         numflags inst(*this);
         inst |= other;
@@ -195,7 +202,8 @@ public:
         return inst;
     }
 
-    template<std::size_t OtherBits> constexpr numflags operator&(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount>
+    constexpr numflags operator&(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         numflags inst(*this);
         inst &= other;
@@ -209,7 +217,8 @@ public:
         return inst;
     }
 
-    template<std::size_t OtherBits> constexpr numflags operator^(const numflags<value_type, OtherBits> &other) noexcept
+    template<value_type OtherValueCount>
+    constexpr numflags operator^(const numflags<value_type, OtherValueCount> &other) noexcept
     {
         numflags inst(*this);
         inst ^= other;
@@ -238,7 +247,9 @@ public:
 
     constexpr void reset() noexcept { zero(m_values, bucket_size()); }
 
-    constexpr std::size_t size() const noexcept { return sizeof(m_values) * 8; }
+    constexpr std::size_t size() const noexcept { return static_cast<std::size_t>(ValueCount); }
+
+    constexpr value_type count() const noexcept { return ValueCount; }
 
     constexpr bool none() const noexcept
     {
@@ -355,7 +366,7 @@ private:
     constexpr storage_type access(value_type value) const { return m_values[bucket(value)]; }
 
 private:
-    storage_type m_values[1 + (bucket(Bits))];
+    storage_type m_values[1 + (bucket(ValueCount))];
 };
 
 } // namespace rts

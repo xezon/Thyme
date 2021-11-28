@@ -16,6 +16,7 @@
 
 #include "typetraits.h"
 #include <cstddef>
+#include <iterator>
 
 namespace rts
 {
@@ -32,8 +33,8 @@ public:
     using const_reference = const element_type &;
     using pointer = element_type *;
     using const_pointer = const element_type *;
-    using iterator = element_type *;
-    using const_iterator = const element_type *;
+    using iterator = pointer;
+    using reverse_iterator = std::reverse_iterator<iterator>;
 
     ~array_view() noexcept = default;
 
@@ -56,6 +57,9 @@ public:
 
     constexpr iterator begin() const noexcept { return m_begin; }
     constexpr iterator end() const noexcept { return m_begin + m_size; }
+
+    reverse_iterator rbegin() { return reverse_iterator(end()); }
+    reverse_iterator rend() { return reverse_iterator(begin()); }
 
     constexpr reference front() const { return *m_begin; }
     constexpr reference back() const { return *(m_begin + m_size - 1); }
