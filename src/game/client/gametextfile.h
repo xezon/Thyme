@@ -14,6 +14,7 @@
  */
 #pragma once
 
+#include "common/utility/array.h"
 #include "common/utility/arrayview.h"
 #include "common/utility/enumerator.h"
 #include "common/utility/flags.h"
@@ -41,9 +42,10 @@ class GameTextFile
 {
 public:
     using Options = rts::bitflags<GameTextOption>;
-    using Languages = rts::numflags<LanguageID, LanguageID::COUNT>;
+    using Languages = rts::numflags<LanguageID, LanguageCount>;
 
-    GameTextFile() : m_options(Options::Value::OPTIMIZE_MEMORY_SIZE), m_language(LanguageID::UNKNOWN), m_stringInfos(){};
+    GameTextFile() :
+        m_options(Options::Value::OPTIMIZE_MEMORY_SIZE), m_language(LanguageID::UNKNOWN), m_stringInfosArray(){};
 
     // Checks whether or not localization is loaded.
     bool Is_Loaded() const;
@@ -109,9 +111,9 @@ private:
         int max_speech_len;
     };
 
-    using ConstStringInfosView = rts::array_view<const StringInfos>; // #TODO make std::array ?
-    using ConstStringInfosPtrView = rts::array_view<const StringInfos *>; // #TODO make std::array ?
-    using StringInfosPtrView = rts::array_view<StringInfos *>; // #TODO make std::array ?
+    using StringInfosArray = rts::array<StringInfos, LanguageCount>;
+    using ConstStringInfosPtrArray = rts::array<const StringInfos *, LanguageCount>;
+    using StringInfosPtrArray = rts::array<StringInfos *, LanguageCount>;
     using ReadStep = rts::enumerator<GameTextReadStep>;
     using Utf8View = rts::array_view<char>;
     using Utf16View = rts::array_view<unichar_t>;
@@ -128,11 +130,11 @@ private:
 
     template<typename Functor> static void For_Each_Language(Languages languages, Functor functor);
 
-    static size_t Get_Max_Size(ConstStringInfosPtrView string_infos_ptrs);
+    static size_t Get_Max_Size(const ConstStringInfosPtrArray &string_infos_ptrs);
     static void Build_Multi_String_Infos(
-        MultiStringInfos &multi_string_infos, ConstStringInfosPtrView string_infos_ptrs, Options options);
+        MultiStringInfos &multi_string_infos, const ConstStringInfosPtrArray &string_infos_ptrs, Options options);
     static void Build_String_Infos(
-        StringInfosPtrView string_infos_ptrs, const MultiStringInfos &multi_string_infos, Options options);
+        StringInfosPtrArray &string_infos_ptrs, const MultiStringInfos &multi_string_infos, Options options);
 
     static Type Get_File_Type(const char *filename, Type filetype);
 
@@ -156,9 +158,9 @@ private:
     static bool Read_CSF_Text(FileRef &file, StringInfo &string_info);
 
     static bool Write_STR_Multi_File(
-        FileRef &file, ConstStringInfosView string_infos_view, Languages languages, Options options);
+        FileRef &file, const StringInfosArray &string_infos_array, Languages languages, Options options);
     static bool Write_STR_Multi_File(
-        FileRef &file, ConstStringInfosPtrView string_infos_ptrs, Languages languages, Options options);
+        FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options);
     static bool Write_STR_Multi_Entry(FileRef &file,
         const MultiStringInfo &string_info,
         Languages languages,
@@ -183,7 +185,7 @@ private:
 private:
     Options m_options;
     LanguageID m_language;
-    StringInfos m_stringInfos[size_t(LanguageID::COUNT)];
+    StringInfosArray m_stringInfosArray;
 };
 
 } // namespace Thyme

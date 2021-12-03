@@ -89,7 +89,7 @@ static_assert(s_localization___ == s_localizations[size_t(LanguageID::UNKNOWN)],
 static_assert(s_localization_ru == s_localizations[size_t(LanguageID::RUSSIAN)], "Expected language is not set");
 static_assert(s_localization_ar == s_localizations[size_t(LanguageID::ARABIC)], "Expected language is not set");
 
-static_assert(ARRAY_SIZE(s_localizations) == size_t(LanguageID::COUNT), "Expected language is not set");
+static_assert(ARRAY_SIZE(s_localizations) == LanguageCount, "Expected language is not set");
 
 LanguageID Find_Language(const char *localization)
 {

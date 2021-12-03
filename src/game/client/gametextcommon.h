@@ -43,9 +43,9 @@ enum class LanguageID : int32_t
     // Community game languages.
     RUSSIAN = 14,
     ARABIC = 15,
-
-    COUNT
 };
+
+constexpr size_t LanguageCount = 16;
 
 struct CSFHeader
 {
@@ -68,8 +68,8 @@ struct StringInfo
 struct MultiStringInfo
 {
     Utf8String label;
-    Utf16String text[size_t(LanguageID::COUNT)];
-    Utf8String speech[size_t(LanguageID::COUNT)];
+    Utf16String text[LanguageCount];
+    Utf8String speech[LanguageCount];
 };
 
 struct NoString

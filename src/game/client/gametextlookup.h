@@ -72,7 +72,7 @@ using MutableGameTextLookup = GameTextLookup<MutableStringLookup, StringInfos>;
 using ConstMultiGameTextLookup = GameTextLookup<ConstMultiStringLookup, const MultiStringInfos>;
 using MutableMultiGameTextLookup = GameTextLookup<MutableMultiStringLookup, MultiStringInfos>;
 
-// Implementation...
+// Implementation.
 template<typename StringLookup, typename StringInfos>
 GameTextLookup<StringLookup, StringInfos>::GameTextLookup(StringInfos &stringInfos)
 {

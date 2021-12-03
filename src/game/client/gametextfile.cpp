@@ -110,7 +110,7 @@ static_assert(s_langcode___ == s_langcodes[size_t(LanguageID::UNKNOWN)], "Expect
 static_assert(s_langcode_ru == s_langcodes[size_t(LanguageID::RUSSIAN)], "Expected language is not set");
 static_assert(s_langcode_ar == s_langcodes[size_t(LanguageID::ARABIC)], "Expected language is not set");
 
-static_assert(ARRAY_SIZE(s_langcodes) == size_t(LanguageID::COUNT), "Expected language is not set");
+static_assert(ARRAY_SIZE(s_langcodes) == LanguageCount, "Expected language is not set");
 
 constexpr const char *Get_Language_Code(LanguageID language)
 {
@@ -264,7 +264,7 @@ bool GameTextFile::Save(const char *filename, Type filetype, const Languages *la
         success = Write_CSF_File(file, Get_String_Infos(), m_language);
     } else if (filetype == Type::STR) {
         if (languages != nullptr) {
-            success = Write_STR_Multi_File(file, ConstStringInfosView(m_stringInfos), *languages, m_options);
+            success = Write_STR_Multi_File(file, StringInfosArray(m_stringInfosArray), *languages, m_options);
         } else {
             success = Write_STR_File(file, Get_String_Infos(), m_options);
         }
@@ -294,7 +294,7 @@ void GameTextFile::Unload(Languages languages)
 
 void GameTextFile::Reset()
 {
-    for (StringInfos &string_infos : m_stringInfos) {
+    for (StringInfos &string_infos : m_stringInfosArray) {
         rts::free_container(string_infos);
     }
     m_options = Options::Value::NONE;
@@ -350,22 +350,22 @@ void GameTextFile::Check_Buffer_Lengths(Languages languages)
 
 const StringInfos &GameTextFile::Get_String_Infos() const
 {
-    return m_stringInfos[size_t(m_language)];
+    return m_stringInfosArray[size_t(m_language)];
 }
 
 const StringInfos &GameTextFile::Get_String_Infos(LanguageID language) const
 {
-    return m_stringInfos[size_t(language)];
+    return m_stringInfosArray[size_t(language)];
 }
 
 StringInfos &GameTextFile::Mutable_String_Infos()
 {
-    return m_stringInfos[size_t(m_language)];
+    return m_stringInfosArray[size_t(m_language)];
 }
 
 StringInfos &GameTextFile::Mutable_String_Infos(LanguageID language)
 {
-    return m_stringInfos[size_t(language)];
+    return m_stringInfosArray[size_t(language)];
 }
 
 void GameTextFile::Set_Options(Options options)
@@ -391,20 +391,20 @@ LanguageID GameTextFile::Get_Language() const
 void GameTextFile::Swap_String_Infos(LanguageID left, LanguageID right)
 {
     if (left != right) {
-        m_stringInfos[size_t(left)].swap(m_stringInfos[size_t(right)]);
+        m_stringInfosArray[size_t(left)].swap(m_stringInfosArray[size_t(right)]);
     }
 }
 
 template<typename Functor> static void GameTextFile::For_Each_Language(Languages languages, Functor functor)
 {
-    for (rts::enumerator<LanguageID> it; it < LanguageID::COUNT; ++it) {
+    for (rts::enumerator<LanguageID> it; it < LanguageID(LanguageCount); ++it) {
         if (languages.has(it.value())) {
             functor(it.value());
         }
     }
 }
 
-size_t GameTextFile::Get_Max_Size(ConstStringInfosPtrView string_infos_ptrs)
+size_t GameTextFile::Get_Max_Size(const ConstStringInfosPtrArray &string_infos_ptrs)
 {
     size_t size = 0;
     for (const StringInfos *string_infos : string_infos_ptrs) {
@@ -416,7 +416,7 @@ size_t GameTextFile::Get_Max_Size(ConstStringInfosPtrView string_infos_ptrs)
 }
 
 void GameTextFile::Build_Multi_String_Infos(
-    MultiStringInfos &multi_string_infos, ConstStringInfosPtrView string_infos_ptrs, Options options)
+    MultiStringInfos &multi_string_infos, const ConstStringInfosPtrArray &string_infos_ptrs, Options options)
 {
     const size_t estimated_size = Get_Max_Size(string_infos_ptrs);
     size_t current_size = 0;
@@ -461,7 +461,7 @@ void GameTextFile::Build_Multi_String_Infos(
 }
 
 void GameTextFile::Build_String_Infos(
-    StringInfosPtrView string_infos_ptrs, const MultiStringInfos &multi_string_infos, Options options)
+    StringInfosPtrArray &string_infos_ptrs, const MultiStringInfos &multi_string_infos, Options options)
 {
     size_t language_index = 0;
 
@@ -804,24 +804,22 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
 }
 
 bool GameTextFile::Write_STR_Multi_File(
-    FileRef &file, ConstStringInfosView string_infos_view, Languages languages, Options options)
+    FileRef &file, const StringInfosArray &string_infos_array, Languages languages, Options options)
 {
-    captainslog_assert(string_infos_view.size() == static_cast<size_t>(LanguageID::COUNT));
-
-    const StringInfos *string_infos[size_t(LanguageID::COUNT)] = { nullptr };
+    ConstStringInfosPtrArray string_infos_ptrs;
+    string_infos_ptrs.fill(nullptr);
 
     For_Each_Language(languages, [&](LanguageID language) {
         const size_t index = static_cast<size_t>(language);
-        string_infos[index] = &string_infos_view[index];
+        string_infos_ptrs[index] = &string_infos_array[index];
     });
 
-    return Write_STR_Multi_File(file, ConstStringInfosPtrView(string_infos), languages, options);
+    return Write_STR_Multi_File(file, string_infos_ptrs, languages, options);
 }
 
 bool GameTextFile::Write_STR_Multi_File(
-    FileRef &file, ConstStringInfosPtrView string_infos_ptrs, Languages languages, Options options)
+    FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
-    captainslog_assert(string_infos_ptrs.size() == static_cast<size_t>(LanguageID::COUNT));
     captainslog_info("Writing string file '%s' in STR multi format", file->Get_File_Name().Str());
 
     MultiStringInfos multi_string_infos;
