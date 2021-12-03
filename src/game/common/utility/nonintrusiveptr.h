@@ -47,7 +47,7 @@ public:
     {
         m_ptr = ptr;
         m_counter = nullptr;
-        if (m_ptr) {
+        if (m_ptr != nullptr) {
             add_ref_for(m_counter);
         }
     }
@@ -123,12 +123,7 @@ public:
     operator bool() const { return m_ptr != nullptr; }
 
     // Reset smart pointer to null.
-    void reset()
-    {
-        remove_ref_for(m_counter, m_ptr);
-        m_ptr = nullptr;
-        m_counter = nullptr;
-    }
+    void reset() { nonintrusive_ptr_t().swap(*this); }
 
     // Reset smart pointer with new pointer.
     void reset(value_type *ptr)

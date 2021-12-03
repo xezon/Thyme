@@ -41,14 +41,14 @@ public:
 
     intrusive_ptr(value_type *ptr)
     {
-        if (ptr)
+        if (ptr != nullptr)
             ptr->AddRef();
         m_ptr = ptr;
     }
 
     intrusive_ptr(const intrusive_ptr &other)
     {
-        if (other.m_ptr)
+        if (other.m_ptr != nullptr)
             other.m_ptr->AddRef();
         m_ptr = other.m_ptr;
     }
@@ -61,23 +61,23 @@ public:
 
     template<typename RelatedType> intrusive_ptr(const intrusive_ptr<RelatedType> &other)
     {
-        if (other.m_ptr)
+        if (other.m_ptr != nullptr)
             other.m_ptr->AddRef();
         m_ptr = other.m_ptr;
     }
 
     ~intrusive_ptr()
     {
-        if (m_ptr)
+        if (m_ptr != nullptr)
             m_ptr->Release();
     }
 
     intrusive_ptr &operator=(const intrusive_ptr &other)
     {
         if (this != &other) {
-            if (other.m_ptr)
+            if (other.m_ptr != nullptr)
                 other.m_ptr->AddRef();
-            if (m_ptr)
+            if (m_ptr != nullptr)
                 m_ptr->Release();
             m_ptr = other.m_ptr;
         }
@@ -87,7 +87,7 @@ public:
     intrusive_ptr &operator=(intrusive_ptr &&other)
     {
         if (this != &other) {
-            if (m_ptr)
+            if (m_ptr != nullptr)
                 m_ptr->Release();
             m_ptr = other.m_ptr;
             other.m_ptr = nullptr;
@@ -97,9 +97,9 @@ public:
 
     template<typename RelatedType> intrusive_ptr &operator=(const intrusive_ptr<RelatedType> &other)
     {
-        if (other.m_ptr)
+        if (other.m_ptr != nullptr)
             other.m_ptr->AddRef();
-        if (m_ptr)
+        if (m_ptr != nullptr)
             m_ptr->Release();
         m_ptr = other.m_ptr;
         return *this;
@@ -107,9 +107,9 @@ public:
 
     intrusive_ptr &operator=(value_type *ptr)
     {
-        if (ptr)
+        if (ptr != nullptr)
             ptr->AddRef();
-        if (m_ptr)
+        if (m_ptr != nullptr)
             m_ptr->Release();
         m_ptr = ptr;
         return *this;
