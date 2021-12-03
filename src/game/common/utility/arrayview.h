@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief Lightweight custom array view catered to Thyme.
+ * @brief Lightweight custom array view. Can be removed and replaced with std::span (c++20) if STL Port is abandoned.
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License
@@ -14,14 +14,17 @@
  */
 #pragma once
 
-#include "typetraits.h"
+#include "type_traits.h"
+#include <cassert>
 #include <cstddef>
 #include <iterator>
 
 namespace rts
 {
-// #FEATURE array_view allows to pass along a buffer and its size in one go. Alternative is std::span<> with c++20. Not to be
-// confused with string_view, which is read and string only!
+
+// #TODO Add a constexpr reverse_iterator.
+
+// #FEATURE array_view allows to pass along a buffer and its size in one go.
 template<typename ValueType> class array_view
 {
 public:
@@ -36,21 +39,32 @@ public:
     using iterator = pointer;
     using reverse_iterator = std::reverse_iterator<iterator>;
 
+public:
     ~array_view() noexcept = default;
 
     constexpr array_view() noexcept : m_begin(nullptr), m_size(0) {}
-    constexpr array_view(pointer begin, size_type size) :
-        m_begin(begin), m_size(size) {} // #TODO throw if size is too large?
-    constexpr array_view(pointer begin, pointer end) :
-        m_begin(begin), m_size(begin + size) {} // #TODO throw if end is too small?
+    constexpr array_view(pointer begin, size_type size) noexcept : m_begin(begin), m_size(size) {}
+    constexpr array_view(pointer begin, pointer end) : m_begin(begin), m_size(static_cast<size_t>(end - begin))
+    {
+        assert(begin <= end);
+    }
 
     template<size_type Size> constexpr array_view(element_type (&arr)[Size]) noexcept : m_begin(arr), m_size(Size) {}
 
     constexpr array_view(const array_view &) noexcept = default;
     constexpr array_view &operator=(const array_view &) noexcept = default;
 
-    constexpr reference operator[](size_type index) const { return m_begin[index]; }
-    constexpr reference operator*() const { return *m_begin; }
+    constexpr reference operator[](size_type index) const
+    {
+        assert(index < size());
+        return m_begin[index];
+    }
+    constexpr reference operator*() const
+    {
+        assert(m_begin != nullptr);
+        assert(0 < size());
+        return *m_begin;
+    }
     constexpr pointer operator->() const noexcept { return m_begin; }
 
     constexpr operator bool() const noexcept { return m_begin != nullptr; }
@@ -61,8 +75,18 @@ public:
     reverse_iterator rbegin() { return reverse_iterator(end()); }
     reverse_iterator rend() { return reverse_iterator(begin()); }
 
-    constexpr reference front() const { return *m_begin; }
-    constexpr reference back() const { return *(m_begin + m_size - 1); }
+    constexpr reference front() const
+    {
+        assert(m_begin != nullptr);
+        assert(0 < size());
+        return *m_begin;
+    }
+    constexpr reference back() const
+    {
+        assert(m_begin != nullptr);
+        assert(0 < size());
+        return *(m_begin + m_size - 1);
+    }
 
     constexpr pointer data() const noexcept { return m_begin; }
 
