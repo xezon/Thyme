@@ -20,75 +20,46 @@
 namespace rts
 {
 
-// Return the file extension of a given string.
-template<typename StringType> const typename StringType::value_type *get_file_extension(const StringType &filename)
-{
-    using char_type = typename StringType::value_type;
-
-    const char *begin = filename.begin();
-    const char *end = filename.end() - 1;
-
-    char_type ext_char = get_char<char_type>('.');
-    char_type dir1_char = get_char<char_type>(':');
-    char_type dir2_char = get_char<char_type>('/');
-    char_type dir3_char = get_char<char_type>('\\');
-
-    while (end != begin) {
-        char_type curr_char = *end;
-        if (curr_char == ext_char) {
-            return end + 1;
-        }
-        if (curr_char == dir1_char || curr_char == dir2_char || curr_char == dir3_char) {
-            return get_null_str<char_type>();
-        }
-        --end;
-    }
-    return get_null_str<char_type>();
-}
-
 // Read from a file until the specified end character is reached. Will not stop reading at escaped end character. Writes to
-// destination string until size minus 1. Always writes null terminator. Returns true, unless no line was read and the end of
-// the file was reached.
+// destination string until size minus 1. Destination string does include the read end character. Always writes null
+// terminator. Returns true, unless no line was read and the end of the file was reached.
 template<typename CharType>
-bool read_line(File *file,
-    CharType *dest,
-    std::size_t size,
-    std::size_t *num_copied = nullptr,
-    CharType eol_char = get_char<CharType>('\n'))
+bool read_line(File *file, CharType *dest, std::size_t size, const CharType *eol_chars, std::size_t *num_copied = nullptr)
 {
-    using char_type = CharType;
-
-    const char_type *writer_end = dest + size - 1;
-    char_type *writer = dest;
+    const CharType *writer_end = dest + size - 1;
+    CharType *writer = dest;
 
     int total_bytes_read = 0;
     bool escaped = false;
 
     while (writer != writer_end) {
-        const int bytes_read = file->Read(writer, sizeof(char_type));
+        const int bytes_read = file->Read(writer, sizeof(CharType));
         total_bytes_read += bytes_read;
 
-        if (bytes_read != sizeof(char_type)) {
+        if (bytes_read != sizeof(CharType)) {
             break;
         }
 
         // Stop at end character.
-        if (!escaped && *writer == eol_char) {
-            break;
+        if (!escaped) {
+            if (is_search_character(*writer, eol_chars)) {
+                ++writer;
+                break;
+            }
         }
 
         // End escaping.
         escaped = false;
 
         // Begin escaping.
-        if (*writer == get_char<char_type>('\\')) {
+        if (*writer == get_char<CharType>('\\')) {
             escaped = !escaped;
         }
 
         ++writer;
     }
 
-    *writer = get_char<char_type>('\0');
+    *writer = get_char<CharType>('\0');
 
     if (num_copied != nullptr) {
         *num_copied = (writer - dest);
@@ -112,12 +83,12 @@ template<typename T> bool write_any(File *file, const T &value)
 // Read string buffer with given size from file.
 template<typename StringType> bool read_str(File *file, StringType &string)
 {
-    using char_type = typename StringType::value_type;
-    using size_type = typename StringType::size_type;
+    using CharType = typename StringType::value_type;
+    using SizeType = typename StringType::size_type;
 
-    size_type size = string.size();
+    const SizeType size = string.size();
     void *data = string.data();
-    const int bytes = static_cast<int>(size) * sizeof(char_type);
+    const int bytes = static_cast<int>(size) * sizeof(CharType);
 
     return file->Read(data, bytes) == bytes;
 }
@@ -125,12 +96,12 @@ template<typename StringType> bool read_str(File *file, StringType &string)
 // Write string buffer with given size to file.
 template<typename StringType> bool write_str(File *file, const StringType &string)
 {
-    using char_type = typename StringType::value_type;
-    using size_type = typename StringType::size_type;
+    using CharType = typename StringType::value_type;
+    using SizeType = typename StringType::size_type;
 
-    size_type size = string.size();
+    const SizeType size = string.size();
     const void *data = string.data();
-    const int bytes = static_cast<int>(size) * sizeof(char_type);
+    const int bytes = static_cast<int>(size) * sizeof(CharType);
 
     return file->Write(data, bytes) == bytes;
 }

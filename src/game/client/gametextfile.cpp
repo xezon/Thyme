@@ -68,7 +68,7 @@ constexpr const char *const s_langcode_ja = "JA";
 constexpr const char *const s_langcode_jb = "JB";
 constexpr const char *const s_langcode_ko = "KO";
 constexpr const char *const s_langcode_zh = "ZH";
-constexpr const char *const s_langcode___ = "";
+constexpr const char *const s_langcode___ = "__";
 constexpr const char *const s_langcode_bp = "BP";
 constexpr const char *const s_langcode_pl = "PL";
 constexpr const char *const s_langcode_ru = "RU";
@@ -120,13 +120,7 @@ constexpr const char *Get_Language_Code(LanguageID language)
 constexpr const char s_str_eol[] = { '\r', '\n' };
 constexpr const char s_str_quo[] = { '"' };
 constexpr const char s_str_end[] = { 'E', 'N', 'D' };
-constexpr const char s_str_lng[] = { ':', ' ' };
-
-// https://www.rfc-editor.org/rfc/rfc3629
-// In UTF-8, characters from the U+0000..U+10FFFF range (the UTF-16
-// accessible range) are encoded using sequences of 1 to 4 octets.
-constexpr size_t GAMETEXT_BUFFER_16_SIZE = 1024;
-constexpr size_t GAMETEXT_BUFFER_8_SIZE = GAMETEXT_BUFFER_16_SIZE * 4;
+constexpr const char s_str_lng[] = { ':' };
 
 struct CSFLabelHeader
 {
@@ -163,17 +157,17 @@ bool GameTextFile::Is_Loaded(Languages languages) const
 bool GameTextFile::Load(const char *filename)
 {
     Type filetype = Get_File_Type(filename, Type::AUTO);
-    return Load(filename, filetype, nullptr, nullptr);
+    return Load(filename, filetype, nullptr);
 }
 
 bool GameTextFile::Load_CSF(const char *filename)
 {
-    return Load(filename, Type::CSF, nullptr, nullptr);
+    return Load(filename, Type::CSF, nullptr);
 }
 
-bool GameTextFile::Load_STR(const char *filename, const Languages *languages, const size_t *size_hint)
+bool GameTextFile::Load_STR(const char *filename, const Languages *languages)
 {
-    return Load(filename, Type::STR, languages, size_hint);
+    return Load(filename, Type::STR, languages);
 }
 
 bool GameTextFile::Save(const char *filename)
@@ -192,7 +186,7 @@ bool GameTextFile::Save_STR(const char *filename, const Languages *languages)
     return Save(filename, Type::STR, languages);
 }
 
-bool GameTextFile::Load(const char *filename, Type filetype, const Languages *languages, const size_t *size_hint)
+bool GameTextFile::Load(const char *filename, Type filetype, const Languages *languages)
 {
     captainslog_assert(filetype != Type::AUTO);
 
@@ -209,24 +203,31 @@ bool GameTextFile::Load(const char *filename, Type filetype, const Languages *la
 
     bool success = false;
 
-    StringInfos string_infos;
-    LanguageID language = m_language;
+    LanguageID read_language = m_language;
+    StringInfosArray string_infos_array;
+    StringInfos &string_infos = string_infos_array[size_t(read_language)];
 
     if (filetype == Type::CSF) {
-        success = Read_CSF_File(file, string_infos, language);
+        success = Read_CSF_File(file, string_infos, read_language);
+        string_infos_array[size_t(read_language)].swap(string_infos);
     } else if (filetype == Type::STR) {
-        success = Read_STR_File(file, string_infos, m_options, size_hint);
+        if (languages != nullptr) {
+            StringInfosPtrArray string_infos_ptrs = Build_String_Infos_Ptrs_Array(*languages, string_infos_array);
+            success = Read_STR_Multi_File(file, string_infos_ptrs, *languages, m_options);
+        } else {
+            success = Read_STR_File(file, string_infos, m_options);
+        }
     }
 
     if (success) {
-        m_language = language;
-        Mutable_String_Infos().swap(string_infos);
+        m_language = read_language;
+        const Languages used_languages = (languages == nullptr) ? read_language : *languages;
+
+        For_Each_Language(used_languages,
+            [&](LanguageID language) { Mutable_String_Infos(language).swap(string_infos_array[size_t(language)]); });
 
         if (m_options.has(Options::Value::CHECK_BUFFER_LENGTH_ON_LOAD)) {
-            LengthInfo len_info;
-            Collect_Length_Info(len_info, Get_String_Infos());
-            Log_Length_Info(len_info);
-            Check_Length_Info(len_info);
+            Check_Buffer_Lengths(used_languages);
         }
         captainslog_info("String file '%s' with %zu lines loaded successfully", filename, Get_String_Infos().size());
     } else {
@@ -264,7 +265,8 @@ bool GameTextFile::Save(const char *filename, Type filetype, const Languages *la
         success = Write_CSF_File(file, Get_String_Infos(), m_language);
     } else if (filetype == Type::STR) {
         if (languages != nullptr) {
-            success = Write_STR_Multi_File(file, StringInfosArray(m_stringInfosArray), *languages, m_options);
+            ConstStringInfosPtrArray string_infos_ptrs = Build_Const_String_Infos_Ptrs_Array(*languages, m_stringInfosArray);
+            success = Write_STR_Multi_File(file, string_infos_ptrs, *languages, m_options);
         } else {
             success = Write_STR_File(file, Get_String_Infos(), m_options);
         }
@@ -397,16 +399,42 @@ void GameTextFile::Swap_String_Infos(LanguageID left, LanguageID right)
 
 template<typename Functor> static void GameTextFile::For_Each_Language(Languages languages, Functor functor)
 {
-    for (rts::enumerator<LanguageID> it; it < LanguageID(LanguageCount); ++it) {
-        if (languages.has(it.value())) {
-            functor(it.value());
+    for (rts::enumerator<LanguageID> it; it < languages.count(); ++it) {
+        const LanguageID language = it.value();
+        if (languages.has(language)) {
+            functor(language);
         }
     }
+}
+
+GameTextFile::StringInfosPtrArray GameTextFile::Build_String_Infos_Ptrs_Array(
+    Languages languages, StringInfosArray &string_infos_array)
+{
+    StringInfosPtrArray string_infos_ptrs = {};
+
+    For_Each_Language(languages, [&](LanguageID language) {
+        const size_t index = static_cast<size_t>(language);
+        string_infos_ptrs[index] = &string_infos_array[index];
+    });
+    return string_infos_ptrs;
+}
+
+GameTextFile::ConstStringInfosPtrArray GameTextFile::Build_Const_String_Infos_Ptrs_Array(
+    Languages languages, StringInfosArray &string_infos_array)
+{
+    ConstStringInfosPtrArray string_infos_ptrs = {};
+
+    For_Each_Language(languages, [&](LanguageID language) {
+        const size_t index = static_cast<size_t>(language);
+        string_infos_ptrs[index] = &string_infos_array[index];
+    });
+    return string_infos_ptrs;
 }
 
 size_t GameTextFile::Get_Max_Size(const ConstStringInfosPtrArray &string_infos_ptrs)
 {
     size_t size = 0;
+
     for (const StringInfos *string_infos : string_infos_ptrs) {
         if (string_infos != nullptr) {
             size = std::max(size, string_infos->size());
@@ -465,21 +493,20 @@ void GameTextFile::Build_String_Infos(
 {
     size_t language_index = 0;
 
-    for (StringInfos *string_infos : string_infos_ptrs) {
-        if (string_infos != nullptr) {
+    for (StringInfos *string_infos_ptr : string_infos_ptrs) {
+        if (string_infos_ptr != nullptr) {
+            StringInfos &string_infos = *string_infos_ptr;
             if (options.has(Options::Value::OPTIMIZE_MEMORY_SIZE)) {
-                rts::free_container(*string_infos);
-            } else {
-                string_infos->clear();
+                rts::free_container(string_infos);
             }
-            string_infos->reserve(multi_string_infos.size());
+            string_infos.resize(multi_string_infos.size());
+            size_t string_index = 0;
 
             for (const MultiStringInfo &multi_string_info : multi_string_infos) {
-                StringInfo string_info;
-                string_info.label = multi_string_info.label;
-                string_info.text = multi_string_info.text[language_index];
-                string_info.speech = multi_string_info.speech[language_index];
-                string_infos->push_back(string_info);
+                string_infos[string_index].label = multi_string_info.label;
+                string_infos[string_index].text = multi_string_info.text[language_index];
+                string_infos[string_index].speech = multi_string_info.speech[language_index];
+                ++string_index;
             }
         }
         ++language_index;
@@ -535,44 +562,52 @@ void GameTextFile::Check_Length_Info(const LengthInfo &len_info)
     captainslog_dbgassert(GAMETEXT_BUFFER_8_SIZE > len_info.max_speech_len, "Read buffer must be larger");
 }
 
-bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Options options, const size_t *size_hint)
+Utf16String &GameTextFile::Get_Text(StringInfo &string_info, LanguageID language)
+{
+    (void)language;
+    return string_info.text;
+}
+
+Utf16String &GameTextFile::Get_Text(MultiStringInfo &string_info, LanguageID language)
+{
+    return string_info.text[size_t(language)];
+}
+
+Utf8String &GameTextFile::Get_Speech(StringInfo &string_info, LanguageID language)
+{
+    (void)language;
+    return string_info.speech;
+}
+
+Utf8String &GameTextFile::Get_Speech(MultiStringInfo &string_info, LanguageID language)
+{
+    return string_info.speech[size_t(language)];
+}
+
+bool GameTextFile::Read_STR_Multi_File(
+    FileRef &file, StringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
+{
+    captainslog_info("Reading string file '%s' in STR multi format", file->Get_File_Name().Str());
+
+    MultiStringInfos multi_string_infos;
+    multi_string_infos.reserve(8192);
+
+    Read_STR_File_T(file, multi_string_infos, options);
+
+    Build_String_Infos(string_infos_ptrs, multi_string_infos, options);
+
+    return !multi_string_infos.empty();
+}
+
+bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Options options)
 {
     captainslog_info("Reading string file '%s' in STR format", file->Get_File_Name().Str());
 
-    char read_buf[GAMETEXT_BUFFER_8_SIZE] = { 0 };
-    Utf8View read8 = read_buf;
-
     // Instead of reading the file once from top to bottom to get the number of the entries, we will allocate a very generous
     // buffer to begin with and shrink it down afterwards. This will reduce algorithm complexity and file access.
-    StringInfo string_info;
-    {
-        const size_t size = (size_hint == nullptr) ? 16384 : *size_hint;
-        string_infos.reserve(size);
-    }
+    string_infos.reserve(8192);
 
-    ReadStep step = ReadStep::Value::LABEL;
-    char eol = '\n';
-
-    while (rts::read_line(file.Get(), read8.data(), read8.size(), nullptr, eol)) {
-        if (step == ReadStep::Value::LABEL) {
-            if (!Try_Parse_STR_Label(read8, string_info)) {
-                continue;
-            }
-        } else if (step == ReadStep::Value::TEXT_BEGIN) {
-            Parse_STR_Text_Begin(read8, string_info);
-        } else if (step == ReadStep::Value::TEXT_END) {
-            Parse_STR_Text_End(read8, string_info, options);
-        } else if (step == ReadStep::Value::END) {
-            if (!Try_Parse_STR_End(read8, string_info)) {
-                // Is not end. Continue looking for end.
-                continue;
-            }
-            // Is end. Push to container and continue with next label.
-            string_infos.push_back(string_info);
-        }
-
-        Next_Step(step, eol);
-    }
+    Read_STR_File_T(file, string_infos, options);
 
     if (options.has(Options::Value::OPTIMIZE_MEMORY_SIZE)) {
         rts::shrink_to_fit(string_infos);
@@ -581,66 +616,156 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Optio
     return !string_infos.empty();
 }
 
-bool GameTextFile::Try_Parse_STR_Label(Utf8View read8, StringInfo &string_info)
+template<typename StringInfosType>
+static void GameTextFile::Read_STR_File_T(FileRef &file, StringInfosType &string_infos, Options options)
 {
-    rts::strip_characters(read8.data(), "\n\r");
-    const size_t len = rts::strip_leading_and_trailing_spaces(read8.data());
+    using StringInfoType = typename StringInfosType::value_type;
+
+    StringInfoType string_info;
+    StrParseResult result;
+    LanguageID read_language;
+    Utf8Array read = {};
+    StrReadStep step = StrReadStep::LABEL;
+    const char *eol_chars = "\n";
+
+    while (rts::read_line(file.Get(), read.data(), read.size(), eol_chars)) {
+
+        switch (step) {
+            case StrReadStep::LABEL:
+                string_info = StringInfoType();
+                result = Parse_STR_Label(read, string_info.label);
+
+                if (result == StrParseResult::IS_LABEL) {
+                    Change_Step(step, StrReadStep::SEARCH, eol_chars);
+                }
+                break;
+
+            case StrReadStep::SEARCH:
+                read_language = LanguageID::UNKNOWN;
+                result = Parse_STR_Search(read);
+
+                if (result == StrParseResult::IS_PRETEXT) {
+                    size_t parsed_count;
+                    Parse_STR_Language(read.data(), read_language, parsed_count);
+                    Change_Step(step, StrReadStep::TEXT, eol_chars);
+
+                } else if (result == StrParseResult::IS_SPEECH) {
+                    size_t parsed_count;
+                    Parse_STR_Language(read.data(), read_language, parsed_count);
+                    Utf8View view(read.data() + parsed_count, read.size() - parsed_count);
+                    Parse_STR_Speech(view, Get_Speech(string_info, read_language));
+
+                } else if (result == StrParseResult::IS_END) {
+                    string_infos.push_back(string_info);
+                    Change_Step(step, StrReadStep::LABEL, eol_chars);
+                }
+                break;
+
+            case StrReadStep::TEXT:
+                Parse_STR_Text(read, Get_Text(string_info, read_language), options);
+                Change_Step(step, StrReadStep::SEARCH, eol_chars);
+                break;
+        }
+    }
+}
+
+GameTextFile::StrParseResult GameTextFile::Parse_STR_Label(Utf8Array &read, Utf8String &label)
+{
+    rts::strip_characters(read.data(), "\n\r");
+    const size_t len = rts::strip_leading_and_trailing_spaces(read.data());
 
     if (len == 0) {
-        return false;
+        return StrParseResult::IS_NOTHING;
     }
-    if (Is_STR_Comment(read8.data())) {
-        return false;
+
+    if (Is_STR_Comment(read.data())) {
+        return StrParseResult::IS_NOTHING;
     }
-    string_info.label = read8.data();
-    return true;
+
+    label = read.data();
+    return StrParseResult::IS_LABEL;
 }
 
-void GameTextFile::Parse_STR_Text_Begin(Utf8View read8, StringInfo &string_info)
+GameTextFile::StrParseResult GameTextFile::Parse_STR_Search(Utf8Array &read)
 {
-    // Read string can be empty.
+    rts::strip_characters(read.data(), "\n\r");
+    const size_t len = rts::strip_leading_and_trailing_spaces(read.data());
 
-    rts::strip_characters(read8.data(), "\n\r");
+    if (len == 0) {
+        return StrParseResult::IS_NOTHING;
+    }
+
+    if (Is_STR_Comment(read.data())) {
+        return StrParseResult::IS_NOTHING;
+    }
+
+    if (Is_STR_End(read.data())) {
+        return StrParseResult::IS_END;
+    }
+
+    Utf8View view(read.begin(), len);
+
+    // #TODO the original appears to have some more checks for the Speech string. Could include them here as well.
+
+    return Is_STR_Pre_Text(view) ? StrParseResult::IS_PRETEXT : StrParseResult::IS_SPEECH;
 }
 
-void GameTextFile::Parse_STR_Text_End(Utf8View read8, StringInfo &string_info, Options options)
+void GameTextFile::Parse_STR_Text(Utf8Array &read, Utf16String &text, Options options)
 {
     // Read string can be empty.
 
     const auto escaped_chars_view = Escaped_Characters_For_STR_Read<char>();
 
-    rts::strip_characters(read8.data(), "\n\r");
-    rts::replace_characters(read8.data(), "\t\v\f", ' ');
+    rts::strip_characters(read.data(), "\n\r");
+    rts::replace_characters(read.data(), "\t\v\f", ' ');
 
     // STR does support escaped characters for special control characters. When written out as 2 symbol sequence, it will be
     // converted into single character here. Convert in place.
-    rts::convert_from_escaped_characters(read8.data(), read8.size(), read8.data(), escaped_chars_view);
+    size_t len = rts::convert_from_escaped_characters(read.data(), read.size(), read.data(), escaped_chars_view);
+
+    // Read string is expected to close with a quote. Remove it here.
+    if (read[len - 1] == '\"') {
+        read[len - 1] = '\0';
+    }
 
     if (!options.has(GameTextOption::KEEP_SPACES_ON_STR_READ)) {
         // Strip any remaining obsolete spaces for cleaner presentation in game.
-        rts::strip_obsolete_spaces(read8.data());
+        rts::strip_obsolete_spaces(read.data());
     }
 
     // Translate final UTF16 string.
-    string_info.text.Translate(read8.data());
+    text.Translate(read.data());
 }
 
-bool GameTextFile::Try_Parse_STR_End(Utf8View read8, StringInfo &string_info)
+void GameTextFile::Parse_STR_Speech(Utf8View &read, Utf8String &speech)
 {
-    rts::strip_characters(read8.data(), "\n\r");
-    const size_t len = rts::strip_leading_and_trailing_spaces(read8.data());
+    rts::strip_characters(read.data(), "\n\r");
+    rts::strip_leading_and_trailing_spaces(read.data());
+    speech = read.data();
+}
 
-    if (len == 0) {
-        return false;
+bool GameTextFile::Parse_STR_Language(const char *cstring, LanguageID &language, size_t &parsed_count)
+{
+    const size_t code_len = strlen(s_langcodes[0]);
+    const size_t lng_len = strlen(s_str_lng);
+
+    for (rts::enumerator<LanguageID> it; it < LanguageID(LanguageCount); ++it) {
+        const char *code = s_langcodes[it.underlying()];
+        if (strncasecmp(cstring, code, code_len) == 0) {
+            if (strncasecmp(cstring + code_len, s_str_lng, lng_len) == 0) {
+                language = it.value();
+                parsed_count = code_len + lng_len;
+                return true;
+            }
+        }
     }
-    if (Is_STR_Comment(read8.data())) {
-        return false;
-    }
-    if (Is_STR_End(read8.data())) {
-        return true;
-    }
-    string_info.speech = read8.data();
+    parsed_count = 0;
     return false;
+}
+
+bool GameTextFile::Is_STR_Pre_Text(Utf8View read)
+{
+    return !read.empty() ? (read.back() == '"') : false;
 }
 
 bool GameTextFile::Is_STR_Comment(const char *cstring)
@@ -653,24 +778,19 @@ bool GameTextFile::Is_STR_End(const char *cstring)
     return (strcasecmp(cstring, "END") == 0);
 }
 
-void GameTextFile::Next_Step(ReadStep &step, char &eol)
+void GameTextFile::Change_Step(StrReadStep &step, StrReadStep new_step, const char *&eol_chars)
 {
-    if (++step > ReadStep::Value::END) {
-        step = ReadStep::Value::LABEL;
-    }
+    step = new_step;
 
-    switch (step.value()) {
-        case ReadStep::Value::LABEL:
-            eol = '\n';
+    switch (new_step) {
+        case StrReadStep::LABEL:
+            eol_chars = "\n";
             break;
-        case ReadStep::Value::TEXT_BEGIN:
-            eol = '"';
+        case StrReadStep::SEARCH:
+            eol_chars = "\n\"";
             break;
-        case ReadStep::Value::TEXT_END:
-            eol = '"';
-            break;
-        case ReadStep::Value::END:
-            eol = '\n';
+        case StrReadStep::TEXT:
+            eol_chars = "\"";
             break;
     }
 }
@@ -804,20 +924,6 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
 }
 
 bool GameTextFile::Write_STR_Multi_File(
-    FileRef &file, const StringInfosArray &string_infos_array, Languages languages, Options options)
-{
-    ConstStringInfosPtrArray string_infos_ptrs;
-    string_infos_ptrs.fill(nullptr);
-
-    For_Each_Language(languages, [&](LanguageID language) {
-        const size_t index = static_cast<size_t>(language);
-        string_infos_ptrs[index] = &string_infos_array[index];
-    });
-
-    return Write_STR_Multi_File(file, string_infos_ptrs, languages, options);
-}
-
-bool GameTextFile::Write_STR_Multi_File(
     FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
     captainslog_info("Writing string file '%s' in STR multi format", file->Get_File_Name().Str());
@@ -825,9 +931,7 @@ bool GameTextFile::Write_STR_Multi_File(
     MultiStringInfos multi_string_infos;
     Build_Multi_String_Infos(multi_string_infos, string_infos_ptrs, options);
 
-    char write_buf[GAMETEXT_BUFFER_8_SIZE] = { 0 };
-    Utf8View w1 = write_buf;
-
+    Utf8Array w1 = {};
     Utf8String w2;
     w2.Get_Buffer_For_Read(GAMETEXT_BUFFER_8_SIZE);
 
@@ -842,7 +946,7 @@ bool GameTextFile::Write_STR_Multi_File(
 }
 
 bool GameTextFile::Write_STR_Multi_Entry(
-    FileRef &file, const MultiStringInfo &string_info, Languages languages, Options options, Utf8View w1, Utf8String &w2)
+    FileRef &file, const MultiStringInfo &string_info, Languages languages, Options options, Utf8Array &w1, Utf8String &w2)
 {
     bool ok = true;
 
@@ -850,10 +954,12 @@ bool GameTextFile::Write_STR_Multi_Entry(
 
     For_Each_Language(languages, [&](LanguageID language) {
         const size_t index = static_cast<size_t>(language);
-
         ok &= Write_STR_Language(file, language);
         ok &= Write_STR_Text(file, string_info.text[index], options, w1, w2);
+    });
 
+    For_Each_Language(languages, [&](LanguageID language) {
+        const size_t index = static_cast<size_t>(language);
         if (!string_info.speech[index].Is_Empty()) {
             ok &= Write_STR_Language(file, language);
             ok &= Write_STR_Speech(file, string_info.speech[index]);
@@ -872,6 +978,7 @@ bool GameTextFile::Write_STR_Language(FileRef &file, LanguageID language)
     bool ok = true;
     ok &= rts::write_str(file.Get(), rts::make_array_view(code));
     ok &= rts::write_any(file.Get(), s_str_lng);
+    ok &= rts::write_any(file.Get(), ' ');
     return ok;
 }
 
@@ -879,9 +986,7 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
 {
     captainslog_info("Writing string file '%s' in STR format", file->Get_File_Name().Str());
 
-    char write_buf[GAMETEXT_BUFFER_8_SIZE] = { 0 };
-    Utf8View w1 = write_buf;
-
+    Utf8Array w1 = {};
     Utf8String w2;
     w2.Get_Buffer_For_Read(GAMETEXT_BUFFER_8_SIZE);
 
@@ -896,7 +1001,7 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
 }
 
 bool GameTextFile::Write_STR_Entry(
-    FileRef &file, const StringInfo &string_info, Options options, Utf8View w1, Utf8String &w2)
+    FileRef &file, const StringInfo &string_info, Options options, Utf8Array &w1, Utf8String &w2)
 {
     bool ok = true;
     ok &= Write_STR_Label(file, string_info.label);
@@ -917,7 +1022,7 @@ bool GameTextFile::Write_STR_Label(FileRef &file, const Utf8String &label)
     return ok;
 }
 
-bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8View w1, Utf8String &w2)
+bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8Array &w1, Utf8String &w2)
 {
     // Convert utf16 to utf8.
     w2.Translate(text.Str());
@@ -936,8 +1041,8 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Option
         // when read back from the STR file.
         w2 = w1.data();
         const char *search = "\\n";
-        const char *rplace = "\\n\r\n";
-        len = rts::replace_character_sequence(w1.data(), w1.size(), w2.Str(), search, rplace);
+        const char *replace = "\\n\r\n";
+        len = rts::replace_character_sequence(w1.data(), w1.size(), w2.Str(), search, replace);
     }
 
     bool ok = true;
@@ -973,8 +1078,7 @@ bool GameTextFile::Write_CSF_File(FileRef &file, const StringInfos &string_infos
 
     if (Write_CSF_Header(file, string_infos, language)) {
         success = true;
-        unichar_t write_buf[GAMETEXT_BUFFER_16_SIZE] = { 0 };
-        Utf16View write16 = write_buf;
+        Utf16Array write16 = {};
         int string_index = 0;
 
         for (const StringInfo &string_info : string_infos) {
@@ -1013,7 +1117,7 @@ bool GameTextFile::Write_CSF_Header(FileRef &file, const StringInfos &string_inf
     return rts::write_any(file.Get(), header);
 }
 
-bool GameTextFile::Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16View write16)
+bool GameTextFile::Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Array &write16)
 {
     if (Write_CSF_Label(file, string_info)) {
         if (Write_CSF_Text(file, string_info, write16)) {
@@ -1041,7 +1145,7 @@ bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info)
     return false;
 }
 
-bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16View write16)
+bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Array &write16)
 {
     bool text_ok = false;
     bool speech_ok = false;

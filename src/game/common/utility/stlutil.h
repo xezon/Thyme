@@ -29,12 +29,16 @@ template<class ContainerType> void append_container(ContainerType &dest, const C
 
 template<class ContainerType> void shrink_to_fit(ContainerType &container)
 {
+#if THYME_USE_STLPORT
     if (container.capacity() > container.size()) {
         ContainerType tmp;
         container.swap(tmp);
         container.swap(ContainerType());
         container.assign(tmp.begin(), tmp.end());
     }
+#else
+    container.shrink_to_fit();
+#endif
 }
 
 } // namespace rts

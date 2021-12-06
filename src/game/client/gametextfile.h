@@ -24,7 +24,7 @@
 namespace Thyme
 {
 
-enum class GameTextOption : uint8_t
+enum class GameTextOption
 {
     NONE = 0,
     CHECK_BUFFER_LENGTH_ON_LOAD = BIT(0),
@@ -54,7 +54,7 @@ public:
     // Loads CSF or STR file from disk. Does not unload previous data on failure.
     bool Load(const char *filename);
     bool Load_CSF(const char *filename);
-    bool Load_STR(const char *filename, const Languages *languages = nullptr, const size_t *size_hint = nullptr);
+    bool Load_STR(const char *filename, const Languages *languages = nullptr);
 
     // Saves CSF or STR file to disk. Will write over any existing file.
     bool Save(const char *filename);
@@ -95,12 +95,20 @@ private:
         STR,
     };
 
-    enum class GameTextReadStep : uint8_t
+    enum class StrReadStep
     {
         LABEL,
-        TEXT_BEGIN,
-        TEXT_END,
-        END,
+        SEARCH,
+        TEXT,
+    };
+
+    enum class StrParseResult
+    {
+        IS_NOTHING,
+        IS_LABEL,
+        IS_PRETEXT,
+        IS_SPEECH,
+        IS_END,
     };
 
     struct LengthInfo
@@ -111,15 +119,25 @@ private:
         int max_speech_len;
     };
 
+    // https://www.rfc-editor.org/rfc/rfc3629
+    // In UTF-8, characters from the U+0000..U+10FFFF range (the UTF-16
+    // accessible range) are encoded using sequences of 1 to 4 octets.
+    enum : size_t
+    {
+        GAMETEXT_BUFFER_16_SIZE = 1024,
+        GAMETEXT_BUFFER_8_SIZE = GAMETEXT_BUFFER_16_SIZE * 4,
+    };
+
     using StringInfosArray = rts::array<StringInfos, LanguageCount>;
     using ConstStringInfosPtrArray = rts::array<const StringInfos *, LanguageCount>;
     using StringInfosPtrArray = rts::array<StringInfos *, LanguageCount>;
-    using ReadStep = rts::enumerator<GameTextReadStep>;
+    using Utf8Array = rts::array<char, GAMETEXT_BUFFER_8_SIZE>;
+    using Utf16Array = rts::array<unichar_t, GAMETEXT_BUFFER_16_SIZE>;
     using Utf8View = rts::array_view<char>;
     using Utf16View = rts::array_view<unichar_t>;
 
 private:
-    bool Load(const char *filename, Type filetype, const Languages *languages, const size_t *size_hint);
+    bool Load(const char *filename, Type filetype, const Languages *languages);
     bool Save(const char *filename, Type filetype, const Languages *languages);
 
     void Merge_And_Overwrite_Internal(const GameTextFile &other, LanguageID language);
@@ -129,6 +147,9 @@ private:
     StringInfos &Mutable_String_Infos(LanguageID language);
 
     template<typename Functor> static void For_Each_Language(Languages languages, Functor functor);
+    static StringInfosPtrArray Build_String_Infos_Ptrs_Array(Languages languages, StringInfosArray &string_infos_array);
+    static ConstStringInfosPtrArray Build_Const_String_Infos_Ptrs_Array(
+        Languages languages, StringInfosArray &string_infos_array);
 
     static size_t Get_Max_Size(const ConstStringInfosPtrArray &string_infos_ptrs);
     static void Build_Multi_String_Infos(
@@ -142,14 +163,25 @@ private:
     static void Log_Length_Info(const LengthInfo &len_info);
     static void Check_Length_Info(const LengthInfo &len_info);
 
-    static bool Read_STR_File(FileRef &file, StringInfos &string_infos, Options options, const size_t *size_hint);
-    static bool Try_Parse_STR_Label(Utf8View read8, StringInfo &string_info);
-    static void Parse_STR_Text_Begin(Utf8View read8, StringInfo &string_info);
-    static void Parse_STR_Text_End(Utf8View read8, StringInfo &string_info, Options options);
-    static bool Try_Parse_STR_End(Utf8View read8, StringInfo &string_info);
+    static Utf16String &Get_Text(StringInfo &string_info, LanguageID language);
+    static Utf16String &Get_Text(MultiStringInfo &string_info, LanguageID language);
+    static Utf8String &Get_Speech(StringInfo &string_info, LanguageID language);
+    static Utf8String &Get_Speech(MultiStringInfo &string_info, LanguageID language);
+
+    static bool Read_STR_Multi_File(
+        FileRef &file, StringInfosPtrArray &string_infos_ptrs, Languages languages, Options options);
+    static bool Read_STR_File(FileRef &file, StringInfos &string_infos, Options options);
+    template<typename StringInfosType>
+    static void Read_STR_File_T(FileRef &file, StringInfosType &string_infos, Options options);
+    static StrParseResult Parse_STR_Label(Utf8Array &read, Utf8String &label);
+    static StrParseResult Parse_STR_Search(Utf8Array &read);
+    static void Parse_STR_Text(Utf8Array &read, Utf16String &text, Options options);
+    static void Parse_STR_Speech(Utf8View &read, Utf8String &speech);
+    static bool Parse_STR_Language(const char *cstring, LanguageID &language, size_t &parsed_count);
+    static bool Is_STR_Pre_Text(Utf8View read);
     static bool Is_STR_Comment(const char *cstring);
     static bool Is_STR_End(const char *cstring);
-    static void Next_Step(ReadStep &step, char &eol);
+    static void Change_Step(StrReadStep &step, StrReadStep new_step, const char *&eol_chars);
 
     static bool Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language);
     static bool Read_CSF_Header(FileRef &file, StringInfos &string_infos, LanguageID &language);
@@ -158,29 +190,28 @@ private:
     static bool Read_CSF_Text(FileRef &file, StringInfo &string_info);
 
     static bool Write_STR_Multi_File(
-        FileRef &file, const StringInfosArray &string_infos_array, Languages languages, Options options);
-    static bool Write_STR_Multi_File(
         FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options);
     static bool Write_STR_Multi_Entry(FileRef &file,
         const MultiStringInfo &string_info,
         Languages languages,
         Options options,
-        Utf8View w1,
+        Utf8Array &w1,
         Utf8String &w2);
     static bool Write_STR_Language(FileRef &file, LanguageID language);
 
     static bool Write_STR_File(FileRef &file, const StringInfos &string_infos, Options options);
-    static bool Write_STR_Entry(FileRef &file, const StringInfo &string_info, Options options, Utf8View w1, Utf8String &w2);
+    static bool Write_STR_Entry(
+        FileRef &file, const StringInfo &string_info, Options options, Utf8Array &w1, Utf8String &w2);
     static bool Write_STR_Label(FileRef &file, const Utf8String &label);
-    static bool Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8View w1, Utf8String &w2);
+    static bool Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8Array &w1, Utf8String &w2);
     static bool Write_STR_Speech(FileRef &file, const Utf8String &speech);
     static bool Write_STR_End(FileRef &file);
 
     static bool Write_CSF_File(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
     static bool Write_CSF_Header(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
-    static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16View write16);
+    static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Array &write16);
     static bool Write_CSF_Label(FileRef &file, const StringInfo &string_info);
-    static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16View write16);
+    static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Array &write16);
 
 private:
     Options m_options;

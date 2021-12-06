@@ -41,7 +41,7 @@ public:
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 public:
-    // Constructors are implicitly declared.
+    // Aggregate type. Constructors are implicitly declared.
 
     constexpr reference at(size_type pos)
     {
@@ -64,26 +64,10 @@ public:
         return m_array[pos];
     }
 
-    constexpr reference front() noexcept
-    {
-        static_assert(Size > 0, "Size must be larger than 0");
-        return m_array[0];
-    }
-    constexpr const_reference front() const noexcept
-    {
-        static_assert(Size > 0, "Size must be larger than 0");
-        return m_array[0];
-    }
-    constexpr reference back() noexcept
-    {
-        static_assert(Size > 0, "Size must be larger than 0");
-        return m_array[Size - 1];
-    }
-    constexpr const_reference back() const noexcept
-    {
-        static_assert(Size > 0, "Size must be larger than 0");
-        return m_array[Size - 1];
-    }
+    constexpr reference front() noexcept { return m_array[0]; }
+    constexpr const_reference front() const noexcept { return m_array[0]; }
+    constexpr reference back() noexcept { return m_array[size() - 1]; }
+    constexpr const_reference back() const noexcept { return m_array[size() - 1]; }
 
     constexpr pointer data() noexcept { return m_array; }
     constexpr const_pointer data() const noexcept { return m_array; }
@@ -92,9 +76,9 @@ public:
     constexpr const_iterator begin() const noexcept { return const_iterator(data()); }
     constexpr const_iterator cbegin() const noexcept { return const_iterator(data()); }
 
-    constexpr iterator end() noexcept { return iterator(data() + Size); }
-    constexpr const_iterator end() const noexcept { return const_iterator(data() + Size); }
-    constexpr const_iterator cend() const noexcept { return const_iterator(data() + Size); }
+    constexpr iterator end() noexcept { return iterator(data() + size()); }
+    constexpr const_iterator end() const noexcept { return const_iterator(data() + size()); }
+    constexpr const_iterator cend() const noexcept { return const_iterator(data() + size()); }
 
     reverse_iterator rbegin() noexcept { return std::reverse_iterator(begin()); }
     const_reverse_iterator rbegin() const noexcept { return std::reverse_iterator(begin()); }
@@ -105,13 +89,10 @@ public:
     const_reverse_iterator crend() const noexcept { return std::reverse_iterator(cend()); }
 
     constexpr bool empty() const noexcept { return size() == 0; }
-    constexpr size_type size() const noexcept { return Size; }
-    constexpr size_type max_size() const noexcept { return Size; }
+    constexpr size_type size() const noexcept { return sizeof(m_array) / sizeof(value_type); }
+    constexpr size_type max_size() const noexcept { return size(); }
 
-    void fill(const T &value)
-    {
-        std::fill_n(begin(), size(), value);
-    }
+    void fill(const T &value) { std::fill_n(begin(), size(), value); }
 
     void swap(array &other) noexcept
     {
@@ -120,8 +101,7 @@ public:
         }
     }
 
-private:
-    value_type m_array[Size];
+    value_type m_array[Size ? Size : 1];
 };
 
 } // namespace rts

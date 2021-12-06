@@ -323,9 +323,7 @@ void GameTextManager::Collect_Labels_With_Prefix(
 // allocated here are freed by GameTextManager::Reset()
 void GameTextManager::Init_Map_String_File(Utf8String const &filename)
 {
-    size_t size_hint = 256;
-
-    if (m_mapTextFile.Load_STR(filename.Str(), nullptr, &size_hint)) {
+    if (m_mapTextFile.Load_STR(filename.Str())) {
         m_mapTextLookup.Load(m_mapTextFile.Get_String_Infos());
     }
 }
