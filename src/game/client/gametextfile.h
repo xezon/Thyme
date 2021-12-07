@@ -50,6 +50,7 @@ public:
     // Checks whether or not localization is loaded.
     bool Is_Loaded() const;
     bool Is_Loaded(Languages languages) const;
+    bool Is_Any_Loaded(Languages languages) const;
 
     // Loads CSF or STR file from disk. Does not unload previous data on failure.
     bool Load(const char *filename);

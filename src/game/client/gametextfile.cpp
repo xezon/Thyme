@@ -154,6 +154,13 @@ bool GameTextFile::Is_Loaded(Languages languages) const
     return loaded;
 }
 
+bool GameTextFile::Is_Any_Loaded(Languages languages) const
+{
+    bool loaded = true;
+    For_Each_Language(languages, [&](LanguageID language) { loaded |= !Get_String_Infos(language).empty(); });
+    return loaded;
+}
+
 bool GameTextFile::Load(const char *filename)
 {
     Type filetype = Get_File_Type(filename, Type::AUTO);
@@ -248,7 +255,7 @@ bool GameTextFile::Save(const char *filename, Type filetype, const Languages *la
 
     const Languages used_languages = (languages == nullptr) ? m_language : *languages;
 
-    if (!Is_Loaded(used_languages)) {
+    if (!Is_Any_Loaded(used_languages)) {
         captainslog_error("String file without string data cannot be saved");
         return false;
     }
