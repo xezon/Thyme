@@ -3,7 +3,8 @@
  *
  * @author xezon
  *
- * @brief General purpose intrusive and extrusive smart pointer to wrap any type with (Thyme Feature)
+ * @brief Lightweight shared pointer.
+ * Could be removed and replaced with std::shared_ptr (c++11) if STL Port is abandoned.
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License
@@ -20,11 +21,11 @@
 namespace rts
 {
 // #FEATURE Non-intrusive reference counted smart pointer.
-// Works similar to std::shared_ptr<>. Prefer using intrusive_ptr<> over nonintrusive_ptr_t<>.
+// Works similar to std::shared_ptr<>. Prefer using intrusive_ptr<> over shared_ptr_t<>.
 // Provide a custom deleter when not using new & delete. Uses thread unsafe counter by default.
-// If multiple threads are involved, then nonintrusive_atomic_counter can be used.
-// Must not assign a raw pointer that has already been assigned to another nonintrusive_ptr_t<>.
-template<class Value, typename Deleter = NewDeleter<Value>, typename Counter = nonintrusive_counter> class nonintrusive_ptr_t
+// If multiple threads are involved, then atomic_shared_counter can be used.
+// Must not assign a raw pointer that has already been assigned to another shared_ptr_t<>.
+template<class Value, typename Deleter = NewDeleter<Value>, typename Counter = shared_counter> class shared_ptr_t
 {
 public:
     using element_type = Value;
@@ -41,9 +42,9 @@ private:
     mutable counter_type *m_counter;
 
 public:
-    nonintrusive_ptr_t() : m_ptr(nullptr), m_counter(nullptr) {}
+    shared_ptr_t() : m_ptr(nullptr), m_counter(nullptr) {}
 
-    nonintrusive_ptr_t(value_type *ptr)
+    shared_ptr_t(value_type *ptr)
     {
         m_ptr = ptr;
         m_counter = nullptr;
@@ -52,14 +53,14 @@ public:
         }
     }
 
-    nonintrusive_ptr_t(const nonintrusive_ptr_t &other)
+    shared_ptr_t(const shared_ptr_t &other)
     {
         m_ptr = other.m_ptr;
         m_counter = other.m_counter;
         add_ref_for(m_counter);
     }
 
-    nonintrusive_ptr_t(nonintrusive_ptr_t &&other) noexcept
+    shared_ptr_t(shared_ptr_t &&other) noexcept
     {
         m_ptr = other.m_ptr;
         m_counter = other.m_counter;
@@ -67,16 +68,16 @@ public:
         other.m_counter = nullptr;
     }
 
-    template<typename RelatedType> nonintrusive_ptr_t(const nonintrusive_ptr_t<RelatedType, counter_type> &other)
+    template<typename RelatedType> shared_ptr_t(const shared_ptr_t<RelatedType, counter_type> &other)
     {
         m_ptr = other.m_ptr;
         m_counter = other.m_counter;
         add_ref_for(m_counter);
     }
 
-    ~nonintrusive_ptr_t() { remove_ref_for(m_counter, m_ptr); }
+    ~shared_ptr_t() { remove_ref_for(m_counter, m_ptr); }
 
-    nonintrusive_ptr_t &operator=(const nonintrusive_ptr_t &other)
+    shared_ptr_t &operator=(const shared_ptr_t &other)
     {
         add_ref_for(other.m_counter);
         remove_ref_for(m_counter, m_ptr);
@@ -85,7 +86,7 @@ public:
         return *this;
     }
 
-    nonintrusive_ptr_t &operator=(nonintrusive_ptr_t &&other)
+    shared_ptr_t &operator=(shared_ptr_t &&other)
     {
         if (this != &other) {
             remove_ref_for(m_counter, m_ptr);
@@ -97,7 +98,7 @@ public:
         return *this;
     }
 
-    template<typename RelatedType> nonintrusive_ptr_t &operator=(const nonintrusive_ptr_t<RelatedType, counter_type> &other)
+    template<typename RelatedType> shared_ptr_t &operator=(const shared_ptr_t<RelatedType, counter_type> &other)
     {
         add_ref_for(other.m_counter);
         remove_ref_for(m_counter, m_ptr);
@@ -106,7 +107,7 @@ public:
         return *this;
     }
 
-    nonintrusive_ptr_t &operator=(value_type *ptr)
+    shared_ptr_t &operator=(value_type *ptr)
     {
         reset(ptr);
         return *this;
@@ -123,18 +124,18 @@ public:
     operator bool() const { return m_ptr != nullptr; }
 
     // Reset smart pointer to null.
-    void reset() { nonintrusive_ptr_t().swap(*this); }
+    void reset() { shared_ptr_t().swap(*this); }
 
     // Reset smart pointer with new pointer.
     void reset(value_type *ptr)
     {
         if (ptr != m_ptr) {
-            nonintrusive_ptr_t(ptr).swap(*this);
+            shared_ptr_t(ptr).swap(*this);
         }
     }
 
     // Swap smart pointer with other smart pointer.
-    void swap(nonintrusive_ptr_t &other)
+    void swap(shared_ptr_t &other)
     {
         std::swap(m_ptr, other.m_ptr);
         std::swap(m_counter, other.m_counter);
@@ -173,9 +174,9 @@ private:
 // Additional aliases for convenience.
 
 template<typename Value, typename Deleter = NewDeleter<Value>>
-using nonintrusive_ptr = nonintrusive_ptr_t<Value, Deleter, nonintrusive_counter>;
+using shared_ptr = shared_ptr_t<Value, Deleter, shared_counter>;
 
 template<typename Value, typename Deleter = NewDeleter<Value>>
-using nonintrusive_atomic_ptr = nonintrusive_ptr_t<Value, Deleter, nonintrusive_atomic_counter>;
+using atomic_shared_ptr = shared_ptr_t<Value, Deleter, atomic_shared_counter>;
 
 } // namespace rts

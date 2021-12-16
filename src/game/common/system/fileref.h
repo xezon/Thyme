@@ -71,10 +71,10 @@ public:
     bool Is_Open() const { return m_file.get() && m_file->m_access; }
 
 private:
-    rts::nonintrusive_ptr_t<File, FileDeleter, Counter> m_file;
+    rts::shared_ptr_t<File, FileDeleter, Counter> m_file;
 };
 
-using FileRef = FileRefT<rts::nonintrusive_counter>;
-using FileRefAtomic = FileRefT<rts::nonintrusive_atomic_counter>;
+using FileRef = FileRefT<rts::shared_counter>;
+using FileRefAtomic = FileRefT<rts::atomic_shared_counter>;
 
 } // namespace Thyme
