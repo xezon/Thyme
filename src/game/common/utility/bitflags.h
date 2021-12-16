@@ -14,11 +14,7 @@
  */
 #pragma once
 
-#ifdef THYME_USE_STLPORT
 #include "sizedinteger.h"
-#else
-#include <type_traits>
-#endif
 #include <cstddef>
 
 namespace rts
@@ -34,23 +30,12 @@ public:
     using size_type = std::size_t;
 
 private:
-#ifdef THYME_USE_STLPORT
     using underlying_type = typename unsigned_integer<value_type>::type;
-#else
-    using underlying_type = typename std::underlying_type<value_type>::type;
-#endif
 
 public:
     constexpr bitflags() noexcept : m_value(0) {}
-    constexpr explicit bitflags(value_type value) noexcept : m_value(0) { set(value); }
+    constexpr bitflags(value_type value) noexcept : m_value(0) { set(value); }
     constexpr bitflags(const bitflags &other) noexcept : m_value(other.m_value) {}
-
-    template<typename... Values> constexpr bitflags(Values... values) noexcept
-    {
-        for (value_type value : { values... }) {
-            set(value);
-        }
-    }
 
     constexpr bitflags &operator=(bitflags other)        noexcept { m_value =  other.m_value; return *this; }
     constexpr bitflags &operator|=(bitflags other)       noexcept { m_value |= other.m_value; return *this; }
@@ -75,7 +60,19 @@ public:
     constexpr void reset(bitflags flags)                 noexcept { m_value &= ~flags.m_value; }
     constexpr void reset()                               noexcept { m_value = underlying_type(0); }
 
-    constexpr size_type size()                     const noexcept { return sizeof(m_value) * 8; }
+    constexpr size_type size()                     const noexcept { return static_cast<size_type>(sizeof(m_value) * 8); }
+
+    constexpr size_type count() const noexcept
+    {
+        size_type count = 0;
+        for (size_type i = 0; i < size(); ++i) {
+            value_type value = static_cast<value_type>(underlying_type(1) << underlying_type(i));
+            if (has(value)) {
+                ++count;
+            }
+        }
+        return count;
+    }
 
     constexpr bool none()                          const noexcept { return (m_value == underlying_type(0)); }
     constexpr bool any()                           const noexcept { return (m_value != underlying_type(0)); }
@@ -84,6 +81,20 @@ public:
     constexpr bool has_only(value_type value)      const noexcept { return ((m_value & static_cast<underlying_type>(value)) == m_value); }
     constexpr bool has_any_of(bitflags flags)      const noexcept { return ((m_value & flags.m_value) != underlying_type(0)); }
     constexpr bool has_all_of(bitflags flags)      const noexcept { return ((m_value & flags.m_value) == flags.m_value); }
+
+    constexpr bool get(value_type &value, size_type occurence = 0) const noexcept
+    {
+        size_type num = 0;
+        for (size_type i = 0; i < count(); ++i) {
+            if (has(static_cast<value_type>(i))) {
+                if (occurence == num++) {
+                    value = static_cast<value_type>(i);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
 private:
     underlying_type m_value;

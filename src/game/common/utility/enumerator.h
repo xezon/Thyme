@@ -14,11 +14,7 @@
  */
 #pragma once
 
-#ifdef THYME_USE_STLPORT
 #include "sizedinteger.h"
-#else
-#include <type_traits>
-#endif
 #include <cstddef>
 
 namespace rts
@@ -31,11 +27,7 @@ template<typename ValueType> class enumerator
 public:
     using Value = ValueType;
     using value_type = ValueType;
-#ifdef THYME_USE_STLPORT
     using underlying_type = typename unsigned_integer<value_type>::type;
-#else
-    using underlying_type = typename std::underlying_type<value_type>::type;
-#endif
 
 public:
     constexpr enumerator() noexcept : m_value(0) {}

@@ -58,7 +58,7 @@ private:
 public:
     constexpr numflags() { reset(); }
 
-    constexpr explicit numflags(value_type value)
+    constexpr numflags(value_type value)
     {
         reset();
         set(value);
@@ -68,17 +68,9 @@ public:
 
     template<size_type OtherValueCount> constexpr numflags(const numflags<value_type, OtherValueCount> &other) noexcept
     {
-        const size_type shared_bucket_size = std::min(bucket_size(), other.bucket_size());
+        const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         copy(m_values, other.m_values, shared_bucket_size);
         zero(m_values + shared_bucket_size, bucket_size() - shared_bucket_size);
-    }
-
-    template<typename... Values> constexpr numflags(Values... values) noexcept
-    {
-        reset();
-        for (value_type value : { values... }) {
-            set(value);
-        }
     }
 
     constexpr numflags &operator=(const numflags &other) noexcept
@@ -90,7 +82,7 @@ public:
     template<size_type OtherValueCount>
     constexpr numflags &operator=(const numflags<value_type, OtherValueCount> &other) noexcept
     {
-        const size_type shared_bucket_size = std::min(bucket_size(), other.bucket_size());
+        const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         copy(m_values, other.m_values, shared_bucket_size);
         return *this;
     }
@@ -106,7 +98,7 @@ public:
     template<size_type OtherValueCount>
     constexpr numflags &operator|=(const numflags<value_type, OtherValueCount> &other) noexcept
     {
-        const size_type shared_bucket_size = std::min(bucket_size(), other.bucket_size());
+        const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         for (size_type i = 0; i < shared_bucket_size; ++i) {
             m_values[i] |= other.m_values[i];
         }
@@ -124,7 +116,7 @@ public:
     template<size_type OtherValueCount>
     constexpr numflags &operator&=(const numflags<value_type, OtherValueCount> &other) noexcept
     {
-        const size_type shared_bucket_size = std::min(bucket_size(), other.bucket_size());
+        const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         for (size_type i = 0; i < shared_bucket_size; ++i) {
             m_values[i] &= other.m_values[i];
         }
@@ -142,7 +134,7 @@ public:
     template<size_type OtherValueCount>
     constexpr numflags &operator^=(const numflags<value_type, OtherValueCount> &other) noexcept
     {
-        const size_type shared_bucket_size = std::min(bucket_size(), other.bucket_size());
+        const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         for (size_type i = 0; i < shared_bucket_size; ++i) {
             m_values[i] ^= other.m_values[i];
         }
@@ -160,7 +152,7 @@ public:
     template<size_type OtherValueCount>
     constexpr bool operator==(const numflags<value_type, OtherValueCount> &other) noexcept
     {
-        const size_type shared_bucket_bytes = std::min(bucket_bytes(), other.bucket_bytes());
+        const size_type shared_bucket_bytes = min(bucket_bytes(), other.bucket_bytes());
         return 0 == compare(m_values, other.m_values, shared_bucket_bytes);
     }
 
@@ -252,7 +244,18 @@ public:
 
     constexpr size_type size() const noexcept { return static_cast<size_type>(ValueCount); }
 
-    constexpr value_type count() const noexcept { return static_cast<value_type>(ValueCount); }
+    constexpr size_type count() const noexcept
+    {
+        size_type count = 0;
+        for (size_type i = 0; i < size(); ++i)
+        {
+            value_type value = static_cast<value_type>(i);
+            if (has(value)) {
+                ++count;
+            }
+        }
+        return count;
+    }
 
     constexpr bool none() const noexcept
     {
@@ -267,11 +270,7 @@ public:
 
     constexpr bool all() const noexcept
     {
-        storage_type bits = ~storage_type(0);
-        for (const storage_type value : m_values) {
-            bits &= value;
-        }
-        return bits == ~storage_type(0);
+        return count() == size();
     }
 
     constexpr bool has(value_type value) const { return ((access(value) & bit(value)) != storage_type(0)); }
@@ -292,7 +291,7 @@ public:
         for (++i; i < bucket_size(); ++i) {
             other_bits |= m_values[i];
         }
-        return (other_bits == storage_type(0));
+        return other_bits == storage_type(0);
     }
 
     constexpr bool has_any_of(numflags flags) const noexcept
@@ -313,7 +312,23 @@ public:
         return test;
     }
 
+    constexpr bool get(value_type &value, size_type occurence = 0) const noexcept
+    {
+        size_type num = 0;
+        for (size_type i = 0; i < size(); ++i) {
+            if (has(static_cast<value_type>(i))) {
+                if (occurence == num++) {
+                    value = static_cast<value_type>(i);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 private:
+    static constexpr size_type min(const size_type a, const size_type b) { return a < b ? a : b; }
+
     static constexpr void copy(storage_type *dst, const storage_type *src, size_type count)
     {
         while (count-- > 0) {
@@ -347,20 +362,20 @@ private:
         // value   0101 1111 = 95
         // masked  0000 0111 = 7
         // shifted 1000 0000 = 128
-        storage_type mask = detail::Bit_Bucket_Mask<storage_type, sizeof(storage_type)>();
+        constexpr storage_type mask = detail::Bit_Bucket_Mask<storage_type, sizeof(storage_type)>();
         storage_type masked = static_cast<storage_type>(value) & mask;
         storage_type shifted = 1 << masked;
         return shifted;
     }
 
-    template<typename IntegerType> static constexpr size_type bucket(IntegerType value)
+    static constexpr size_type bucket(value_type value)
     {
-        assert(static_cast<size_t>(value) < ValueCount);
+        assert(static_cast<size_type>(value) < ValueCount);
 
         // Get bucket index with given value. Example with 1 byte storage:
         // value 0101 1111 = 95
         // index 0000 1011 = 11
-        size_type shift = detail::Bit_Bucket_Shift<size_type, sizeof(storage_type)>();
+        constexpr size_type shift = detail::Bit_Bucket_Shift<size_type, sizeof(storage_type)>();
         size_type index = static_cast<size_type>(value) >> shift;
         return index;
     }
@@ -370,7 +385,7 @@ private:
     constexpr storage_type access(value_type value) const { return m_values[bucket(value)]; }
 
 private:
-    storage_type m_values[1 + (bucket(ValueCount - 1))];
+    storage_type m_values[1 + (bucket(value_type(ValueCount - 1)))];
 };
 
 } // namespace rts

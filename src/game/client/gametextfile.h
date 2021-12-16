@@ -14,12 +14,12 @@
  */
 #pragma once
 
-#include "common/utility/array.h"
-#include "common/utility/arrayview.h"
-#include "common/utility/enumerator.h"
-#include "common/utility/flags.h"
 #include "fileref.h"
 #include "gametextcommon.h"
+#include "utility/array.h"
+#include "utility/arrayview.h"
+#include "utility/enumerator.h"
+#include "utility/flags.h"
 
 namespace Thyme
 {
@@ -29,10 +29,12 @@ enum class GameTextOption
     NONE = 0,
     CHECK_BUFFER_LENGTH_ON_LOAD = BIT(0),
     CHECK_BUFFER_LENGTH_ON_SAVE = BIT(1),
-    KEEP_SPACES_ON_STR_READ = BIT(2),
-    PRINT_LINEBREAKS_ON_STR_WRITE = BIT(3),
+    KEEP_SPACES_ON_STR_LOAD = BIT(2),
+    PRINT_LINEBREAKS_ON_STR_SAVE = BIT(3),
     OPTIMIZE_MEMORY_SIZE = BIT(4),
 };
+
+bool Name_To_Game_Text_Option(const char *name, GameTextOption &option);
 
 // #TODO Split the multi language functionality from 'GameTextFile' into a new 'MultiGameTextFile' class?
 
@@ -55,12 +57,14 @@ public:
     // Loads CSF or STR file from disk. Does not unload previous data on failure.
     bool Load(const char *filename);
     bool Load_CSF(const char *filename);
-    bool Load_STR(const char *filename, const Languages *languages = nullptr);
+    bool Load_STR(const char *filename);
+    bool Load_STR(const char *filename, Languages languages);
 
     // Saves CSF or STR file to disk. Will write over any existing file.
     bool Save(const char *filename);
     bool Save_CSF(const char *filename);
-    bool Save_STR(const char *filename, const Languages *languages = nullptr);
+    bool Save_STR(const char *filename);
+    bool Save_STR(const char *filename, Languages languages);
 
     // Unloads language data.
     void Unload();
@@ -115,8 +119,8 @@ private:
     struct LengthInfo
     {
         int max_label_len;
-        int max_text_utf8_len;
-        int max_text_utf16_len;
+        int max_text8_len;
+        int max_text16_len;
         int max_speech_len;
     };
 
@@ -125,15 +129,15 @@ private:
     // accessible range) are encoded using sequences of 1 to 4 octets.
     enum : size_t
     {
-        GAMETEXT_BUFFER_16_SIZE = 1024,
-        GAMETEXT_BUFFER_8_SIZE = GAMETEXT_BUFFER_16_SIZE * 4,
+        TEXT_16_SIZE = 1024,
+        TEXT_8_SIZE = TEXT_16_SIZE * 4,
     };
 
     using StringInfosArray = rts::array<StringInfos, LanguageCount>;
     using ConstStringInfosPtrArray = rts::array<const StringInfos *, LanguageCount>;
     using StringInfosPtrArray = rts::array<StringInfos *, LanguageCount>;
-    using Utf8Array = rts::array<char, GAMETEXT_BUFFER_8_SIZE>;
-    using Utf16Array = rts::array<unichar_t, GAMETEXT_BUFFER_16_SIZE>;
+    using Utf8Array = rts::array<char, TEXT_8_SIZE>;
+    using Utf16Array = rts::array<unichar_t, TEXT_16_SIZE>;
     using Utf8View = rts::array_view<char>;
     using Utf16View = rts::array_view<unichar_t>;
 
@@ -142,7 +146,7 @@ private:
     bool Save(const char *filename, Type filetype, const Languages *languages);
 
     void Merge_And_Overwrite_Internal(const GameTextFile &other, LanguageID language);
-    void Check_Buffer_Lengths(Languages languages);
+    void Check_Buffer_Lengths(LanguageID language);
 
     StringInfos &Mutable_String_Infos();
     StringInfos &Mutable_String_Infos(LanguageID language);
@@ -162,7 +166,7 @@ private:
 
     static void Collect_Length_Info(LengthInfo &len_info, const StringInfos &strings);
     static void Log_Length_Info(const LengthInfo &len_info);
-    static void Check_Length_Info(const LengthInfo &len_info);
+    static void Assert_Length_Info(const LengthInfo &len_info);
 
     static Utf16String &Get_Text(StringInfo &string_info, LanguageID language);
     static Utf16String &Get_Text(MultiStringInfo &string_info, LanguageID language);

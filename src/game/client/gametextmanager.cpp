@@ -33,78 +33,9 @@
 #include "hookcrt.h"
 #endif
 
+
 namespace Thyme
 {
-namespace
-{
-constexpr const char *const s_localization_us = "English";
-constexpr const char *const s_localization_en = "";
-constexpr const char *const s_localization_de = "German";
-constexpr const char *const s_localization_fr = "French";
-constexpr const char *const s_localization_es = "Spanish";
-constexpr const char *const s_localization_it = "Italian";
-constexpr const char *const s_localization_ja = "";
-constexpr const char *const s_localization_jb = "";
-constexpr const char *const s_localization_ko = "Korean";
-constexpr const char *const s_localization_zh = "Chinese";
-constexpr const char *const s_localization___ = "";
-constexpr const char *const s_localization_bp = "Brazilian";
-constexpr const char *const s_localization_pl = "Polish";
-constexpr const char *const s_localization_ru = "Russian";
-constexpr const char *const s_localization_ar = "Arabic";
-
-constexpr const char *const s_localizations[] = {
-    s_localization_us,
-    s_localization_en,
-    s_localization_de,
-    s_localization_fr,
-    s_localization_es,
-    s_localization_it,
-    s_localization_ja,
-    s_localization_jb,
-    s_localization_ko,
-    s_localization_zh,
-    s_localization___,
-    s_localization_bp,
-    s_localization_pl,
-    s_localization___,
-    s_localization_ru,
-    s_localization_ar,
-};
-
-static_assert(s_localization_us == s_localizations[size_t(LanguageID::US)], "Expected language is not set");
-static_assert(s_localization_en == s_localizations[size_t(LanguageID::UK)], "Expected language is not set");
-static_assert(s_localization_de == s_localizations[size_t(LanguageID::GERMAN)], "Expected language is not set");
-static_assert(s_localization_fr == s_localizations[size_t(LanguageID::FRENCH)], "Expected language is not set");
-static_assert(s_localization_es == s_localizations[size_t(LanguageID::SPANISH)], "Expected language is not set");
-static_assert(s_localization_it == s_localizations[size_t(LanguageID::ITALIAN)], "Expected language is not set");
-static_assert(s_localization_ja == s_localizations[size_t(LanguageID::JAPANESE)], "Expected language is not set");
-static_assert(s_localization_jb == s_localizations[size_t(LanguageID::JABBER)], "Expected language is not set");
-static_assert(s_localization_ko == s_localizations[size_t(LanguageID::KOREAN)], "Expected language is not set");
-static_assert(s_localization_zh == s_localizations[size_t(LanguageID::CHINESE)], "Expected language is not set");
-static_assert(s_localization___ == s_localizations[size_t(LanguageID::UNUSED_1)], "Expected language is not set");
-static_assert(s_localization_bp == s_localizations[size_t(LanguageID::BRAZILIAN)], "Expected language is not set");
-static_assert(s_localization_pl == s_localizations[size_t(LanguageID::POLISH)], "Expected language is not set");
-static_assert(s_localization___ == s_localizations[size_t(LanguageID::UNKNOWN)], "Expected language is not set");
-static_assert(s_localization_ru == s_localizations[size_t(LanguageID::RUSSIAN)], "Expected language is not set");
-static_assert(s_localization_ar == s_localizations[size_t(LanguageID::ARABIC)], "Expected language is not set");
-
-static_assert(ARRAY_SIZE(s_localizations) == LanguageCount, "Expected language is not set");
-
-LanguageID Find_Language(const char *localization)
-{
-    rts::enumerator<LanguageID> languageIt;
-
-    for (const char *name : s_localizations) {
-        if (0 == strcasecmp(localization, name)) {
-            return languageIt.value();
-        }
-        ++languageIt;
-    }
-    return LanguageID::UNKNOWN;
-}
-
-} // namespace
 
 // #OBSOLETE Kept for ABI compatibility.
 struct StringLookUp
@@ -165,25 +96,27 @@ void GameTextManager::Init()
             loaded = true;
         } else {
             // Non standard behavior. Try loading STR string from different places.
-            const LanguageID language = Find_Language(language_str.Str());
-            m_textFile.Set_Language(language);
+            LanguageID language;
+            if (Name_To_Language(language_str.Str(), language)) {
+                m_textFile.Set_Language(language);
 
-            if (m_textFile.Load_STR("data/Generals.str")) {
-                loaded = true;
-            } else {
-                Utf8String str_file;
-                str_file.Format("data/%s/Generals.str", language_str.Str());
-                m_textFile.Set_Language(LanguageID::UNKNOWN);
-
-                if (m_textFile.Load_STR(str_file.Str())) {
-                    m_textFile.Swap_String_Infos(LanguageID::UNKNOWN, language);
-                    m_textFile.Set_Language(language);
+                if (m_textFile.Load_STR("data/Generals.str")) {
                     loaded = true;
                 } else {
-                    m_textFile.Set_Language(language);
+                    Utf8String str_file;
+                    str_file.Format("data/%s/Generals.str", language_str.Str());
+                    m_textFile.Set_Language(LanguageID::UNKNOWN);
 
                     if (m_textFile.Load_STR(str_file.Str())) {
+                        m_textFile.Swap_String_Infos(LanguageID::UNKNOWN, language);
+                        m_textFile.Set_Language(language);
                         loaded = true;
+                    } else {
+                        m_textFile.Set_Language(language);
+
+                        if (m_textFile.Load_STR(str_file.Str())) {
+                            loaded = true;
+                        }
                     }
                 }
             }

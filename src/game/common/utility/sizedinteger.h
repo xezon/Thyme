@@ -24,18 +24,18 @@ namespace rts
 template<size_t Size> struct signed_integer_for_size;
 template<size_t Size> struct unsigned_integer_for_size;
 
-template<> struct signed_integer_for_size<1>{ typedef int8_t  type; };
-template<> struct signed_integer_for_size<2>{ typedef int16_t type; };
-template<> struct signed_integer_for_size<4>{ typedef int32_t type; };
-template<> struct signed_integer_for_size<8>{ typedef int64_t type; };
+template<> struct signed_integer_for_size<1>{ using type = int8_t ; };
+template<> struct signed_integer_for_size<2>{ using type = int16_t; };
+template<> struct signed_integer_for_size<4>{ using type = int32_t; };
+template<> struct signed_integer_for_size<8>{ using type = int64_t; };
 
-template<> struct unsigned_integer_for_size<1>{ typedef uint8_t  type; };
-template<> struct unsigned_integer_for_size<2>{ typedef uint16_t type; };
-template<> struct unsigned_integer_for_size<4>{ typedef uint32_t type; };
-template<> struct unsigned_integer_for_size<8>{ typedef uint64_t type; };
+template<> struct unsigned_integer_for_size<1>{ using type = uint8_t ; };
+template<> struct unsigned_integer_for_size<2>{ using type = uint16_t; };
+template<> struct unsigned_integer_for_size<4>{ using type = uint32_t; };
+template<> struct unsigned_integer_for_size<8>{ using type = uint64_t; };
 
-template<class T> struct signed_integer{ typedef typename signed_integer_for_size<sizeof(T)>::type type; };
-template<class T> struct unsigned_integer{ typedef typename unsigned_integer_for_size<sizeof(T)>::type type; };
+template<class T> struct signed_integer{ using type = typename signed_integer_for_size<sizeof(T)>::type; };
+template<class T> struct unsigned_integer{ using type = typename unsigned_integer_for_size<sizeof(T)>::type; };
 
 // clang-format off
 

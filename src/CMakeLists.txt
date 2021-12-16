@@ -20,7 +20,7 @@ set(GAMEENGINE_INCLUDES
     game/common/rts
     game/common/system
     game/common/thing
-    game/common/utility
+    #game/common/utility # contains non standard header files
     game/logic/ai
     game/logic/map
     game/logic/object
@@ -70,6 +70,7 @@ set(GAMEENGINE_SRC
     game/client/drawgroupinfo.cpp
     game/client/gameclient.cpp
     game/client/gametext.cpp
+    game/client/gametextcommon.cpp
     game/client/gametextfile.cpp
     game/client/gametextinterface.cpp
     game/client/gametextmanager.cpp

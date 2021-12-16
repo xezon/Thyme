@@ -64,7 +64,14 @@ struct StringInfo
     Utf8String speech;
 };
 
-// #FEATURE
+struct NoString
+{
+    NoString *next;
+    Utf16String text;
+};
+
+namespace Thyme
+{
 struct MultiStringInfo
 {
     Utf8String label;
@@ -72,11 +79,9 @@ struct MultiStringInfo
     Utf8String speech[LanguageCount];
 };
 
-struct NoString
-{
-    NoString *next;
-    Utf16String text;
-};
-
 using StringInfos = std::vector<StringInfo>;
 using MultiStringInfos = std::vector<MultiStringInfo>;
+
+bool Name_To_Language(const char *localization, LanguageID &language);
+const char *Language_Name(LanguageID language);
+} // namespace Thyme
