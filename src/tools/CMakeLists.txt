@@ -3,3 +3,5 @@ if(wxWidgets_FOUND)
     include(TargetExports)
     add_subdirectory(debugwindow)
 endif()
+
+add_subdirectory(gametextcompiler)
