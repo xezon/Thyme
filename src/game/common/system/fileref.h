@@ -14,7 +14,7 @@
  */
 #pragma once
 
-#include "utility/nonintrusiveptr.h"
+#include "utility/shared_ptr.h"
 
 class File;
 
