@@ -144,7 +144,7 @@ int main(int argc, const char *argv[])
     Thyme::Processor::Result processor_result;
     Thyme::Processor processor;
 
-    const auto commands = rts::make_array_view(argv + 1, argc - 1);
+    const auto commands = rts::Make_Array_View(argv + 1, argc - 1);
     processor_result = processor.Prepare(commands);
 
     if (processor_result != Thyme::Processor::Result::SUCCESS) {

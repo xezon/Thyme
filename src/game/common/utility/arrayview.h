@@ -24,7 +24,6 @@ namespace rts
 
 // #TODO Add a constexpr reverse_iterator.
 
-// #FEATURE array_view allows to pass along a buffer and its size in one go.
 template<typename ValueType> class array_view
 {
 public:

@@ -25,66 +25,54 @@ namespace rts
 
 // clang-format off
 
-template<typename ValueType, std::size_t Size> inline constexpr array_view<ValueType>
-    stack_array_view(ValueType (&array)[Size])
-{
-    return array_view<ValueType>(array, Size);
-}
-
-// char arrays are passed on with size minus one intentionally.
-// It is a conservative approach to allow generous algorithms that may place null terminator at
-// array_view.data() + array_view.size() as opposed to at array_view.data() + array_view.size() - 1.
-
-template<std::size_t Size> inline constexpr array_view<char>
-    stack_array_view(char (&cstring)[Size])
-{
-    return array_view<char>(cstring, Size - 1);
-}
-
-template<std::size_t Size> inline constexpr array_view<const char>
-    stack_array_view(const char (&cstring)[Size])
-{
-    return array_view<const char>(cstring, Size - 1);
-}
-
-template<std::size_t Size> inline constexpr array_view<unichar_t>
-    stack_array_view(unichar_t (&cstring)[Size])
-{
-    return array_view<unichar_t>(cstring, Size - 1);
-}
-
-template<std::size_t Size> inline constexpr array_view<const unichar_t>
-    stack_array_view(const unichar_t (&cstring)[Size])
-{
-    return array_view<const unichar_t>(cstring, Size - 1);
-}
-
 template<typename ValueType> inline constexpr array_view<ValueType>
-    make_array_view(ValueType *begin, std::size_t size)
+    Make_Array_View(ValueType *begin, std::size_t size)
 {
     return array_view<ValueType>(begin, size);
 }
 
 template<typename ValueType> inline constexpr array_view<ValueType>
-    make_array_view(ValueType *begin, ValueType *end)
+    Make_Array_View(ValueType *begin, ValueType *end)
 {
     return array_view<ValueType>(begin, end);
 }
 
-// !!! There is no make_array_view for mutable Utf8String and Utf16String. This is intentional.
-// Writing to string buffer directly is not good practice, due the reference counted nature of this string.
-// All modifications must take place on unique instance only. Use resized_array_view function instead!
+inline constexpr array_view<char>
+    Make_Array_View(char* cstring)
+{
+    return array_view<char>(cstring, strlen(cstring));
+}
 
-// Create array_view<> from const Utf8String.
+inline constexpr array_view<const char>
+    Make_Array_View(const char* cstring)
+{
+    return array_view<const char>(cstring, strlen(cstring));
+}
+
+inline constexpr array_view<unichar_t>
+    Make_Array_View(unichar_t* cstring)
+{
+    return array_view<unichar_t>(cstring, u_strlen(cstring));
+}
+
+inline constexpr array_view<const unichar_t>
+    Make_Array_View(const unichar_t* cstring)
+{
+    return array_view<const unichar_t>(cstring, u_strlen(cstring));
+}
+
+// There is no Make_Array_View for mutable Utf8String and Utf16String. This is intentional.
+// Writing to string buffer directly is not good practice, due the reference counted nature of this string.
+// All modifications must take place on unique instance only. Use Make_Resized_Array_View function instead.
+
 inline array_view<const typename Utf8String::value_type>
-    make_array_view(const Utf8String &instance)
+    Make_Array_View(const Utf8String &instance)
 {
     return array_view<const typename Utf8String::value_type>(instance.Str(), instance.Get_Length());
 }
 
-// Create array_view<> from const Utf16String.
 inline array_view<const typename Utf16String::value_type>
-    make_array_view(const Utf16String &instance)
+    Make_Array_View(const Utf16String &instance)
 {
     return array_view<const typename Utf16String::value_type>(instance.Str(), instance.Get_Length());
 }
@@ -92,7 +80,7 @@ inline array_view<const typename Utf16String::value_type>
 namespace detail
 {
 template <typename CharType, typename ObjectType, typename SizeType> inline array_view<CharType>
-    utfstring_resized_array_view(ObjectType &object, SizeType size)
+    Utf_String_Resized_Array_View(ObjectType &object, SizeType size)
 {
     using object_type = ObjectType;
     using char_type = CharType;
@@ -122,40 +110,16 @@ template <typename CharType, typename ObjectType, typename SizeType> inline arra
 
 // Create array_view<> from Utf8String and resize the string with the given size.
 inline array_view<typename Utf8String::value_type>
-    resized_array_view(Utf8String &utfstring, typename Utf8String::size_type size)
+    Make_Resized_Array_View(Utf8String &utfstring, typename Utf8String::size_type size)
 {
-    return detail::utfstring_resized_array_view<typename Utf8String::value_type>(utfstring, size);
+    return detail::Utf_String_Resized_Array_View<typename Utf8String::value_type>(utfstring, size);
 }
 
 // Create array_view<> from Utf16String and resize the string with the given size.
 inline array_view<typename Utf16String::value_type>
-    resized_array_view(Utf16String &utfstring, typename Utf16String::size_type size)
+    Make_Resized_Array_View(Utf16String &utfstring, typename Utf16String::size_type size)
 {
-    return detail::utfstring_resized_array_view<typename Utf16String::value_type>(utfstring, size);
-}
-
-inline constexpr array_view<char>
-    make_array_view(char* cstring)
-{
-    return array_view<char>(cstring, strlen(cstring));
-}
-
-inline constexpr array_view<const char>
-    make_array_view(const char* cstring)
-{
-    return array_view<const char>(cstring, strlen(cstring));
-}
-
-inline constexpr array_view<unichar_t>
-    make_array_view(unichar_t* cstring)
-{
-    return array_view<unichar_t>(cstring, u_strlen(cstring));
-}
-
-inline constexpr array_view<const unichar_t>
-    make_array_view(const unichar_t* cstring)
-{
-    return array_view<const unichar_t>(cstring, u_strlen(cstring));
+    return detail::Utf_String_Resized_Array_View<typename Utf16String::value_type>(utfstring, size);
 }
 
 // clang-format on

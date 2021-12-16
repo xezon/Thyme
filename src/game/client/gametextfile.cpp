@@ -593,7 +593,7 @@ void GameTextFile::Build_String_Infos(
 GameTextFile::Type GameTextFile::Get_File_Type(const char *filename, Type filetype)
 {
     if (filetype == Type::AUTO) {
-        const char *fileext = rts::get_file_extension(rts::make_array_view(filename));
+        const char *fileext = rts::get_file_extension(rts::Make_Array_View(filename));
         if (strcasecmp(fileext, "csf") == 0)
             filetype = Type::CSF;
         else if (strcasecmp(fileext, "str") == 0)
@@ -948,7 +948,7 @@ bool GameTextFile::Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_
         letoh_ref(header.length);
 
         if (header.id == rts::FourCC_LE<'L', 'B', 'L', ' '>::value) {
-            if (rts::read_str(file.Get(), rts::resized_array_view(string_info.label, header.length))) {
+            if (rts::read_str(file.Get(), rts::Make_Resized_Array_View(string_info.label, header.length))) {
                 texts = header.texts;
                 return true;
             }
@@ -975,7 +975,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
             const bool read_text = (header.id == rts::FourCC_LE<'S', 'T', 'R', ' '>::value);
 
             if (read_speech || read_text) {
-                auto str = rts::resized_array_view(string_info.text, header.length);
+                auto str = rts::Make_Resized_Array_View(string_info.text, header.length);
 
                 if (rts::read_str(file.Get(), str)) {
                     for (int32_t i = 0; i < header.length; ++i) {
@@ -1001,7 +1001,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
         if (rts::read_any(file.Get(), header)) {
             letoh_ref(header.length);
 
-            if (rts::read_str(file.Get(), rts::resized_array_view(string_info.speech, header.length))) {
+            if (rts::read_str(file.Get(), rts::Make_Resized_Array_View(string_info.speech, header.length))) {
                 speech_ok = true;
             }
         }
@@ -1063,7 +1063,7 @@ bool GameTextFile::Write_STR_Language(FileRef &file, LanguageID language)
     const char *code = Get_Language_Code(language);
 
     bool ok = true;
-    ok &= rts::write_str(file.Get(), rts::make_array_view(code));
+    ok &= rts::write_str(file.Get(), rts::Make_Array_View(code));
     ok &= rts::write_any(file.Get(), s_str_lng);
     ok &= rts::write_any(file.Get(), ' ');
     return ok;
@@ -1104,7 +1104,7 @@ bool GameTextFile::Write_STR_Entry(
 bool GameTextFile::Write_STR_Label(FileRef &file, const Utf8String &label)
 {
     bool ok = true;
-    ok &= rts::write_str(file.Get(), rts::make_array_view(label));
+    ok &= rts::write_str(file.Get(), rts::Make_Array_View(label));
     ok &= rts::write_any(file.Get(), s_str_eol);
     return ok;
 }
@@ -1134,7 +1134,7 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Option
 
     bool ok = true;
     ok &= rts::write_any(file.Get(), s_str_quo);
-    ok &= rts::write_str(file.Get(), rts::make_array_view(w1.data(), len));
+    ok &= rts::write_str(file.Get(), rts::Make_Array_View(w1.data(), len));
     ok &= rts::write_any(file.Get(), s_str_quo);
     ok &= rts::write_any(file.Get(), s_str_eol);
     return ok;
@@ -1143,7 +1143,7 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Option
 bool GameTextFile::Write_STR_Speech(FileRef &file, const Utf8String &speech)
 {
     bool ok = true;
-    ok &= rts::write_str(file.Get(), rts::make_array_view(speech));
+    ok &= rts::write_str(file.Get(), rts::Make_Array_View(speech));
     ok &= rts::write_any(file.Get(), s_str_eol);
     return ok;
 }
@@ -1225,7 +1225,7 @@ bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info)
     htole_ref(header.length);
 
     if (rts::write_any(file.Get(), header)) {
-        if (rts::write_str(file.Get(), rts::make_array_view(string_info.label))) {
+        if (rts::write_str(file.Get(), rts::Make_Array_View(string_info.label))) {
             return true;
         }
     }
@@ -1269,7 +1269,7 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
         htole_ref(header.length);
 
         if (rts::write_any(file.Get(), header)) {
-            if (rts::write_str(file.Get(), rts::make_array_view(string_info.speech))) {
+            if (rts::write_str(file.Get(), rts::Make_Array_View(string_info.speech))) {
                 speech_ok = true;
             }
         }
