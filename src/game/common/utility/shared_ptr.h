@@ -42,7 +42,7 @@ private:
     mutable counter_type *m_counter;
 
 public:
-    shared_ptr_t() : m_ptr(nullptr), m_counter(nullptr) {}
+    shared_ptr_t() noexcept : m_ptr(nullptr), m_counter(nullptr) {}
 
     shared_ptr_t(value_type *ptr)
     {
@@ -113,15 +113,15 @@ public:
         return *this;
     }
 
-    reference operator*() { return *m_ptr; }
-    pointer operator->() { return m_ptr; }
-    pointer get() { return m_ptr; }
+    reference operator*() noexcept { return *m_ptr; }
+    pointer operator->() noexcept { return m_ptr; }
+    pointer get() noexcept { return m_ptr; }
 
-    const_reference operator*() const { return *m_ptr; }
-    const_pointer operator->() const { return m_ptr; }
-    const_pointer get() const { return m_ptr; }
+    const_reference operator*() const noexcept { return *m_ptr; }
+    const_pointer operator->() const noexcept { return m_ptr; }
+    const_pointer get() const noexcept { return m_ptr; }
 
-    operator bool() const { return m_ptr != nullptr; }
+    operator bool() const noexcept { return m_ptr != nullptr; }
 
     // Reset smart pointer to null.
     void reset() { shared_ptr_t().swap(*this); }
@@ -135,7 +135,7 @@ public:
     }
 
     // Swap smart pointer with other smart pointer.
-    void swap(shared_ptr_t &other)
+    void swap(shared_ptr_t &other) noexcept
     {
         std::swap(m_ptr, other.m_ptr);
         std::swap(m_counter, other.m_counter);

@@ -37,7 +37,7 @@ private:
     value_type *m_ptr;
 
 public:
-    intrusive_ptr() : m_ptr(nullptr) {}
+    intrusive_ptr() noexcept : m_ptr(nullptr) {}
 
     intrusive_ptr(value_type *ptr)
     {
@@ -115,15 +115,15 @@ public:
         return *this;
     }
 
-    reference operator*() { return *m_ptr; }
-    pointer operator->() { return m_ptr; }
-    pointer get() { return m_ptr; }
+    reference operator*() noexcept { return *m_ptr; }
+    pointer operator->() noexcept { return m_ptr; }
+    pointer get() noexcept { return m_ptr; }
 
-    const_reference operator*() const { return *m_ptr; }
-    const_pointer operator->() const { return m_ptr; }
-    const_pointer get() const { return m_ptr; }
+    const_reference operator*() const noexcept { return *m_ptr; }
+    const_pointer operator->() const noexcept { return m_ptr; }
+    const_pointer get() const noexcept { return m_ptr; }
 
-    operator bool() const { return m_ptr != nullptr; }
+    operator bool() const noexcept { return m_ptr != nullptr; }
 
     // Reset smart pointer to null.
     void reset() { intrusive_ptr().swap(*this); }
@@ -137,7 +137,7 @@ public:
     }
 
     // Swap smart pointer with other smart pointer.
-    void swap(intrusive_ptr &other) { std::swap(m_ptr, other.m_ptr); }
+    void swap(intrusive_ptr &other) noexcept { std::swap(m_ptr, other.m_ptr); }
 
     // Assign pointer without raising its reference count.
     // Used for example if the reference target already has a reference count on creation.
@@ -148,7 +148,7 @@ public:
     }
 
     // Release ownership of the pointer and do not change reference count.
-    value_type *release()
+    value_type *release() noexcept
     {
         value_type *ptr = m_ptr;
         m_ptr = nullptr;
