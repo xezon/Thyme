@@ -24,7 +24,7 @@ namespace rts
 // destination string until size minus 1. Destination string does include the read end character. Always writes null
 // terminator. Returns true, unless no line was read and the end of the file was reached.
 template<typename CharType>
-bool read_line(File *file, CharType *dest, std::size_t size, const CharType *eol_chars, std::size_t *num_copied = nullptr)
+bool Read_Line(File *file, CharType *dest, std::size_t size, const CharType *eol_chars, std::size_t *num_copied = nullptr)
 {
     const CharType *writer_end = dest + size - 1;
     CharType *writer = dest;
@@ -42,7 +42,7 @@ bool read_line(File *file, CharType *dest, std::size_t size, const CharType *eol
 
         // Stop at end character.
         if (!escaped) {
-            if (is_search_character(*writer, eol_chars)) {
+            if (Is_Search_Character(*writer, eol_chars)) {
                 ++writer;
                 break;
             }
@@ -52,14 +52,14 @@ bool read_line(File *file, CharType *dest, std::size_t size, const CharType *eol
         escaped = false;
 
         // Begin escaping.
-        if (*writer == get_char<CharType>('\\')) {
+        if (*writer == Get_Char<CharType>('\\')) {
             escaped = !escaped;
         }
 
         ++writer;
     }
 
-    *writer = get_char<CharType>('\0');
+    *writer = Get_Char<CharType>('\0');
 
     if (num_copied != nullptr) {
         *num_copied = (writer - dest);
@@ -69,19 +69,19 @@ bool read_line(File *file, CharType *dest, std::size_t size, const CharType *eol
 }
 
 // Read any type from file.
-template<typename T> bool read_any(File *file, T &value)
+template<typename T> bool Read_Any(File *file, T &value)
 {
     return file->Read(&value, sizeof(T)) == sizeof(T);
 }
 
 // Write any type to file.
-template<typename T> bool write_any(File *file, const T &value)
+template<typename T> bool Write_Any(File *file, const T &value)
 {
     return file->Write(&value, sizeof(T)) == sizeof(T);
 }
 
 // Read string buffer with given size from file.
-template<typename StringType> bool read_str(File *file, StringType &string)
+template<typename StringType> bool Read_Str(File *file, StringType &string)
 {
     using CharType = typename StringType::value_type;
     using SizeType = typename StringType::size_type;
@@ -94,7 +94,7 @@ template<typename StringType> bool read_str(File *file, StringType &string)
 }
 
 // Write string buffer with given size to file.
-template<typename StringType> bool write_str(File *file, const StringType &string)
+template<typename StringType> bool Write_Str(File *file, const StringType &string)
 {
     using CharType = typename StringType::value_type;
     using SizeType = typename StringType::size_type;
@@ -107,13 +107,13 @@ template<typename StringType> bool write_str(File *file, const StringType &strin
 }
 
 // Read Bytes from file.
-inline bool read(File *file, void *data, int len)
+inline bool Read(File *file, void *data, int len)
 {
     return file->Read(data, len) == len;
 }
 
 // Write Bytes to file.
-inline bool write(File *file, const void *data, int len)
+inline bool Write(File *file, const void *data, int len)
 {
     return file->Write(data, len) == len;
 }

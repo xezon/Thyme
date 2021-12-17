@@ -98,7 +98,7 @@ Processor::Result Processor::Parse_Command(const char *command, CommandAction &a
                 variant.emplace<FileId>(std::move(file_id));
 
             } else if (argument_id == CommandArgumentId::FILE_PATH) {
-                rts::strip_characters(word.data(), "\"");
+                rts::Strip_Characters(word.data(), "\"");
                 FilePath file_path;
                 file_path.value = word.c_str();
                 variant.emplace<FilePath>(std::move(file_path));

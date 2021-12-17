@@ -90,7 +90,7 @@ template <typename CharType, typename ObjectType, typename SizeType> inline arra
     if (size == 0) {
         return array_view<char_type>();
     }
-    CHAR_TRAITS_CONSTEXPR char_type null_char = get_char<char_type>('\0');
+    CHAR_TRAITS_CONSTEXPR char_type null_char = Get_Char<char_type>('\0');
     object_type copy = object;
     char_type* peek = object.Get_Buffer_For_Read(size); // Allocates + 1
     const char_type* reader = copy.Str();
