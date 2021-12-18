@@ -24,7 +24,7 @@
 namespace Thyme
 {
 
-enum class GameTextOption
+enum class GameTextOption : uint32_t
 {
     NONE = 0,
     CHECK_BUFFER_LENGTH_ON_LOAD = BIT(0),
@@ -35,6 +35,13 @@ enum class GameTextOption
 };
 
 bool Name_To_Game_Text_Option(const char *name, GameTextOption &option);
+
+} // namespace Thyme
+
+DEFINE_RTS_UNDERLYING_TYPE(Thyme::GameTextOption, uint32_t);
+
+namespace Thyme
+{
 
 // #TODO Split the multi language functionality from 'GameTextFile' into a new 'MultiGameTextFile' class?
 

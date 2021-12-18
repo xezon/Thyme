@@ -17,6 +17,7 @@
 #include "asciistring.h"
 #include "bittype.h"
 #include "unicodestring.h"
+#include "utility/type_traits.h"
 #include <vector>
 
 // This enum applies to RA2/YR and Generals/ZH, BFME ID's are slightly different.
@@ -45,6 +46,8 @@ enum class LanguageID : int32_t
     ARABIC = 15,
 };
 
+DEFINE_RTS_UNDERLYING_TYPE(LanguageID, int32_t);
+
 constexpr size_t LanguageCount = 16;
 
 struct CSFHeader
@@ -72,6 +75,7 @@ struct NoString
 
 namespace Thyme
 {
+
 struct MultiStringInfo
 {
     Utf8String label;
@@ -84,4 +88,5 @@ using MultiStringInfos = std::vector<MultiStringInfo>;
 
 bool Name_To_Language(const char *localization, LanguageID &language);
 const char *Language_Name(LanguageID language);
+
 } // namespace Thyme

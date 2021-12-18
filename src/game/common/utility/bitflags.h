@@ -15,6 +15,7 @@
 #pragma once
 
 #include "sizedinteger.h"
+#include "utility/type_traits.h"
 #include <cstddef>
 
 namespace rts
@@ -22,7 +23,7 @@ namespace rts
 
 // clang-format off
 
-template<typename ValueType> class bitflags
+template<typename ValueType, typename UnderlyingType = underlying_type_t<ValueType>> class bitflags
 {
 public:
     using Value = ValueType;
@@ -30,7 +31,7 @@ public:
     using size_type = std::size_t;
 
 private:
-    using underlying_type = typename unsigned_integer<value_type>::type;
+    using underlying_type = UnderlyingType;
 
 public:
     constexpr bitflags() noexcept : m_value(0) {}

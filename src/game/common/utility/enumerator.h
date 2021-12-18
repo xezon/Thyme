@@ -15,6 +15,7 @@
 #pragma once
 
 #include "sizedinteger.h"
+#include "type_traits.h"
 #include <cstddef>
 
 namespace rts
@@ -22,12 +23,12 @@ namespace rts
 
 // clang-format off
 
-template<typename ValueType> class enumerator
+template<typename ValueType, typename UnderlyingType = underlying_type_t<ValueType>> class enumerator
 {
 public:
     using Value = ValueType;
     using value_type = ValueType;
-    using underlying_type = typename unsigned_integer<value_type>::type;
+    using underlying_type = UnderlyingType;
 
 public:
     constexpr enumerator() noexcept : m_value(0) {}
