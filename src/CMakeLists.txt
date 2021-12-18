@@ -480,6 +480,10 @@ if(DINPUT8_FOUND)
     list(APPEND GAME_COMPILE_OPTIONS -DBUILD_WITH_DINPUT)
 endif()
 
+if(USE_LEGACY_GAMETEXT)
+    list(APPEND GAME_COMPILE_OPTIONS -DUSE_LEGACY_GAMETEXT)
+endif()
+
 # Static library for standalone builds and linking tools.
 if(STANDALONE OR BUILD_TOOLS)
     add_library(thyme_lib STATIC ${GAMEENGINE_SRC} ${GAMEENGINE_HEADERS} game/crashhandler.cpp)

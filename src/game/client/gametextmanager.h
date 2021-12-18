@@ -66,5 +66,3 @@ private:
     Utf8Strings m_stringVector;
 };
 } // namespace Thyme
-
-using GameTextManager = Thyme::GameTextManager;

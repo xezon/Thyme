@@ -70,6 +70,7 @@ option(LOGGING "Enable debug logging." ${DEFAULT_LOGGING})
 option(ASSERTIONS "Enable debug assertions." ${DEFAULT_ASSERTIONS})
 option(USE_CRASHPAD "Enable the use of the Crashpad library for crash handling and reporting." OFF)
 option(BUILD_TOOLS "Builds the developer/debug tools." OFF)
+option(USE_LEGACY_GAMETEXT "Enable the legacy (original) GameTextManager implementation." ON)
 
 if(WIN32 OR "${CMAKE_SYSTEM}" MATCHES "Windows")
     if(CMAKE_SIZEOF_VOID_P EQUAL 4)

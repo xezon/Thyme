@@ -85,5 +85,3 @@ private:
     std::vector<Utf8String> m_stringVector;
 };
 } // namespace Legacy
-
-using GameTextManager = Legacy::GameTextManager;

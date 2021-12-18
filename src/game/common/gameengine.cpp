@@ -21,11 +21,7 @@
 #include "filesystem.h"
 #include "functionlexicon.h"
 #include "gamelod.h"
-#ifdef GAME_DLL
-#include "gametext.h"
-#else
-#include "gametextmanager.h"
-#endif
+#include "gametext_impl.h"
 #include "globaldata.h"
 #include "globallanguage.h"
 #include "ini.h"
