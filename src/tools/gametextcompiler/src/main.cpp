@@ -26,6 +26,7 @@
 void Log_Help()
 {
     // clang-format off
+
     captainslog_info(
         "Command List:\n"
         "\n"
@@ -69,6 +70,7 @@ void Log_Help()
         ".. 03 : LANGUAGE takes one [1] or multiple [n] languages.\n"
         ".. 04 : OPTION takes one [1] or multiple [n] options.\n"
     );
+
     // clang-format on
 }
 

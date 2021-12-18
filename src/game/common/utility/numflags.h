@@ -21,10 +21,11 @@
 namespace rts
 {
 
-// clang-format off
-
 namespace detail
 {
+
+// clang-format off
+
 template<typename IntegerType, std::size_t Bytes> struct BitBucketShiftStruct;
 template<typename IntegerType, std::size_t Bytes> struct BitBucketMaskStruct;
 
@@ -40,9 +41,10 @@ template<typename IntegerType> struct BitBucketMaskStruct<IntegerType, 8>{ stati
 
 template<typename IntegerType, std::size_t Bytes> constexpr IntegerType Bit_Bucket_Shift() { return BitBucketShiftStruct<IntegerType, Bytes>::Get(); }
 template<typename IntegerType, std::size_t Bytes> constexpr IntegerType Bit_Bucket_Mask() { return BitBucketMaskStruct<IntegerType, Bytes>::Get(); }
-}
 
 // clang-format on
+
+} // namespace detail
 
 template<typename ValueType, std::size_t ValueCount> class numflags
 {
@@ -247,8 +249,7 @@ public:
     constexpr size_type count() const noexcept
     {
         size_type count = 0;
-        for (size_type i = 0; i < size(); ++i)
-        {
+        for (size_type i = 0; i < size(); ++i) {
             value_type value = static_cast<value_type>(i);
             if (has(value)) {
                 ++count;
@@ -268,10 +269,7 @@ public:
 
     constexpr bool any() const noexcept { return !none(); }
 
-    constexpr bool all() const noexcept
-    {
-        return count() == size();
-    }
+    constexpr bool all() const noexcept { return count() == size(); }
 
     constexpr bool has(value_type value) const { return ((access(value) & bit(value)) != storage_type(0)); }
 
