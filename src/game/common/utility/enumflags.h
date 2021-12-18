@@ -46,7 +46,7 @@ template<typename IntegerType, std::size_t Bytes> constexpr IntegerType Bit_Buck
 
 } // namespace detail
 
-template<typename ValueType, std::size_t ValueCount> class numflags
+template<typename ValueType, std::size_t ValueCount> class enumflags
 {
 public:
     using Value = ValueType;
@@ -54,42 +54,42 @@ public:
     using size_type = std::size_t;
 
 private:
-    template<typename ValueType, size_type> friend class numflags;
+    template<typename ValueType, size_type> friend class enumflags;
     using storage_type = uint32_t;
 
 public:
-    constexpr numflags() { reset(); }
+    constexpr enumflags() { reset(); }
 
-    constexpr numflags(value_type value)
+    constexpr enumflags(value_type value)
     {
         reset();
         set(value);
     }
 
-    constexpr numflags(const numflags &other) noexcept { copy(m_values, other.m_values, bucket_size()); }
+    constexpr enumflags(const enumflags &other) noexcept { copy(m_values, other.m_values, bucket_size()); }
 
-    template<size_type OtherValueCount> constexpr numflags(const numflags<value_type, OtherValueCount> &other) noexcept
+    template<size_type OtherValueCount> constexpr enumflags(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
         const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         copy(m_values, other.m_values, shared_bucket_size);
         zero(m_values + shared_bucket_size, bucket_size() - shared_bucket_size);
     }
 
-    constexpr numflags &operator=(const numflags &other) noexcept
+    constexpr enumflags &operator=(const enumflags &other) noexcept
     {
         copy(m_values, other.m_values, bucket_size());
         return *this;
     }
 
     template<size_type OtherValueCount>
-    constexpr numflags &operator=(const numflags<value_type, OtherValueCount> &other) noexcept
+    constexpr enumflags &operator=(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
         const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         copy(m_values, other.m_values, shared_bucket_size);
         return *this;
     }
 
-    constexpr numflags &operator|=(const numflags &other) noexcept
+    constexpr enumflags &operator|=(const enumflags &other) noexcept
     {
         for (size_type i = 0; i < bucket_size(); ++i) {
             m_values[i] |= other.m_values[i];
@@ -98,7 +98,7 @@ public:
     }
 
     template<size_type OtherValueCount>
-    constexpr numflags &operator|=(const numflags<value_type, OtherValueCount> &other) noexcept
+    constexpr enumflags &operator|=(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
         const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         for (size_type i = 0; i < shared_bucket_size; ++i) {
@@ -107,7 +107,7 @@ public:
         return *this;
     }
 
-    constexpr numflags &operator&=(const numflags &other) noexcept
+    constexpr enumflags &operator&=(const enumflags &other) noexcept
     {
         for (size_type i = 0; i < bucket_size(); ++i) {
             m_values[i] &= other.m_values[i];
@@ -116,7 +116,7 @@ public:
     }
 
     template<size_type OtherValueCount>
-    constexpr numflags &operator&=(const numflags<value_type, OtherValueCount> &other) noexcept
+    constexpr enumflags &operator&=(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
         const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         for (size_type i = 0; i < shared_bucket_size; ++i) {
@@ -125,7 +125,7 @@ public:
         return *this;
     }
 
-    constexpr numflags &operator^=(const numflags &other) noexcept
+    constexpr enumflags &operator^=(const enumflags &other) noexcept
     {
         for (size_type i = 0; i < bucket_size(); ++i) {
             m_values[i] ^= other.m_values[i];
@@ -134,7 +134,7 @@ public:
     }
 
     template<size_type OtherValueCount>
-    constexpr numflags &operator^=(const numflags<value_type, OtherValueCount> &other) noexcept
+    constexpr enumflags &operator^=(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
         const size_type shared_bucket_size = min(bucket_size(), other.bucket_size());
         for (size_type i = 0; i < shared_bucket_size; ++i) {
@@ -143,91 +143,91 @@ public:
         return *this;
     }
 
-    // constexpr numflags &operator<<=(size_type pos); // #TODO implement
-    // constexpr numflags &operator>>=(size_type pos);
+    // constexpr enumflags &operator<<=(size_type pos); // #TODO implement
+    // constexpr enumflags &operator>>=(size_type pos);
 
-    constexpr bool operator==(const numflags &other) const noexcept
+    constexpr bool operator==(const enumflags &other) const noexcept
     {
         return 0 == compare(m_values, other.m_values, sizeof(m_values));
     }
 
     template<size_type OtherValueCount>
-    constexpr bool operator==(const numflags<value_type, OtherValueCount> &other) noexcept
+    constexpr bool operator==(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
         const size_type shared_bucket_bytes = min(bucket_bytes(), other.bucket_bytes());
         return 0 == compare(m_values, other.m_values, shared_bucket_bytes);
     }
 
-    constexpr bool operator!=(const numflags &other) const noexcept { return !operator==(other); }
+    constexpr bool operator!=(const enumflags &other) const noexcept { return !operator==(other); }
 
     template<size_type OtherValueCount>
-    constexpr bool operator!=(const numflags<value_type, OtherValueCount> &other) noexcept
+    constexpr bool operator!=(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
         return !operator==(other);
     }
 
     constexpr operator bool() const noexcept { return any(); }
 
-    constexpr numflags operator~() const noexcept
+    constexpr enumflags operator~() const noexcept
     {
-        numflags inst;
+        enumflags inst;
         for (size_type i = 0; i < bucket_size(); ++i) {
             inst.m_values[i] = ~m_values[i];
         }
         return inst;
     }
 
-    constexpr numflags operator|(const numflags &other) const noexcept
+    constexpr enumflags operator|(const enumflags &other) const noexcept
     {
-        numflags inst(*this);
+        enumflags inst(*this);
         inst |= other;
         return inst;
     }
 
     template<size_type OtherValueCount>
-    constexpr numflags operator|(const numflags<value_type, OtherValueCount> &other) noexcept
+    constexpr enumflags operator|(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
-        numflags inst(*this);
+        enumflags inst(*this);
         inst |= other;
         return inst;
     }
 
-    constexpr numflags operator&(const numflags &other) const noexcept
+    constexpr enumflags operator&(const enumflags &other) const noexcept
     {
-        numflags inst(*this);
+        enumflags inst(*this);
         inst &= other;
         return inst;
     }
 
     template<size_type OtherValueCount>
-    constexpr numflags operator&(const numflags<value_type, OtherValueCount> &other) noexcept
+    constexpr enumflags operator&(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
-        numflags inst(*this);
+        enumflags inst(*this);
         inst &= other;
         return inst;
     }
 
-    constexpr numflags operator^(const numflags &other) const noexcept
+    constexpr enumflags operator^(const enumflags &other) const noexcept
     {
-        numflags inst(*this);
+        enumflags inst(*this);
         inst ^= other;
         return inst;
     }
 
     template<size_type OtherValueCount>
-    constexpr numflags operator^(const numflags<value_type, OtherValueCount> &other) noexcept
+    constexpr enumflags operator^(const enumflags<value_type, OtherValueCount> &other) noexcept
     {
-        numflags inst(*this);
+        enumflags inst(*this);
         inst ^= other;
         return inst;
     }
 
-    // constexpr numflags operator<<(std::size pos) const; // #TODO implement
-    // constexpr numflags operator>>(std::size pos) const;
+    // constexpr enumflags operator<<(std::size pos) const; // #TODO implement
+    // constexpr enumflags operator>>(std::size pos) const;
 
     constexpr void set(value_type value) { access(value) |= bit(value); }
 
-    constexpr void set(const numflags &flags) noexcept
+    constexpr void set(const enumflags &flags) noexcept
     {
         for (size_type i = 0; i < bucket_size(); ++i) {
             m_values[i] |= flags.m_values[i];
@@ -235,7 +235,7 @@ public:
     }
     constexpr void reset(value_type value) { access(value) &= ~bit(value); }
 
-    constexpr void reset(const numflags &flags) noexcept
+    constexpr void reset(const enumflags &flags) noexcept
     {
         for (size_type i = 0; i < bucket_size(); ++i) {
             m_values[i] &= ~flags.m_values[i];
@@ -292,7 +292,7 @@ public:
         return other_bits == storage_type(0);
     }
 
-    constexpr bool has_any_of(numflags flags) const noexcept
+    constexpr bool has_any_of(enumflags flags) const noexcept
     {
         bool test = false;
         for (size_type i = 0; i < bucket_size(); ++i) {
@@ -301,7 +301,7 @@ public:
         return test;
     }
 
-    constexpr bool has_all_of(numflags flags) const noexcept
+    constexpr bool has_all_of(enumflags flags) const noexcept
     {
         bool test = true;
         for (size_type i = 0; i < bucket_size(); ++i) {

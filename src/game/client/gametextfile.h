@@ -51,8 +51,8 @@ namespace Thyme
 class GameTextFile
 {
 public:
-    using Options = rts::bitflags<GameTextOption>;
-    using Languages = rts::numflags<LanguageID, LanguageCount>;
+    using Options = rts::ebitflags<GameTextOption>;
+    using Languages = rts::enumflags<LanguageID, LanguageCount>;
 
     GameTextFile() :
         m_options(Options::Value::OPTIMIZE_MEMORY_SIZE), m_language(LanguageID::UNKNOWN), m_stringInfosArray(){};
