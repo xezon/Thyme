@@ -18,8 +18,9 @@
 #include "gametextcommon.h"
 #include "utility/array.h"
 #include "utility/arrayview.h"
+#include "utility/ebitflags.h"
 #include "utility/enumerator.h"
-#include "utility/flags.h"
+#include "utility/enumflags.h"
 
 namespace Thyme
 {
