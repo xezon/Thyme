@@ -83,4 +83,84 @@ bool String_To_Simple_Action_Id(const char *str, SimpleActionId &action_id)
 
 CommandId Command::s_id = 0;
 
+bool LoadCsfCommand::Execute()
+{
+    return m_filePtr->Load_CSF(m_filePath.c_str());
+}
+
+bool SaveCsfCommand::Execute()
+{
+    return m_filePtr->Save_CSF(m_filePath.c_str());
+}
+
+bool LoadStrCommand::Execute()
+{
+    if (m_languages.any()) {
+        return m_filePtr->Load_STR(m_filePath.c_str(), m_languages);
+    } else {
+        return m_filePtr->Load_STR(m_filePath.c_str());
+    }
+}
+
+bool SaveStrCommand::Execute()
+{
+    if (m_languages.any()) {
+        return m_filePtr->Save_STR(m_filePath.c_str(), m_languages);
+    } else {
+        return m_filePtr->Save_STR(m_filePath.c_str());
+    }
+}
+
+bool UnloadCommand::Execute()
+{
+    if (m_languages.any()) {
+        m_filePtr->Unload(m_languages);
+    } else {
+        m_filePtr->Unload();
+    }
+    return true;
+}
+
+bool ResetCommand::Execute()
+{
+    m_filePtr->Reset();
+    return true;
+}
+
+bool MergeAndOverwriteCommand::Execute()
+{
+    if (m_languages.any()) {
+        m_filePtrA->Merge_And_Overwrite(*m_filePtrB, m_languages);
+    } else {
+        m_filePtrA->Merge_And_Overwrite(*m_filePtrB);
+    }
+    return true;
+}
+
+bool SetOptionsCommand::Execute()
+{
+    m_filePtr->Set_Options(m_options);
+    return true;
+}
+
+bool SetLanguageCommand::Execute()
+{
+    m_filePtr->Set_Language(m_language);
+    return true;
+}
+
+bool SwapLanguageStringsCommand::Execute()
+{
+    m_filePtr->Swap_String_Infos(m_languageA, m_languageB);
+    return true;
+}
+
+bool SwapAndSetLanguageCommand::Execute()
+{
+    const LanguageID current_language = m_filePtr->Get_Language();
+    m_filePtr->Swap_String_Infos(current_language, m_language);
+    m_filePtr->Set_Language(m_language);
+    return true;
+}
+
 } // namespace Thyme
