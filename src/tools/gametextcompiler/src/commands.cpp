@@ -83,17 +83,17 @@ bool String_To_Simple_Action_Id(const char *str, SimpleActionId &action_id)
 
 CommandId Command::s_id = 0;
 
-bool LoadCsfCommand::Execute()
+bool LoadCsfCommand::Execute() const
 {
     return m_filePtr->Load_CSF(m_filePath.c_str());
 }
 
-bool SaveCsfCommand::Execute()
+bool SaveCsfCommand::Execute() const
 {
     return m_filePtr->Save_CSF(m_filePath.c_str());
 }
 
-bool LoadStrCommand::Execute()
+bool LoadStrCommand::Execute() const
 {
     if (m_languages.any()) {
         return m_filePtr->Load_STR(m_filePath.c_str(), m_languages);
@@ -102,7 +102,7 @@ bool LoadStrCommand::Execute()
     }
 }
 
-bool SaveStrCommand::Execute()
+bool SaveStrCommand::Execute() const
 {
     if (m_languages.any()) {
         return m_filePtr->Save_STR(m_filePath.c_str(), m_languages);
@@ -111,7 +111,7 @@ bool SaveStrCommand::Execute()
     }
 }
 
-bool UnloadCommand::Execute()
+bool UnloadCommand::Execute() const
 {
     if (m_languages.any()) {
         m_filePtr->Unload(m_languages);
@@ -121,13 +121,13 @@ bool UnloadCommand::Execute()
     return true;
 }
 
-bool ResetCommand::Execute()
+bool ResetCommand::Execute() const
 {
     m_filePtr->Reset();
     return true;
 }
 
-bool MergeAndOverwriteCommand::Execute()
+bool MergeAndOverwriteCommand::Execute() const
 {
     if (m_languages.any()) {
         m_filePtrA->Merge_And_Overwrite(*m_filePtrB, m_languages);
@@ -137,25 +137,25 @@ bool MergeAndOverwriteCommand::Execute()
     return true;
 }
 
-bool SetOptionsCommand::Execute()
+bool SetOptionsCommand::Execute() const
 {
     m_filePtr->Set_Options(m_options);
     return true;
 }
 
-bool SetLanguageCommand::Execute()
+bool SetLanguageCommand::Execute() const
 {
     m_filePtr->Set_Language(m_language);
     return true;
 }
 
-bool SwapLanguageStringsCommand::Execute()
+bool SwapLanguageStringsCommand::Execute() const
 {
     m_filePtr->Swap_String_Infos(m_languageA, m_languageB);
     return true;
 }
 
-bool SwapAndSetLanguageCommand::Execute()
+bool SwapAndSetLanguageCommand::Execute() const
 {
     const LanguageID current_language = m_filePtr->Get_Language();
     m_filePtr->Swap_String_Infos(current_language, m_language);

@@ -85,7 +85,7 @@ public:
     CommandId Id() const { return m_id; }
 
     virtual CommandActionId Type() const = 0;
-    virtual bool Execute() = 0;
+    virtual bool Execute() const = 0;
 
 private:
     CommandId m_id;
@@ -98,7 +98,7 @@ public:
     LoadCsfCommand(const GameTextFilePtr &file_ptr, const char *path) : m_filePtr(file_ptr), m_filePath(path) {}
 
     virtual CommandActionId Type() const override { return CommandActionId::LOAD_CSF; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
@@ -111,7 +111,7 @@ public:
     SaveCsfCommand(const GameTextFilePtr &file_ptr, const char *path) : m_filePtr(file_ptr), m_filePath(path) {}
 
     virtual CommandActionId Type() const override { return CommandActionId::SAVE_CSF; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
@@ -126,7 +126,7 @@ public:
     {
     }
     virtual CommandActionId Type() const override { return CommandActionId::LOAD_STR; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
@@ -142,7 +142,7 @@ public:
     {
     }
     virtual CommandActionId Type() const override { return CommandActionId::SAVE_STR; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
@@ -156,7 +156,7 @@ public:
     UnloadCommand(const GameTextFilePtr &file_ptr, Languages languages) : m_filePtr(file_ptr), m_languages(languages) {}
 
     virtual CommandActionId Type() const override { return CommandActionId::UNLOAD; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
@@ -169,7 +169,7 @@ public:
     ResetCommand(const GameTextFilePtr &file_ptr) : m_filePtr(file_ptr) {}
 
     virtual CommandActionId Type() const override { return CommandActionId::RESET; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
@@ -183,7 +183,7 @@ public:
     {
     }
     virtual CommandActionId Type() const override { return CommandActionId::MERGE_AND_OVERWRITE; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtrA;
@@ -197,7 +197,7 @@ public:
     SetOptionsCommand(const GameTextFilePtr &file_ptr, GameTextOptions options) : m_filePtr(file_ptr), m_options(options) {}
 
     virtual CommandActionId Type() const override { return CommandActionId::SET_OPTIONS; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
@@ -210,7 +210,7 @@ public:
     SetLanguageCommand(const GameTextFilePtr &file_ptr, LanguageID language) : m_filePtr(file_ptr), m_language(language) {}
 
     virtual CommandActionId Type() const override { return CommandActionId::SET_LANGUAGE; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
@@ -225,7 +225,7 @@ public:
     {
     }
     virtual CommandActionId Type() const override { return CommandActionId::SWAP_LANGUAGE_STRINGS; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
@@ -241,7 +241,7 @@ public:
     {
     }
     virtual CommandActionId Type() const override { return CommandActionId::SWAP_AND_SET_LANGUAGE; }
-    virtual bool Execute() override;
+    virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;

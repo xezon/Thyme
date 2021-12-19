@@ -43,7 +43,7 @@ public:
     Processor();
 
     Result Parse_Commands(rts::array_view<const char *> commands);
-    Result Execute_Commands();
+    Result Execute_Commands() const;
 
 private:
     using CommandPtr = std::shared_ptr<Command>;

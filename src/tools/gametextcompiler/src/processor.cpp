@@ -33,11 +33,11 @@ Processor::Result Processor::Parse_Commands(rts::array_view<const char *> comman
     }
 }
 
-Processor::Result Processor::Execute_Commands()
+Processor::Result Processor::Execute_Commands() const
 {
     Result result = Result::SUCCESS;
 
-    for (CommandPtr &command : m_commands) {
+    for (const CommandPtr &command : m_commands) {
         if (!command->Execute()) {
             result = Result::FAILURE;
             break;
