@@ -30,10 +30,8 @@ using Languages = GameTextFile::Languages;
 enum class CommandActionId
 {
     INVALID = -1,
-    LOAD,
     LOAD_CSF,
     LOAD_STR,
-    SAVE,
     SAVE_CSF,
     SAVE_STR,
     UNLOAD,
@@ -42,6 +40,9 @@ enum class CommandActionId
     SET_OPTIONS,
     SET_LANGUAGE,
     SWAP_LANGUAGE_STRINGS,
+    SWAP_AND_SET_LANGUAGE,
+
+    COUNT
 };
 
 enum class CommandArgumentId
@@ -51,10 +52,30 @@ enum class CommandArgumentId
     FILE_PATH,
     LANGUAGES,
     OPTIONS,
+
+    COUNT
 };
 
-bool String_To_Command_Action(const char *str, CommandActionId &action_id);
-bool String_To_Command_Argument(const char *str, CommandArgumentId &argument_id);
+enum class SimpleActionId
+{
+    OPTIONS,
+    LOAD_LANGUAGES,
+    LOAD_CSF_FILE,
+    LOAD_STR_FILE,
+    SAVE_LANGUAGES,
+    SAVE_CSF,
+    SAVE_STR,
+
+    COUNT
+};
+
+constexpr size_t CommandActionCount = size_t(CommandActionId::COUNT);
+constexpr size_t CommandArgumentCount = size_t(CommandArgumentId::COUNT);
+constexpr size_t SimpleActionCount = size_t(SimpleActionId::COUNT);
+
+bool String_To_Command_Action_Id(const char *str, CommandActionId &action_id);
+bool String_To_Command_Argument_Id(const char *str, CommandArgumentId &argument_id);
+bool String_To_Simple_Action_Id(const char *str, SimpleActionId &action_id);
 
 class Command
 {
@@ -69,32 +90,6 @@ public:
 private:
     CommandId m_id;
     static CommandId s_id;
-};
-
-class LoadCommand : public Command
-{
-public:
-    LoadCommand(const GameTextFilePtr &file_ptr, const char *path) : m_filePtr(file_ptr), m_filePath(path) {}
-
-    virtual CommandActionId Type() const override { return CommandActionId::LOAD; }
-    virtual bool Execute() override { return m_filePtr->Load(m_filePath.c_str()); }
-
-private:
-    GameTextFilePtr m_filePtr;
-    std::string m_filePath;
-};
-
-class SaveCommand : public Command
-{
-public:
-    SaveCommand(const GameTextFilePtr &file_ptr, const char *path) : m_filePtr(file_ptr), m_filePath(path) {}
-
-    virtual CommandActionId Type() const override { return CommandActionId::SAVE; }
-    virtual bool Execute() override { return m_filePtr->Save(m_filePath.c_str()); }
-
-private:
-    GameTextFilePtr m_filePtr;
-    std::string m_filePath;
 };
 
 class LoadCsfCommand : public Command
@@ -113,27 +108,14 @@ private:
 class SaveCsfCommand : public Command
 {
 public:
-    SaveCsfCommand(const GameTextFilePtr &file_ptr, const char *path, LanguageID language) :
-        m_filePtr(file_ptr), m_filePath(path), m_language(language)
-    {
-    }
+    SaveCsfCommand(const GameTextFilePtr &file_ptr, const char *path) : m_filePtr(file_ptr), m_filePath(path) {}
 
     virtual CommandActionId Type() const override { return CommandActionId::SAVE_CSF; }
-    virtual bool Execute() override
-    {
-        LanguageID old_language = m_filePtr->Get_Language();
-        if (m_language != LanguageID::UNKNOWN) {
-            m_filePtr->Set_Language(m_language);
-        }
-        bool success = m_filePtr->Save_CSF(m_filePath.c_str());
-        m_filePtr->Set_Language(old_language);
-        return success;
-    }
+    virtual bool Execute() override { return m_filePtr->Save_CSF(m_filePath.c_str()); }
 
 private:
     GameTextFilePtr m_filePtr;
     std::string m_filePath;
-    LanguageID m_language;
 };
 
 class LoadStrCommand : public Command
@@ -295,6 +277,27 @@ private:
     GameTextFilePtr m_filePtr;
     LanguageID m_languageA;
     LanguageID m_languageB;
+};
+
+class SwapAndSetLanguageCommand : public Command
+{
+public:
+    SwapAndSetLanguageCommand(const GameTextFilePtr &file_ptr, LanguageID language) :
+        m_filePtr(file_ptr), m_language(language)
+    {
+    }
+    virtual CommandActionId Type() const override { return CommandActionId::SWAP_AND_SET_LANGUAGE; }
+    virtual bool Execute() override
+    {
+        const LanguageID current_language = m_filePtr->Get_Language();
+        m_filePtr->Swap_String_Infos(current_language, m_language);
+        m_filePtr->Set_Language(m_language);
+        return true;
+    }
+
+private:
+    GameTextFilePtr m_filePtr;
+    LanguageID m_language;
 };
 
 } // namespace Thyme

@@ -45,6 +45,7 @@ namespace Thyme
 {
 
 // #TODO Split the multi language functionality from 'GameTextFile' into a new 'MultiGameTextFile' class?
+// #TODO Return error codes for load and save?
 
 // #FEATURE GameTextFile contains the core file handling functionality of original GameTextManager, which allows to use it
 // for more flexible localization file operations.

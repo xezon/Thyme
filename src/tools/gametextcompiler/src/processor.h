@@ -15,6 +15,7 @@
 #pragma once
 
 #include "commands.h"
+#include <array>
 #include <unordered_map>
 #include <utility/arrayview.h>
 #include <variant>
@@ -41,7 +42,7 @@ public:
 public:
     Processor();
 
-    Result Prepare(rts::array_view<const char *> commands);
+    Result Parse_Commands(rts::array_view<const char *> commands);
     Result Execute_Commands();
 
 private:
@@ -59,7 +60,7 @@ private:
         std::size_t operator()(const FileId &key) const { return std::hash<int>{}(key.value); }
     };
 
-    using GameTextFileMap = std::unordered_map<FileId, GameTextFilePtr, FileIdHash>;
+    using FileMap = std::unordered_map<FileId, GameTextFilePtr, FileIdHash>;
 
     struct FilePath
     {
@@ -75,40 +76,64 @@ private:
 
     struct CommandAction
     {
-        CommandActionId action_id;
+        CommandActionId action_id = CommandActionId::INVALID;
         CommandArguments arguments;
     };
 
+    enum class SimpleSequenceId
+    {
+        INVALID = -1,
+        SET_OPTIONS,
+        LOAD,
+        LOAD_SET_LANGUAGE,
+        SAVE_SET_LANGUAGE,
+        SAVE,
+
+        COUNT
+    };
+
+    using SimpleCommandActions = std::array<CommandAction, size_t(SimpleSequenceId::COUNT)>;
+
 private:
-    static Result Parse_Command(const char *command, CommandAction &action);
+    Result Parse_Function_Commands(rts::array_view<const char *> commands);
+    Result Parse_Simple_Commands(rts::array_view<const char *> commands);
 
-    static Result Add_New_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Load_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Load_CSF_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Load_STR_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Save_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Save_CSF_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Save_STR_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Unload_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Reset_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Merge_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Set_Options_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Set_Language_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
-    static Result Add_Swap_Language_Command(const CommandAction &action, GameTextFileMap &file_map, CommandPtrs &commands);
+    static bool Has_Simple_Command(rts::array_view<const char *> commands);
+    static bool Is_Simple_Command(const char *command);
 
-    static void Populate_File_Map(const CommandAction &action, GameTextFileMap &file_map);
-    static void Populate_File_Map(FileId file_id, GameTextFileMap &file_map);
-    static GameTextFilePtr Get_File_Ptr(FileId file_id, GameTextFileMap &file_map);
+    template<size_t Size> bool static Parse_Next_Word(std::string &word, const char *&str, const char (&separators)[Size]);
+
+    static Result Parse_Function_Command(const char *command, CommandAction &action);
+    static Result Parse_Simple_Command(const char *command_name, const char *command_value, SimpleCommandActions &actions);
+    static Result Parse_Command_Argument(std::string &str, CommandArgumentId argument_id, CommandArgument &argument);
+
+    static Result Add_New_Command(const CommandAction &action, FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Load_CSF_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Load_STR_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Save_CSF_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Save_STR_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Unload_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Reset_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Merge_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Set_Options_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Set_Language_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Swap_Language_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+    static Result Add_Set_And_Swap_Language_Command(
+        const CommandAction &action, const FileMap &file_map, CommandPtrs &commands);
+
+    static void Populate_File_Map(const CommandAction &action, FileMap &file_map);
+    static void Populate_File_Map(FileId file_id, FileMap &file_map);
+    static GameTextFilePtr Get_File_Ptr(FileId file_id, const FileMap &file_map);
 
     template<class Type> static const Type *Find_Ptr(const CommandArguments &arguments, size_t occurence = 0);
-    static GameTextFilePtr Get_File_Ptr(const CommandArguments &arguments, GameTextFileMap &file_map, size_t occurence = 0);
+    static GameTextFilePtr Get_File_Ptr(const CommandArguments &arguments, const FileMap &file_map, size_t occurence = 0);
     static const char *Get_File_Path(const CommandArguments &arguments, size_t occurence = 0);
     static Languages Get_Languages(const CommandArguments &arguments, size_t occurence = 0);
     static LanguageID Get_Language(const CommandArguments &arguments, size_t occurence = 0);
     static GameTextOptions Get_Options(const CommandArguments &arguments, size_t occurence = 0);
 
 private:
-    GameTextFileMap m_fileMap;
+    FileMap m_fileMap;
     CommandPtrs m_commands;
 
     static const FileId s_defaultFileId;
