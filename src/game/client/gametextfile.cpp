@@ -275,15 +275,22 @@ bool GameTextFile::Load(const char *filename, Type filetype, const Languages *la
     StringInfosArray string_infos_array;
     StringInfos &string_infos = string_infos_array[size_t(read_language)];
 
-    if (filetype == Type::CSF) {
-        success = Read_CSF_File(file, string_infos, read_language);
-        string_infos_array[size_t(read_language)].swap(string_infos);
-    } else if (filetype == Type::STR) {
-        if (languages != nullptr) {
-            StringInfosPtrArray string_infos_ptrs = Build_String_Infos_Ptrs_Array(*languages, string_infos_array);
-            success = Read_STR_Multi_File(file, string_infos_ptrs, *languages, m_options);
-        } else {
-            success = Read_STR_File(file, string_infos, m_options);
+    switch (filetype) {
+
+        case Type::CSF: {
+            success = Read_CSF_File(file, string_infos, read_language);
+            string_infos_array[size_t(read_language)].swap(string_infos);
+            break;
+        }
+        case Type::STR: {
+            if (languages != nullptr) {
+                StringInfosPtrArray string_infos_ptrs = Build_String_Infos_Ptrs_Array(*languages, string_infos_array);
+                success = Read_STR_Multi_File(file, string_infos_ptrs, *languages, m_options);
+                Get_Language_With_String_Infos(read_language, string_infos_ptrs, 0);
+            } else {
+                success = Read_STR_File(file, string_infos, m_options);
+            }
+            break;
         }
     }
 
@@ -334,14 +341,21 @@ bool GameTextFile::Save(const char *filename, Type filetype, const Languages *la
 
     bool success = false;
 
-    if (filetype == Type::CSF) {
-        success = Write_CSF_File(file, Get_String_Infos(), m_language);
-    } else if (filetype == Type::STR) {
-        if (languages != nullptr) {
-            ConstStringInfosPtrArray string_infos_ptrs = Build_Const_String_Infos_Ptrs_Array(*languages, m_stringInfosArray);
-            success = Write_STR_Multi_File(file, string_infos_ptrs, *languages, m_options);
-        } else {
-            success = Write_STR_File(file, Get_String_Infos(), m_options);
+    switch (filetype) {
+
+        case Type::CSF: {
+            success = Write_CSF_File(file, Get_String_Infos(), m_language);
+            break;
+        }
+        case Type::STR: {
+            if (languages != nullptr) {
+                ConstStringInfosPtrArray string_infos_ptrs =
+                    Build_Const_String_Infos_Ptrs_Array(*languages, m_stringInfosArray);
+                success = Write_STR_Multi_File(file, string_infos_ptrs, *languages, m_options);
+            } else {
+                success = Write_STR_File(file, Get_String_Infos(), m_options);
+            }
+            break;
         }
     }
 
@@ -588,6 +602,23 @@ void GameTextFile::Build_String_Infos(
         }
         ++language_index;
     }
+}
+
+bool GameTextFile::Get_Language_With_String_Infos(
+    LanguageID &language, const StringInfosPtrArray &string_infos_ptrs, size_t occurence)
+{
+    size_t num = 0;
+    rts::enumerator<LanguageID> it;
+    for (const StringInfosPtrArray::value_type &string_infos_ptr : string_infos_ptrs) {
+        if (string_infos_ptr != nullptr && !string_infos_ptr->empty()) {
+            if (occurence == num++) {
+                language = it.value();
+                return true;
+            }
+        }
+        ++it;
+    }
+    return false;
 }
 
 GameTextFile::Type GameTextFile::Get_File_Type(const char *filename, Type filetype)

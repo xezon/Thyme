@@ -165,10 +165,14 @@ private:
         Languages languages, StringInfosArray &string_infos_array);
 
     static size_t Get_Max_Size(const ConstStringInfosPtrArray &string_infos_ptrs);
+
     static void Build_Multi_String_Infos(
         MultiStringInfos &multi_string_infos, const ConstStringInfosPtrArray &string_infos_ptrs, Options options);
     static void Build_String_Infos(
         StringInfosPtrArray &string_infos_ptrs, const MultiStringInfos &multi_string_infos, Options options);
+
+    static bool Get_Language_With_String_Infos(
+        LanguageID &language, const StringInfosPtrArray &string_infos_ptrs, size_t occurence = 0);
 
     static Type Get_File_Type(const char *filename, Type filetype);
 
