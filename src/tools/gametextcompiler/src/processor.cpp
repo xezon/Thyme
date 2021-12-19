@@ -54,13 +54,13 @@ Processor::Result Processor::Parse_Function_Commands(rts::array_view<const char 
 
         CommandAction action;
 
-        result = Parse_Function_Command(command, action);
+        result = Parse_Function_Command(action, command);
 
         if (result != Result::SUCCESS) {
             break;
         }
 
-        result = Add_New_Command(action, m_fileMap, m_commands);
+        result = Add_New_Command(m_commands, m_fileMap, action);
 
         if (result != Result::SUCCESS) {
             break;
@@ -87,7 +87,7 @@ Processor::Result Processor::Parse_Simple_Commands(rts::array_view<const char *>
             const char *command_name = commands[index] + 1;
             const char *command_value = commands[index + 1];
 
-            result = Parse_Simple_Command(command_name, command_value, actions);
+            result = Parse_Simple_Command(actions, command_name, command_value);
 
             if (result != Result::SUCCESS) {
                 break;
@@ -109,7 +109,7 @@ Processor::Result Processor::Parse_Simple_Commands(rts::array_view<const char *>
 
     for (const CommandAction &action : actions) {
         if (action.action_id != CommandActionId::INVALID) {
-            result = Add_New_Command(action, m_fileMap, m_commands);
+            result = Add_New_Command(m_commands, m_fileMap, action);
             if (result != Result::SUCCESS) {
                 break;
             }
@@ -154,7 +154,7 @@ template<size_t Size> bool Processor::Parse_Next_Word(std::string &word, const c
     return false;
 }
 
-Processor::Result Processor::Parse_Function_Command(const char *command, CommandAction &action)
+Processor::Result Processor::Parse_Function_Command(CommandAction &action, const char *command)
 {
     Result result = Result::SUCCESS;
     CommandActionId action_id = CommandActionId::INVALID;
@@ -181,7 +181,7 @@ Processor::Result Processor::Parse_Function_Command(const char *command, Command
 
         } else if (argument_id != CommandArgumentId::INVALID && Parse_Next_Word(word, reader, { ',', '|', ')' })) {
             // Determine Command Argument Values(s)
-            result = Parse_Command_Argument(word, argument_id, arguments.back());
+            result = Parse_Command_Argument(arguments.back(), word, argument_id);
             if (result != Result::SUCCESS) {
                 break;
             }
@@ -211,7 +211,7 @@ Processor::Result Processor::Parse_Function_Command(const char *command, Command
 }
 
 Processor::Result Processor::Parse_Simple_Command(
-    const char *command_name, const char *command_value, SimpleCommandActions &actions)
+    SimpleCommandActions &actions, const char *command_name, const char *command_value)
 {
     SimpleActionId simple_action_id;
 
@@ -278,7 +278,7 @@ Processor::Result Processor::Parse_Simple_Command(
         std::string word;
 
         while (Parse_Next_Word(word, reader, { '|', '\0' })) {
-            result = Parse_Command_Argument(word, argument_id, argument);
+            result = Parse_Command_Argument(argument, word, argument_id);
             if (result != Result::SUCCESS) {
                 break;
             }
@@ -297,7 +297,7 @@ Processor::Result Processor::Parse_Simple_Command(
 }
 
 Processor::Result Processor::Parse_Command_Argument(
-    std::string &str, CommandArgumentId argument_id, CommandArgument &argument)
+    CommandArgument &argument, std::string &str, CommandArgumentId argument_id)
 {
     Result result = Result::SUCCESS;
 
@@ -352,45 +352,45 @@ Processor::Result Processor::Parse_Command_Argument(
     return result;
 }
 
-Processor::Result Processor::Add_New_Command(const CommandAction &action, FileMap &file_map, CommandPtrs &commands)
+Processor::Result Processor::Add_New_Command(CommandPtrs &commands, FileMap &file_map, const CommandAction &action)
 {
     Result result = Result::SUCCESS;
 
-    Populate_File_Map(action, file_map);
+    Populate_File_Map(file_map, action);
 
     switch (action.action_id) {
         case CommandActionId::LOAD_CSF:
-            result = Add_Load_CSF_Command(action, file_map, commands);
+            result = Add_Load_CSF_Command(commands, file_map, action);
             break;
         case CommandActionId::LOAD_STR:
-            result = Add_Load_STR_Command(action, file_map, commands);
+            result = Add_Load_STR_Command(commands, file_map, action);
             break;
         case CommandActionId::SAVE_CSF:
-            result = Add_Save_CSF_Command(action, file_map, commands);
+            result = Add_Save_CSF_Command(commands, file_map, action);
             break;
         case CommandActionId::SAVE_STR:
-            result = Add_Save_STR_Command(action, file_map, commands);
+            result = Add_Save_STR_Command(commands, file_map, action);
             break;
         case CommandActionId::UNLOAD:
-            result = Add_Unload_Command(action, file_map, commands);
+            result = Add_Unload_Command(commands, file_map, action);
             break;
         case CommandActionId::RESET:
-            result = Add_Reset_Command(action, file_map, commands);
+            result = Add_Reset_Command(commands, file_map, action);
             break;
         case CommandActionId::MERGE_AND_OVERWRITE:
-            result = Add_Merge_Command(action, file_map, commands);
+            result = Add_Merge_Command(commands, file_map, action);
             break;
         case CommandActionId::SET_OPTIONS:
-            result = Add_Set_Options_Command(action, file_map, commands);
+            result = Add_Set_Options_Command(commands, file_map, action);
             break;
         case CommandActionId::SET_LANGUAGE:
-            result = Add_Set_Language_Command(action, file_map, commands);
+            result = Add_Set_Language_Command(commands, file_map, action);
             break;
         case CommandActionId::SWAP_LANGUAGE_STRINGS:
-            result = Add_Swap_Language_Command(action, file_map, commands);
+            result = Add_Swap_Language_Command(commands, file_map, action);
             break;
         case CommandActionId::SWAP_AND_SET_LANGUAGE:
-            result = Add_Set_And_Swap_Language_Command(action, file_map, commands);
+            result = Add_Set_And_Swap_Language_Command(commands, file_map, action);
             break;
     }
 
@@ -400,7 +400,7 @@ Processor::Result Processor::Add_New_Command(const CommandAction &action, FileMa
 }
 
 Processor::Result Processor::Add_Load_CSF_Command(
-    const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto file_path = Get_File_Path(action.arguments);
@@ -414,7 +414,7 @@ Processor::Result Processor::Add_Load_CSF_Command(
 }
 
 Processor::Result Processor::Add_Load_STR_Command(
-    const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto file_path = Get_File_Path(action.arguments);
@@ -429,7 +429,7 @@ Processor::Result Processor::Add_Load_STR_Command(
 }
 
 Processor::Result Processor::Add_Save_CSF_Command(
-    const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto file_path = Get_File_Path(action.arguments);
@@ -442,7 +442,8 @@ Processor::Result Processor::Add_Save_CSF_Command(
     return Result::SUCCESS;
 }
 
-Processor::Result Processor::Add_Save_STR_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+Processor::Result Processor::Add_Save_STR_Command(
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto file_path = Get_File_Path(action.arguments);
@@ -456,7 +457,7 @@ Processor::Result Processor::Add_Save_STR_Command(const CommandAction &action, c
     return Result::SUCCESS;
 }
 
-Processor::Result Processor::Add_Unload_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+Processor::Result Processor::Add_Unload_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto languages = Get_Languages(action.arguments);
@@ -465,7 +466,7 @@ Processor::Result Processor::Add_Unload_Command(const CommandAction &action, con
     return Result::SUCCESS;
 }
 
-Processor::Result Processor::Add_Reset_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+Processor::Result Processor::Add_Reset_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
 
@@ -473,7 +474,7 @@ Processor::Result Processor::Add_Reset_Command(const CommandAction &action, cons
     return Result::SUCCESS;
 }
 
-Processor::Result Processor::Add_Merge_Command(const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+Processor::Result Processor::Add_Merge_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr_a = Get_File_Ptr(action.arguments, file_map, 0);
     const auto file_ptr_b = Get_File_Ptr(action.arguments, file_map, 1);
@@ -488,7 +489,7 @@ Processor::Result Processor::Add_Merge_Command(const CommandAction &action, cons
 }
 
 Processor::Result Processor::Add_Set_Options_Command(
-    const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto options = Get_Options(action.arguments);
@@ -498,7 +499,7 @@ Processor::Result Processor::Add_Set_Options_Command(
 }
 
 Processor::Result Processor::Add_Set_Language_Command(
-    const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto language = Get_Language(action.arguments);
@@ -512,7 +513,7 @@ Processor::Result Processor::Add_Set_Language_Command(
 }
 
 Processor::Result Processor::Add_Swap_Language_Command(
-    const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto language_a = Get_Language(action.arguments, 0);
@@ -530,7 +531,7 @@ Processor::Result Processor::Add_Swap_Language_Command(
 }
 
 Processor::Result Processor::Add_Set_And_Swap_Language_Command(
-    const CommandAction &action, const FileMap &file_map, CommandPtrs &commands)
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto language = Get_Language(action.arguments, 0);
@@ -543,14 +544,14 @@ Processor::Result Processor::Add_Set_And_Swap_Language_Command(
     return Result::SUCCESS;
 }
 
-void Processor::Populate_File_Map(const CommandAction &action, FileMap &file_map)
+void Processor::Populate_File_Map(FileMap &file_map, const CommandAction &action)
 {
     const FileId *file_id_ptr = Find_Ptr<FileId>(action.arguments);
     const FileId file_id = (file_id_ptr == nullptr) ? s_defaultFileId : *file_id_ptr;
-    Populate_File_Map(file_id, file_map);
+    Populate_File_Map(file_map, file_id);
 }
 
-void Processor::Populate_File_Map(FileId file_id, FileMap &file_map)
+void Processor::Populate_File_Map(FileMap &file_map, FileId file_id)
 {
     const FileMap::iterator it = file_map.find(file_id);
     if (it == file_map.end()) {
@@ -558,7 +559,7 @@ void Processor::Populate_File_Map(FileId file_id, FileMap &file_map)
     }
 }
 
-GameTextFilePtr Processor::Get_File_Ptr(FileId file_id, const FileMap &file_map)
+GameTextFilePtr Processor::Get_File_Ptr(const FileMap &file_map, FileId file_id)
 {
     const FileMap::const_iterator it = file_map.find(file_id);
     captainslog_assert(it != file_map.end());
@@ -583,7 +584,7 @@ GameTextFilePtr Processor::Get_File_Ptr(const CommandArguments &arguments, const
 {
     const FileId *ptr = Find_Ptr<FileId>(arguments, occurence);
     const FileId file_id = (ptr == nullptr) ? s_defaultFileId : *ptr;
-    return Get_File_Ptr(file_id, file_map);
+    return Get_File_Ptr(file_map, file_id);
 }
 
 const char *Processor::Get_File_Path(const CommandArguments &arguments, size_t occurence)

@@ -303,7 +303,7 @@ bool GameTextFile::Load(const char *filename, Type filetype, const Languages *la
         For_Each_Language(used_languages, [&](LanguageID language) {
             Mutable_String_Infos(language).swap(string_infos_array[size_t(language)]);
 
-            captainslog_info("Read language: %s", Language_Name(language));
+            captainslog_info("Read language: %s", Get_Language_Name(language));
             captainslog_info("Read line count: %zu", Get_String_Infos(language).size());
 
             if (m_options.has(Options::Value::CHECK_BUFFER_LENGTH_ON_LOAD)) {
@@ -363,7 +363,7 @@ bool GameTextFile::Save(const char *filename, Type filetype, const Languages *la
         captainslog_info("File '%s' saved successfully", filename);
 
         For_Each_Language(used_languages, [&](LanguageID language) {
-            captainslog_info("Written language: %s", Language_Name(language));
+            captainslog_info("Written language: %s", Get_Language_Name(language));
             captainslog_info("Written line count: %zu", Get_String_Infos(language).size());
 
             if (m_options.has(Options::Value::CHECK_BUFFER_LENGTH_ON_SAVE)) {

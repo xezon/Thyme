@@ -89,6 +89,6 @@ using StringInfos = std::vector<StringInfo>;
 using MultiStringInfos = std::vector<MultiStringInfo>;
 
 bool Name_To_Language(const char *localization, LanguageID &language);
-const char *Language_Name(LanguageID language);
+const char *Get_Language_Name(LanguageID language);
 
 } // namespace Thyme

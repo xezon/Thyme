@@ -87,7 +87,7 @@ bool Name_To_Language(const char *localization, LanguageID &language)
     return false;
 }
 
-const char *Language_Name(LanguageID language)
+const char *Get_Language_Name(LanguageID language)
 {
     return s_localizations[static_cast<size_t>(language)];
 }
