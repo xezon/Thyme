@@ -44,11 +44,13 @@ enum class LanguageID : int32_t
     // Community game languages.
     RUSSIAN = 14,
     ARABIC = 15,
+
+    COUNT
 };
 
 DEFINE_RTS_UNDERLYING_TYPE(LanguageID, int32_t);
 
-constexpr size_t LanguageCount = 16;
+constexpr size_t LanguageCount = static_cast<size_t>(LanguageID::COUNT);
 
 struct CSFHeader
 {

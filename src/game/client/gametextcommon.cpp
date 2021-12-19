@@ -24,13 +24,14 @@ constexpr const char *const s_localization_de = "German";
 constexpr const char *const s_localization_fr = "French";
 constexpr const char *const s_localization_es = "Spanish";
 constexpr const char *const s_localization_it = "Italian";
-constexpr const char *const s_localization_ja = "";
+constexpr const char *const s_localization_ja = "Japanese";
 constexpr const char *const s_localization_jb = "";
 constexpr const char *const s_localization_ko = "Korean";
 constexpr const char *const s_localization_zh = "Chinese";
 constexpr const char *const s_localization___ = "";
 constexpr const char *const s_localization_bp = "Brazilian";
 constexpr const char *const s_localization_pl = "Polish";
+constexpr const char *const s_localization_uk = "Unknown";
 constexpr const char *const s_localization_ru = "Russian";
 constexpr const char *const s_localization_ar = "Arabic";
 
@@ -48,7 +49,7 @@ constexpr const char *const s_localizations[] = {
     s_localization___,
     s_localization_bp,
     s_localization_pl,
-    s_localization___,
+    s_localization_uk,
     s_localization_ru,
     s_localization_ar,
 };
@@ -66,7 +67,7 @@ static_assert(s_localization_zh == s_localizations[size_t(LanguageID::CHINESE)],
 static_assert(s_localization___ == s_localizations[size_t(LanguageID::UNUSED_1)], "Error");
 static_assert(s_localization_bp == s_localizations[size_t(LanguageID::BRAZILIAN)], "Error");
 static_assert(s_localization_pl == s_localizations[size_t(LanguageID::POLISH)], "Error");
-static_assert(s_localization___ == s_localizations[size_t(LanguageID::UNKNOWN)], "Error");
+static_assert(s_localization_uk == s_localizations[size_t(LanguageID::UNKNOWN)], "Error");
 static_assert(s_localization_ru == s_localizations[size_t(LanguageID::RUSSIAN)], "Error");
 static_assert(s_localization_ar == s_localizations[size_t(LanguageID::ARABIC)], "Error");
 
