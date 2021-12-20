@@ -126,6 +126,7 @@ class EngineSystemsCreator
 public:
     EngineSystemsCreator()
     {
+        Clean();
         g_theSubsystemList = new SubsystemInterfaceList;
         g_theFileSystem = new FileSystem;
         Init_Subsystem(g_theLocalFileSystem, "TheLocalFileSystem", Create_Local_File_System());
@@ -137,10 +138,19 @@ public:
     }
     ~EngineSystemsCreator()
     {
+        Clean();
+    }
+private:
+    void Clean()
+    {
         delete g_theArchiveFileSystem;
         delete g_theLocalFileSystem;
         delete g_theFileSystem;
         delete g_theSubsystemList;
+        g_theArchiveFileSystem = nullptr;
+        g_theLocalFileSystem = nullptr;
+        g_theFileSystem = nullptr;
+        g_theSubsystemList = nullptr;
     }
 };
 

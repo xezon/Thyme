@@ -96,7 +96,7 @@ Processor::Result Processor::Parse_Simple_Commands(rts::array_view<const char *>
     }
 
     {
-        // Remove swap language commands here if STR is loaded or saved because it is not necessary.
+        // Remove set language commands here if STR is loaded or saved because it is not necessary.
 
         if (actions[size_t(SimpleSequenceId::LOAD)].action_id == CommandActionId::LOAD_STR) {
             actions[size_t(SimpleSequenceId::LOAD_SET_LANGUAGE)].action_id = CommandActionId::INVALID;
