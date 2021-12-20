@@ -45,8 +45,9 @@ struct MutableMultiStringLookup
     MultiStringInfo *string_info;
 };
 
-// #FEATURE Template class to help find strings by their label within a given string info container. Prefer using the type
-// aliases further down below.
+// #FEATURE Template class to build a lookup map to help find strings by their label from a given string info container.
+// Prefer using the type aliases further down below. An instance of this class must not be used after the source string info
+// container has been changed or deleted.
 template<typename StringLookup, typename StringInfos> class GameTextLookup
 {
     using StringLookups = std::vector<StringLookup>;
@@ -57,31 +58,46 @@ public:
 
     void Load(StringInfos &string_infos)
     {
-        const size_t size = string_infos.size();
-        m_stringLookups.resize(size);
+        if (string_infos.empty()) {
+            return;
+        }
 
-        for (size_t i = 0; i < size; ++i) {
+        const size_t string_count = string_infos.size();
+        m_stringLookups.resize(string_count);
+
+        for (size_t i = 0; i < string_count; ++i) {
             m_stringLookups[i].label = string_infos[i].label.Str();
             m_stringLookups[i].string_info = &string_infos[i];
         }
 
-        qsort(&m_stringLookups[0], size, sizeof(StringLookup), Compare_LUT);
+        void *base = &m_stringLookups[0];
+        const size_t item_count = m_stringLookups.size();
+        const size_t item_size = sizeof(StringLookup);
+
+        qsort(base, item_count, item_size, Compare_LUT);
     }
 
     void Unload() { rts::free_container(m_stringLookups); }
 
     const StringLookup *Find(const char *label) const
     {
+        if (m_stringLookups.empty()) {
+            return nullptr;
+        }
+
         StringLookup key;
         key.label = label;
         key.string_info = nullptr;
 
-        return static_cast<const StringLookup *>(
-            bsearch(&key, &m_stringLookups[0], m_stringLookups.size(), sizeof(StringLookup), Compare_LUT));
+        const void *base = &m_stringLookups[0];
+        const size_t item_count = m_stringLookups.size();
+        const size_t item_size = sizeof(StringLookup);
+
+        return static_cast<const StringLookup *>(bsearch(&key, base, item_count, item_size, Compare_LUT));
     }
 
 private:
-    static int Compare_LUT(void const *a, void const *b)
+    static int Compare_LUT(const void *a, const void *b)
     {
         const char *ac = static_cast<const StringLookup *>(a)->label;
         const char *bc = static_cast<const StringLookup *>(b)->label;
