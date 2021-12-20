@@ -21,11 +21,6 @@
 #include "utility/fileutil.h"
 #include "utility/stlutil.h"
 #include "utility/stringutil.h"
-#include <captainslog.h>
-
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
-#endif
 
 namespace Thyme
 {
@@ -284,8 +279,8 @@ bool GameTextFile::Load(const char *filename, Type filetype, const Languages *la
         }
         case Type::STR: {
             if (languages != nullptr) {
-                StringInfosPtrArray string_infos_ptrs = Build_String_Infos_Ptrs_Array(*languages, string_infos_array);
-                success = Read_STR_Multi_File(file, string_infos_ptrs, *languages, m_options);
+                StringInfosPtrArray string_infos_ptrs = Build_String_Infos_Ptrs_Array(string_infos_array, *languages);
+                success = Read_Multi_STR_File(file, string_infos_ptrs, *languages, m_options);
                 Get_Language_With_String_Infos(read_language, string_infos_ptrs, 0);
             } else {
                 success = Read_STR_File(file, string_infos, m_options);
@@ -350,8 +345,8 @@ bool GameTextFile::Save(const char *filename, Type filetype, const Languages *la
         case Type::STR: {
             if (languages != nullptr) {
                 ConstStringInfosPtrArray string_infos_ptrs =
-                    Build_Const_String_Infos_Ptrs_Array(*languages, m_stringInfosArray);
-                success = Write_STR_Multi_File(file, string_infos_ptrs, *languages, m_options);
+                    Build_Const_String_Infos_Ptrs_Array(m_stringInfosArray, *languages);
+                success = Write_Multi_STR_File(file, string_infos_ptrs, *languages, m_options);
             } else {
                 success = Write_STR_File(file, Get_String_Infos(), m_options);
             }
@@ -499,7 +494,7 @@ template<typename Functor> static void GameTextFile::For_Each_Language(Languages
 }
 
 GameTextFile::StringInfosPtrArray GameTextFile::Build_String_Infos_Ptrs_Array(
-    Languages languages, StringInfosArray &string_infos_array)
+    StringInfosArray &string_infos_array, Languages languages)
 {
     StringInfosPtrArray string_infos_ptrs = {};
 
@@ -511,7 +506,7 @@ GameTextFile::StringInfosPtrArray GameTextFile::Build_String_Infos_Ptrs_Array(
 }
 
 GameTextFile::ConstStringInfosPtrArray GameTextFile::Build_Const_String_Infos_Ptrs_Array(
-    Languages languages, StringInfosArray &string_infos_array)
+    StringInfosArray &string_infos_array, Languages languages)
 {
     ConstStringInfosPtrArray string_infos_ptrs = {};
 
@@ -702,7 +697,7 @@ Utf8String &GameTextFile::Get_Speech(MultiStringInfo &string_info, LanguageID la
     return string_info.speech[size_t(language)];
 }
 
-bool GameTextFile::Read_STR_Multi_File(
+bool GameTextFile::Read_Multi_STR_File(
     FileRef &file, StringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
     captainslog_info("Reading text file '%s' in STR multi format", file->Get_File_Name().Str());
@@ -1041,7 +1036,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
     return text_ok && (speech_ok || !read_speech);
 }
 
-bool GameTextFile::Write_STR_Multi_File(
+bool GameTextFile::Write_Multi_STR_File(
     FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
     captainslog_info("Writing text file '%s' in STR multi format", file->Get_File_Name().Str());
@@ -1055,7 +1050,7 @@ bool GameTextFile::Write_STR_Multi_File(
 
     for (const MultiStringInfo &string_info : multi_string_infos) {
         if (!string_info.label.Is_Empty()) {
-            if (!Write_STR_Multi_Entry(file, string_info, languages, options, w1, w2)) {
+            if (!Write_Multi_STR_Entry(file, string_info, languages, options, w1, w2)) {
                 return false;
             }
         }
@@ -1063,7 +1058,7 @@ bool GameTextFile::Write_STR_Multi_File(
     return true;
 }
 
-bool GameTextFile::Write_STR_Multi_Entry(
+bool GameTextFile::Write_Multi_STR_Entry(
     FileRef &file, const MultiStringInfo &string_info, Languages languages, Options options, Utf8Array &w1, Utf8String &w2)
 {
     bool ok = true;

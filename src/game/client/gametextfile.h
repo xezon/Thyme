@@ -161,9 +161,9 @@ private:
     StringInfos &Mutable_String_Infos(LanguageID language);
 
     template<typename Functor> static void For_Each_Language(Languages languages, Functor functor);
-    static StringInfosPtrArray Build_String_Infos_Ptrs_Array(Languages languages, StringInfosArray &string_infos_array);
+    static StringInfosPtrArray Build_String_Infos_Ptrs_Array(StringInfosArray &string_infos_array, Languages languages);
     static ConstStringInfosPtrArray Build_Const_String_Infos_Ptrs_Array(
-        Languages languages, StringInfosArray &string_infos_array);
+        StringInfosArray &string_infos_array, Languages languages);
 
     static size_t Get_Max_Size(const ConstStringInfosPtrArray &string_infos_ptrs);
 
@@ -186,7 +186,7 @@ private:
     static Utf8String &Get_Speech(StringInfo &string_info, LanguageID language);
     static Utf8String &Get_Speech(MultiStringInfo &string_info, LanguageID language);
 
-    static bool Read_STR_Multi_File(
+    static bool Read_Multi_STR_File(
         FileRef &file, StringInfosPtrArray &string_infos_ptrs, Languages languages, Options options);
     static bool Read_STR_File(FileRef &file, StringInfos &string_infos, Options options);
     template<typename StringInfosType>
@@ -207,9 +207,9 @@ private:
     static bool Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_t &texts);
     static bool Read_CSF_Text(FileRef &file, StringInfo &string_info);
 
-    static bool Write_STR_Multi_File(
+    static bool Write_Multi_STR_File(
         FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options);
-    static bool Write_STR_Multi_Entry(FileRef &file,
+    static bool Write_Multi_STR_Entry(FileRef &file,
         const MultiStringInfo &string_info,
         Languages languages,
         Options options,
