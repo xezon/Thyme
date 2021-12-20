@@ -31,26 +31,30 @@ captainslog_info(
 R"#(Function Command List (All capital words are interpreted keywords):
 
 Fu 01 : LOAD_CSF(FILE_ID:optional,FILE_PATH:mandatory)
-Fu 02 : LOAD_STR(FILE_ID:optional,FILE_PATH:mandatory,LANGUAGE:[n]optional)
-Fu 03 : SAVE_CSF(FILE_ID:optional,FILE_PATH:mandatory)
-Fu 04 : SAVE_STR(FILE_ID:optional,FILE_PATH:mandatory,LANGUAGE:[n]optional)
-Fu 05 : UNLOAD(FILE_ID:optional,LANGUAGE:[n]optional)
-Fu 06 : RESET(FILE_ID:optional)
-Fu 07 : MERGE_AND_OVERWRITE(FILE_ID:mandatory,FILE_ID:mandatory,LANGUAGE:[n]optional)
-Fu 08 : SET_OPTIONS(FILE_ID:optional,OPTION:[n]optional)
-Fu 09 : SET_LANGUAGE(FILE_ID:optional,LANGUAGE:[1]mandatory)
-Fu 10 : SWAP_LANGUAGE_STRINGS(FILE_ID:optional,LANGUAGE:[1]mandatory,LANGUAGE:[1]mandatory)
+Fu 02 : LOAD_STR(FILE_ID:optional,FILE_PATH:mandatory)
+Fu 03 : LOAD_MULTI_STR(FILE_ID:optional,FILE_PATH:mandatory,LANGUAGE:[n]mandatory)
+Fu 04 : SAVE_CSF(FILE_ID:optional,FILE_PATH:mandatory)
+Fu 05 : SAVE_STR(FILE_ID:optional,FILE_PATH:mandatory)
+Fu 06 : SAVE_MULTI_STR(FILE_ID:optional,FILE_PATH:mandatory,LANGUAGE:[n]mandatory)
+Fu 07 : UNLOAD(FILE_ID:optional,LANGUAGE:[n]optional)
+Fu 08 : RESET(FILE_ID:optional)
+Fu 09 : MERGE_AND_OVERWRITE(FILE_ID:mandatory,FILE_ID:mandatory,LANGUAGE:[n]optional)
+Fu 10 : SET_OPTIONS(FILE_ID:optional,OPTION:[n]optional)
+Fu 11 : SET_LANGUAGE(FILE_ID:optional,LANGUAGE:[1]mandatory)
+Fu 12 : SWAP_LANGUAGE_STRINGS(FILE_ID:optional,LANGUAGE:[1]mandatory,LANGUAGE:[1]mandatory)
 
 .. 01 : Loads a CSF file from FILE_PATH into FILE_ID slot.
 .. 02 : Loads a STR file from FILE_PATH with LANGUAGE into FILE_ID slot.
-.. 03 : Saves a CSF file to FILE_PATH from FILE_ID slot.
-.. 04 : Saves a STR file to FILE_PATH with LANGUAGE into FILE_ID slot.
-.. 05 : Unloads string data of LANGUAGE from FILE_ID slot.
-.. 06 : Resets all string data.
-.. 07 : Merges and overwrites string data of LANGUAGE in 1st FILE_ID from 2nd FILE_ID.
-.. 08 : Sets options of OPTION in FILE_ID.
-.. 09 : Sets language of LANGUAGE in FILE_ID.
-.. 10 : Swaps string data in FILE_ID between 1st LANGUAGE and 2nd LANGUAGE.
+.. 03 : Loads a Multi STR file from FILE_PATH with LANGUAGE into FILE_ID slot.
+.. 04 : Saves a CSF file to FILE_PATH from FILE_ID slot.
+.. 05 : Saves a STR file to FILE_PATH from FILE_ID slot.
+.. 06 : Saves a Multi STR file to FILE_PATH with LANGUAGE from FILE_ID slot.
+.. 07 : Unloads string data of LANGUAGE from FILE_ID slot.
+.. 08 : Resets all string data.
+.. 09 : Merges and overwrites string data of LANGUAGE in 1st FILE_ID from 2nd FILE_ID.
+.. 10 : Sets options of OPTION in FILE_ID.
+.. 11 : Sets language of LANGUAGE in FILE_ID.
+.. 12 : Swaps string data in FILE_ID between 1st LANGUAGE and 2nd LANGUAGE.
 )#");
 
 captainslog_info(
@@ -178,7 +182,7 @@ int main(int argc, const char *argv[])
         return ProcessorPrepareError;
     }
 
-    processor_result = processor_result = processor.Execute_Commands();
+    processor_result = processor.Execute_Commands();
 
     if (processor_result != Thyme::Processor::Result::SUCCESS) {
         captainslog_info("Processor run failed");

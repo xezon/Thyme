@@ -21,8 +21,10 @@ namespace
 const char *const s_command_action_names[] = {
     "LOAD_CSF",
     "LOAD_STR",
+    "LOAD_MULTI_STR",
     "SAVE_CSF",
     "SAVE_STR",
+    "SAVE_MULTI_STR",
     "UNLOAD",
     "RESET",
     "MERGE_AND_OVERWRITE",
@@ -88,27 +90,29 @@ bool LoadCsfCommand::Execute() const
     return m_filePtr->Load_CSF(m_filePath.c_str());
 }
 
+bool LoadStrCommand::Execute() const
+{
+    return m_filePtr->Load_STR(m_filePath.c_str());
+}
+
+bool LoadMultiStrCommand::Execute() const
+{
+    return m_filePtr->Load_Multi_STR(m_filePath.c_str(), m_languages);
+}
+
 bool SaveCsfCommand::Execute() const
 {
     return m_filePtr->Save_CSF(m_filePath.c_str());
 }
 
-bool LoadStrCommand::Execute() const
-{
-    if (m_languages.any()) {
-        return m_filePtr->Load_Multi_STR(m_filePath.c_str(), m_languages);
-    } else {
-        return m_filePtr->Load_STR(m_filePath.c_str());
-    }
-}
-
 bool SaveStrCommand::Execute() const
 {
-    if (m_languages.any()) {
-        return m_filePtr->Save_Multi_STR(m_filePath.c_str(), m_languages);
-    } else {
-        return m_filePtr->Save_STR(m_filePath.c_str());
-    }
+    return m_filePtr->Save_STR(m_filePath.c_str());
+}
+
+bool SaveMultiStrCommand::Execute() const
+{
+    return m_filePtr->Save_Multi_STR(m_filePath.c_str(), m_languages);
 }
 
 bool UnloadCommand::Execute() const

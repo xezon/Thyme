@@ -365,11 +365,17 @@ Processor::Result Processor::Add_New_Command(CommandPtrs &commands, FileMap &fil
         case CommandActionId::LOAD_STR:
             result = Add_Load_STR_Command(commands, file_map, action);
             break;
+        case CommandActionId::LOAD_MULTI_STR:
+            result = Add_Load_Multi_STR_Command(commands, file_map, action);
+            break;
         case CommandActionId::SAVE_CSF:
             result = Add_Save_CSF_Command(commands, file_map, action);
             break;
         case CommandActionId::SAVE_STR:
             result = Add_Save_STR_Command(commands, file_map, action);
+            break;
+        case CommandActionId::SAVE_MULTI_STR:
+            result = Add_Save_Multi_STR_Command(commands, file_map, action);
             break;
         case CommandActionId::UNLOAD:
             result = Add_Unload_Command(commands, file_map, action);
@@ -390,11 +396,11 @@ Processor::Result Processor::Add_New_Command(CommandPtrs &commands, FileMap &fil
             result = Add_Swap_Language_Command(commands, file_map, action);
             break;
         case CommandActionId::SWAP_AND_SET_LANGUAGE:
-            result = Add_Set_And_Swap_Language_Command(commands, file_map, action);
+            result = Add_Set_Swap_Language_Command(commands, file_map, action);
             break;
     }
 
-    static_assert(g_commandActionCount == 11, "CommandAction is missing");
+    static_assert(g_commandActionCount == 13, "CommandAction is missing");
 
     return result;
 }
@@ -418,13 +424,31 @@ Processor::Result Processor::Add_Load_STR_Command(
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto file_path = Get_File_Path(action.arguments);
+
+    if (file_path == nullptr) {
+        return Result::MISSING_FILE_PATH_ARGUMENT;
+    }
+
+    commands.emplace_back(new LoadStrCommand(file_ptr, file_path));
+    return Result::SUCCESS;
+}
+
+Processor::Result Processor::Add_Load_Multi_STR_Command(
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
+{
+    const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
+    const auto file_path = Get_File_Path(action.arguments);
     const auto languages = Get_Languages(action.arguments);
 
     if (file_path == nullptr) {
         return Result::MISSING_FILE_PATH_ARGUMENT;
     }
 
-    commands.emplace_back(new LoadStrCommand(file_ptr, file_path, languages));
+    if (languages.none()) {
+        return Result::MISSING_LANGUAGE_ARGUMENT;
+    }
+
+    commands.emplace_back(new LoadMultiStrCommand(file_ptr, file_path, languages));
     return Result::SUCCESS;
 }
 
@@ -447,13 +471,31 @@ Processor::Result Processor::Add_Save_STR_Command(
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
     const auto file_path = Get_File_Path(action.arguments);
+
+    if (file_path == nullptr) {
+        return Result::MISSING_FILE_PATH_ARGUMENT;
+    }
+
+    commands.emplace_back(new SaveStrCommand(file_ptr, file_path));
+    return Result::SUCCESS;
+}
+
+Processor::Result Processor::Add_Save_Multi_STR_Command(
+    CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
+{
+    const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
+    const auto file_path = Get_File_Path(action.arguments);
     const auto languages = Get_Languages(action.arguments);
 
     if (file_path == nullptr) {
         return Result::MISSING_FILE_PATH_ARGUMENT;
     }
 
-    commands.emplace_back(new SaveStrCommand(file_ptr, file_path, languages));
+    if (languages.none()) {
+        return Result::MISSING_LANGUAGE_ARGUMENT;
+    }
+
+    commands.emplace_back(new SaveMultiStrCommand(file_ptr, file_path, languages));
     return Result::SUCCESS;
 }
 
@@ -530,7 +572,7 @@ Processor::Result Processor::Add_Swap_Language_Command(
     return Result::SUCCESS;
 }
 
-Processor::Result Processor::Add_Set_And_Swap_Language_Command(
+Processor::Result Processor::Add_Set_Swap_Language_Command(
     CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
 {
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);

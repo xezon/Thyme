@@ -110,16 +110,17 @@ private:
     static Result Add_New_Command(CommandPtrs &commands, FileMap &file_map, const CommandAction &action);
     static Result Add_Load_CSF_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Load_STR_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
+    static Result Add_Load_Multi_STR_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Save_CSF_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Save_STR_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
+    static Result Add_Save_Multi_STR_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Unload_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Reset_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Merge_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Set_Options_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Set_Language_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Swap_Language_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
-    static Result Add_Set_And_Swap_Language_Command(
-        CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
+    static Result Add_Set_Swap_Language_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
 
     static void Populate_File_Map(FileMap &file_map, const CommandAction &action);
     static void Populate_File_Map(FileMap &file_map, FileId file_id);

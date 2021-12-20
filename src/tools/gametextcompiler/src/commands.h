@@ -32,8 +32,10 @@ enum class CommandActionId
     INVALID = -1,
     LOAD_CSF,
     LOAD_STR,
+    LOAD_MULTI_STR,
     SAVE_CSF,
     SAVE_STR,
+    SAVE_MULTI_STR,
     UNLOAD,
     RESET,
     MERGE_AND_OVERWRITE,
@@ -105,6 +107,34 @@ private:
     std::string m_filePath;
 };
 
+class LoadStrCommand : public Command
+{
+public:
+    LoadStrCommand(const GameTextFilePtr &file_ptr, const char *path) : m_filePtr(file_ptr), m_filePath(path) {}
+    virtual CommandActionId Type() const override { return CommandActionId::LOAD_STR; }
+    virtual bool Execute() const override;
+
+private:
+    GameTextFilePtr m_filePtr;
+    std::string m_filePath;
+};
+
+class LoadMultiStrCommand : public Command
+{
+public:
+    LoadMultiStrCommand(const GameTextFilePtr &file_ptr, const char *path, Languages languages) :
+        m_filePtr(file_ptr), m_filePath(path), m_languages(languages)
+    {
+    }
+    virtual CommandActionId Type() const override { return CommandActionId::LOAD_MULTI_STR; }
+    virtual bool Execute() const override;
+
+private:
+    GameTextFilePtr m_filePtr;
+    std::string m_filePath;
+    Languages m_languages;
+};
+
 class SaveCsfCommand : public Command
 {
 public:
@@ -118,30 +148,26 @@ private:
     std::string m_filePath;
 };
 
-class LoadStrCommand : public Command
+class SaveStrCommand : public Command
 {
 public:
-    LoadStrCommand(const GameTextFilePtr &file_ptr, const char *path, Languages languages) :
-        m_filePtr(file_ptr), m_filePath(path), m_languages(languages)
-    {
-    }
-    virtual CommandActionId Type() const override { return CommandActionId::LOAD_STR; }
+    SaveStrCommand(const GameTextFilePtr &file_ptr, const char *path) : m_filePtr(file_ptr), m_filePath(path) {}
+    virtual CommandActionId Type() const override { return CommandActionId::SAVE_STR; }
     virtual bool Execute() const override;
 
 private:
     GameTextFilePtr m_filePtr;
     std::string m_filePath;
-    Languages m_languages;
 };
 
-class SaveStrCommand : public Command
+class SaveMultiStrCommand : public Command
 {
 public:
-    SaveStrCommand(const GameTextFilePtr &file_ptr, const char *path, Languages languages) :
+    SaveMultiStrCommand(const GameTextFilePtr &file_ptr, const char *path, Languages languages) :
         m_filePtr(file_ptr), m_filePath(path), m_languages(languages)
     {
     }
-    virtual CommandActionId Type() const override { return CommandActionId::SAVE_STR; }
+    virtual CommandActionId Type() const override { return CommandActionId::SAVE_MULTI_STR; }
     virtual bool Execute() const override;
 
 private:
