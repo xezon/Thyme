@@ -71,7 +71,7 @@ static_assert(s_localization_uk == s_localizations[size_t(LanguageID::UNKNOWN)],
 static_assert(s_localization_ru == s_localizations[size_t(LanguageID::RUSSIAN)], "Error");
 static_assert(s_localization_ar == s_localizations[size_t(LanguageID::ARABIC)], "Error");
 
-static_assert(ARRAY_SIZE(s_localizations) == LanguageCount, "Error");
+static_assert(ARRAY_SIZE(s_localizations) == g_languageCount, "Error");
 
 bool Name_To_Language(const char *localization, LanguageID &language)
 {

@@ -53,16 +53,16 @@ template<typename StringLookup, typename StringInfos> class GameTextLookup
 
 public:
     explicit GameTextLookup() {}
-    explicit GameTextLookup(StringInfos &stringInfos) { Load(stringInfos); }
+    explicit GameTextLookup(StringInfos &string_infos) { Load(string_infos); }
 
-    void Load(StringInfos &stringInfos)
+    void Load(StringInfos &string_infos)
     {
-        const size_t size = stringInfos.size();
+        const size_t size = string_infos.size();
         m_stringLookups.resize(size);
 
         for (size_t i = 0; i < size; ++i) {
-            m_stringLookups[i].label = stringInfos[i].label.Str();
-            m_stringLookups[i].string_info = &stringInfos[i];
+            m_stringLookups[i].label = string_infos[i].label.Str();
+            m_stringLookups[i].string_info = &string_infos[i];
         }
 
         qsort(&m_stringLookups[0], size, sizeof(StringLookup), Compare_LUT);

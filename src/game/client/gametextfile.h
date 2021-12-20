@@ -53,7 +53,7 @@ class GameTextFile
 {
 public:
     using Options = rts::ebitflags<GameTextOption>;
-    using Languages = rts::enumflags<LanguageID, LanguageCount>;
+    using Languages = rts::enumflags<LanguageID, g_languageCount>;
 
     GameTextFile() :
         m_options(Options::Value::OPTIMIZE_MEMORY_SIZE), m_language(LanguageID::UNKNOWN), m_stringInfosArray(){};
@@ -145,9 +145,9 @@ private:
         TEXT_8_SIZE = TEXT_16_SIZE * 4,
     };
 
-    using StringInfosArray = rts::array<StringInfos, LanguageCount>;
-    using ConstStringInfosPtrArray = rts::array<const StringInfos *, LanguageCount>;
-    using StringInfosPtrArray = rts::array<StringInfos *, LanguageCount>;
+    using StringInfosArray = rts::array<StringInfos, g_languageCount>;
+    using ConstStringInfosPtrArray = rts::array<const StringInfos *, g_languageCount>;
+    using StringInfosPtrArray = rts::array<StringInfos *, g_languageCount>;
     using Utf8Array = rts::array<char, TEXT_8_SIZE>;
     using Utf16Array = rts::array<unichar_t, TEXT_16_SIZE>;
     using Utf8View = rts::array_view<char>;

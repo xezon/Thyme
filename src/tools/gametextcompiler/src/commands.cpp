@@ -49,9 +49,9 @@ const char *const s_simple_action_names[] = {
     "SAVE_STR",
 };
 
-static_assert(ARRAY_SIZE(s_command_action_names) == CommandActionCount);
-static_assert(ARRAY_SIZE(s_command_argument_names) == CommandArgumentCount);
-static_assert(ARRAY_SIZE(s_simple_action_names) == SimpleActionCount);
+static_assert(ARRAY_SIZE(s_command_action_names) == g_commandActionCount);
+static_assert(ARRAY_SIZE(s_command_argument_names) == g_commandArgumentCount);
+static_assert(ARRAY_SIZE(s_simple_action_names) == g_simpleActionCount);
 
 template<typename EnumType, size_t Size>
 bool String_To_Enum_Id(const char *str, EnumType &id, const char *const (&search_names)[Size])

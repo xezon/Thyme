@@ -156,7 +156,7 @@ static_assert(s_langcode___ == s_langcodes[size_t(LanguageID::UNKNOWN)], "Error"
 static_assert(s_langcode_ru == s_langcodes[size_t(LanguageID::RUSSIAN)], "Error");
 static_assert(s_langcode_ar == s_langcodes[size_t(LanguageID::ARABIC)], "Error");
 
-static_assert(ARRAY_SIZE(s_langcodes) == LanguageCount, "Error");
+static_assert(ARRAY_SIZE(s_langcodes) == g_languageCount, "Error");
 
 constexpr const char *Get_Language_Code(LanguageID language)
 {
@@ -486,7 +486,7 @@ void GameTextFile::Swap_String_Infos(LanguageID left, LanguageID right)
 
 template<typename Functor> static void GameTextFile::For_Each_Language(Languages languages, Functor functor)
 {
-    for (rts::enumerator<LanguageID> it; it < LanguageID(LanguageCount); ++it) {
+    for (rts::enumerator<LanguageID> it; it < LanguageID(g_languageCount); ++it) {
         const LanguageID language = it.value();
         if (languages.has(language)) {
             functor(language);
@@ -878,7 +878,7 @@ bool GameTextFile::Parse_STR_Language(const char *cstring, LanguageID &language,
     const size_t code_len = strlen(s_langcodes[0]);
     const size_t lng_len = strlen(s_str_lng);
 
-    for (rts::enumerator<LanguageID> it; it < LanguageID(LanguageCount); ++it) {
+    for (rts::enumerator<LanguageID> it; it < LanguageID(g_languageCount); ++it) {
         const char *code = s_langcodes[it.underlying()];
         if (strncasecmp(cstring, code, code_len) == 0) {
             if (strncasecmp(cstring + code_len, s_str_lng, lng_len) == 0) {

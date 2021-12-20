@@ -50,7 +50,7 @@ enum class LanguageID : int32_t
 
 DEFINE_RTS_UNDERLYING_TYPE(LanguageID, int32_t);
 
-constexpr size_t LanguageCount = static_cast<size_t>(LanguageID::COUNT);
+constexpr size_t g_languageCount = static_cast<size_t>(LanguageID::COUNT);
 
 struct CSFHeader
 {
@@ -81,8 +81,8 @@ namespace Thyme
 struct MultiStringInfo
 {
     Utf8String label;
-    Utf16String text[LanguageCount];
-    Utf8String speech[LanguageCount];
+    Utf16String text[g_languageCount];
+    Utf8String speech[g_languageCount];
 };
 
 using StringInfos = std::vector<StringInfo>;

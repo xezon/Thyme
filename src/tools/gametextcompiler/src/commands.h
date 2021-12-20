@@ -69,9 +69,9 @@ enum class SimpleActionId
     COUNT
 };
 
-constexpr size_t CommandActionCount = size_t(CommandActionId::COUNT);
-constexpr size_t CommandArgumentCount = size_t(CommandArgumentId::COUNT);
-constexpr size_t SimpleActionCount = size_t(SimpleActionId::COUNT);
+constexpr size_t g_commandActionCount = size_t(CommandActionId::COUNT);
+constexpr size_t g_commandArgumentCount = size_t(CommandArgumentId::COUNT);
+constexpr size_t g_simpleActionCount = size_t(SimpleActionId::COUNT);
 
 bool String_To_Command_Action_Id(const char *str, CommandActionId &action_id);
 bool String_To_Command_Argument_Id(const char *str, CommandArgumentId &argument_id);

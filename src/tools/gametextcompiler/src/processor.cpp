@@ -268,7 +268,7 @@ Processor::Result Processor::Parse_Simple_Command(
             break;
     }
 
-    static_assert(SimpleActionCount == 7, "SimpleAction is missing");
+    static_assert(g_simpleActionCount == 7, "SimpleAction is missing");
 
     Result result = Result::SUCCESS;
     CommandArgument argument;
@@ -347,7 +347,7 @@ Processor::Result Processor::Parse_Command_Argument(
         }
     }
 
-    static_assert(CommandArgumentCount == 4, "CommandArgument is missing");
+    static_assert(g_commandArgumentCount == 4, "CommandArgument is missing");
 
     return result;
 }
@@ -394,7 +394,7 @@ Processor::Result Processor::Add_New_Command(CommandPtrs &commands, FileMap &fil
             break;
     }
 
-    static_assert(CommandActionCount == 11, "CommandAction is missing");
+    static_assert(g_commandActionCount == 11, "CommandAction is missing");
 
     return result;
 }
