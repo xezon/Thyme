@@ -209,49 +209,51 @@ bool GameTextFile::Is_Any_Loaded(Languages languages) const
 
 bool GameTextFile::Load(const char *filename)
 {
-    Type filetype = Get_File_Type(filename, Type::AUTO);
-    return Load(filename, filetype, nullptr);
+    const FileType filetype = Get_File_Type(filename, FileType::AUTO);
+
+    return Load(filename, filetype, ~Languages());
 }
 
 bool GameTextFile::Load_CSF(const char *filename)
 {
-    return Load(filename, Type::CSF, nullptr);
+    return Load(filename, FileType::CSF, Languages());
 }
 
 bool GameTextFile::Load_STR(const char *filename)
 {
-    return Load(filename, Type::STR, nullptr);
+    return Load(filename, FileType::STR, Languages());
 }
 
-bool GameTextFile::Load_STR(const char *filename, Languages languages)
+bool GameTextFile::Load_Multi_STR(const char *filename, Languages languages)
 {
-    return Load(filename, Type::STR, &languages);
+    return Load(filename, FileType::MULTI_STR, languages);
 }
 
 bool GameTextFile::Save(const char *filename)
 {
-    Type filetype = Get_File_Type(filename, Type::AUTO);
-    return Save(filename, filetype, nullptr);
+    FileType filetype = Get_File_Type(filename, FileType::AUTO);
+
+    return Save(filename, filetype, ~Languages());
 }
 
 bool GameTextFile::Save_CSF(const char *filename)
 {
-    return Save(filename, Type::CSF, nullptr);
+    return Save(filename, FileType::CSF, Languages());
 }
 
 bool GameTextFile::Save_STR(const char *filename)
 {
-    return Save(filename, Type::STR, nullptr);
+    return Save(filename, FileType::STR, Languages());
 }
 
-bool GameTextFile::Save_STR(const char *filename, Languages languages)
+bool GameTextFile::Save_Multi_STR(const char *filename, Languages languages)
 {
-    return Save(filename, Type::STR, &languages);
+    return Save(filename, FileType::MULTI_STR, languages);
 }
 
-bool GameTextFile::Load(const char *filename, Type filetype, const Languages *languages)
+bool GameTextFile::Load(const char *filename, FileType filetype, Languages languages)
 {
-    captainslog_assert(filetype != Type::AUTO);
+    captainslog_assert(filetype != FileType::AUTO);
 
     if (!filename || !filename[0]) {
         captainslog_error("File without name cannot be loaded");
@@ -272,26 +274,26 @@ bool GameTextFile::Load(const char *filename, Type filetype, const Languages *la
 
     switch (filetype) {
 
-        case Type::CSF: {
+        case FileType::CSF: {
             success = Read_CSF_File(file, string_infos, read_language);
             string_infos_array[size_t(read_language)].swap(string_infos);
             break;
         }
-        case Type::STR: {
-            if (languages != nullptr) {
-                StringInfosPtrArray string_infos_ptrs = Build_String_Infos_Ptrs_Array(string_infos_array, *languages);
-                success = Read_Multi_STR_File(file, string_infos_ptrs, *languages, m_options);
-                Get_Language_With_String_Infos(read_language, string_infos_ptrs, 0);
-            } else {
-                success = Read_STR_File(file, string_infos, m_options);
-            }
+        case FileType::STR: {
+            success = Read_STR_File(file, string_infos, m_options);
+            break;
+        }
+        case FileType::MULTI_STR: {
+            StringInfosPtrArray string_infos_ptrs = Build_String_Infos_Ptrs_Array(string_infos_array, languages);
+            success = Read_Multi_STR_File(file, string_infos_ptrs, languages, m_options);
+            Get_Language_With_String_Infos(read_language, string_infos_ptrs, 0);
             break;
         }
     }
 
     if (success) {
         m_language = read_language;
-        const Languages used_languages = (languages == nullptr) ? read_language : *languages;
+        const Languages used_languages = Supports_Multi_Language(filetype) ? languages : read_language;
 
         captainslog_info("File '%s' loaded successfully", filename);
 
@@ -312,16 +314,16 @@ bool GameTextFile::Load(const char *filename, Type filetype, const Languages *la
     return success;
 }
 
-bool GameTextFile::Save(const char *filename, Type filetype, const Languages *languages)
+bool GameTextFile::Save(const char *filename, FileType filetype, Languages languages)
 {
-    captainslog_assert(filetype != Type::AUTO);
+    captainslog_assert(filetype != FileType::AUTO);
 
     if (!filename || !filename[0]) {
         captainslog_error("File without name cannot be saved");
         return false;
     }
 
-    const Languages used_languages = (languages == nullptr) ? m_language : *languages;
+    const Languages used_languages = Supports_Multi_Language(filetype) ? languages : m_language;
 
     if (!Is_Any_Loaded(used_languages)) {
         captainslog_error("File without string data cannot be saved");
@@ -338,18 +340,17 @@ bool GameTextFile::Save(const char *filename, Type filetype, const Languages *la
 
     switch (filetype) {
 
-        case Type::CSF: {
+        case FileType::CSF: {
             success = Write_CSF_File(file, Get_String_Infos(), m_language);
             break;
         }
-        case Type::STR: {
-            if (languages != nullptr) {
-                ConstStringInfosPtrArray string_infos_ptrs =
-                    Build_Const_String_Infos_Ptrs_Array(m_stringInfosArray, *languages);
-                success = Write_Multi_STR_File(file, string_infos_ptrs, *languages, m_options);
-            } else {
-                success = Write_STR_File(file, Get_String_Infos(), m_options);
-            }
+        case FileType::STR: {
+            success = Write_STR_File(file, Get_String_Infos(), m_options);
+            break;
+        }
+        case FileType::MULTI_STR: {
+            ConstStringInfosPtrArray string_infos_ptrs = Build_Const_String_Infos_Ptrs_Array(m_stringInfosArray, languages);
+            success = Write_Multi_STR_File(file, string_infos_ptrs, languages, m_options);
             break;
         }
     }
@@ -616,16 +617,31 @@ bool GameTextFile::Get_Language_With_String_Infos(
     return false;
 }
 
-GameTextFile::Type GameTextFile::Get_File_Type(const char *filename, Type filetype)
+bool GameTextFile::Supports_Multi_Language(FileType filetype)
 {
-    if (filetype == Type::AUTO) {
+    switch (filetype) {
+        case FileType::MULTI_STR:
+            return true;
+        default:
+            return false;
+    }
+}
+
+GameTextFile::FileType GameTextFile::Get_File_Type(const char *filename, FileType filetype)
+{
+    if (filetype == FileType::AUTO) {
+
         const char *fileext = rts::Get_File_Extension(rts::Make_Array_View(filename));
-        if (strcasecmp(fileext, "csf") == 0)
-            filetype = Type::CSF;
-        else if (strcasecmp(fileext, "str") == 0)
-            filetype = Type::STR;
-        else
-            filetype = Type::CSF;
+
+        if (strcasecmp(fileext, "csf") == 0) {
+            filetype = FileType::CSF;
+        } else if (strcasecmp(fileext, "str") == 0) {
+            filetype = FileType::STR;
+        } else if (strcasecmp(fileext, "multistr") == 0) {
+            filetype = FileType::MULTI_STR;
+        } else {
+            filetype = FileType::CSF;
+        }
     }
     return filetype;
 }
@@ -700,7 +716,7 @@ Utf8String &GameTextFile::Get_Speech(MultiStringInfo &string_info, LanguageID la
 bool GameTextFile::Read_Multi_STR_File(
     FileRef &file, StringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
-    captainslog_info("Reading text file '%s' in STR multi format", file->Get_File_Name().Str());
+    captainslog_info("Reading text file '%s' in Multi STR format", file->Get_File_Name().Str());
 
     MultiStringInfos multi_string_infos;
     multi_string_infos.reserve(8192);
@@ -1039,7 +1055,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
 bool GameTextFile::Write_Multi_STR_File(
     FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
-    captainslog_info("Writing text file '%s' in STR multi format", file->Get_File_Name().Str());
+    captainslog_info("Writing text file '%s' in Multi STR format", file->Get_File_Name().Str());
 
     MultiStringInfos multi_string_infos;
     Build_Multi_String_Infos(multi_string_infos, string_infos_ptrs, options);

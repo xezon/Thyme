@@ -67,13 +67,13 @@ public:
     bool Load(const char *filename);
     bool Load_CSF(const char *filename);
     bool Load_STR(const char *filename);
-    bool Load_STR(const char *filename, Languages languages);
+    bool Load_Multi_STR(const char *filename, Languages languages);
 
     // Saves CSF or STR file to disk. Will write over any existing file.
     bool Save(const char *filename);
     bool Save_CSF(const char *filename);
     bool Save_STR(const char *filename);
-    bool Save_STR(const char *filename, Languages languages);
+    bool Save_Multi_STR(const char *filename, Languages languages);
 
     // Unloads language data.
     void Unload();
@@ -102,11 +102,14 @@ public:
     void Swap_String_Infos(LanguageID left, LanguageID right);
 
 private:
-    enum class Type
+    enum class FileType
     {
         AUTO,
         CSF,
         STR,
+        MULTI_STR,
+
+        COUNT,
     };
 
     enum class StrReadStep
@@ -151,8 +154,8 @@ private:
     using Utf16View = rts::array_view<unichar_t>;
 
 private:
-    bool Load(const char *filename, Type filetype, const Languages *languages);
-    bool Save(const char *filename, Type filetype, const Languages *languages);
+    bool Load(const char *filename, FileType filetype, Languages languages);
+    bool Save(const char *filename, FileType filetype, Languages languages);
 
     void Merge_And_Overwrite_Internal(const GameTextFile &other, LanguageID language);
     void Check_Buffer_Lengths(LanguageID language);
@@ -175,7 +178,8 @@ private:
     static bool Get_Language_With_String_Infos(
         LanguageID &language, const StringInfosPtrArray &string_infos_ptrs, size_t occurence = 0);
 
-    static Type Get_File_Type(const char *filename, Type filetype);
+    static bool Supports_Multi_Language(FileType filetype);
+    static FileType Get_File_Type(const char *filename, FileType filetype);
 
     static void Collect_Length_Info(LengthInfo &len_info, const StringInfos &strings);
     static void Log_Length_Info(const LengthInfo &len_info);

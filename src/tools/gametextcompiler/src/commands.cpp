@@ -96,7 +96,7 @@ bool SaveCsfCommand::Execute() const
 bool LoadStrCommand::Execute() const
 {
     if (m_languages.any()) {
-        return m_filePtr->Load_STR(m_filePath.c_str(), m_languages);
+        return m_filePtr->Load_Multi_STR(m_filePath.c_str(), m_languages);
     } else {
         return m_filePtr->Load_STR(m_filePath.c_str());
     }
@@ -105,7 +105,7 @@ bool LoadStrCommand::Execute() const
 bool SaveStrCommand::Execute() const
 {
     if (m_languages.any()) {
-        return m_filePtr->Save_STR(m_filePath.c_str(), m_languages);
+        return m_filePtr->Save_Multi_STR(m_filePath.c_str(), m_languages);
     } else {
         return m_filePtr->Save_STR(m_filePath.c_str());
     }
