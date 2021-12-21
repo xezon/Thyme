@@ -85,8 +85,7 @@ private:
         INVALID = -1,
         SET_OPTIONS,
         LOAD,
-        LOAD_SET_LANGUAGE,
-        SAVE_SET_LANGUAGE,
+        SWAP_AND_SET_LANGUAGE,
         SAVE,
 
         COUNT
@@ -120,7 +119,7 @@ private:
     static Result Add_Set_Options_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Set_Language_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
     static Result Add_Swap_Language_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
-    static Result Add_Set_Swap_Language_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
+    static Result Add_Swap_Set_Language_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action);
 
     static void Populate_File_Map(FileMap &file_map, const CommandAction &action);
     static void Populate_File_Map(FileMap &file_map, FileId file_id);

@@ -23,29 +23,41 @@
 #include <win32bigfilesystem.h>
 #include <win32localfilesystem.h>
 
+// clang-format off
 void Log_Help()
 {
-    // clang-format off
-
+//       1         2         3         4         5         6         7         8         9        10        11        12
+//3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
 captainslog_info(
-R"#(Function Command List (All capital words are interpreted keywords):
+    R"#(Function Command List.
+          Syntax: COMMAND_NAME(ARGUMENT_NAME_A:value,ARGUMENT_NAME_B:value)
+          All capital words are interpreted keywords and must not be omitted.
+          All symbols of ( : , ) are part of the syntax and must not be omitted.
+          'mandatory' and 'optional' words show whether or not argument is mandatory.
+          [1] and [n] words show that argument takes one or multiple values.
+          Space character will end current Command and begin new Command in command line.
+          Commands are executed in the order they are written in the command line.
 
-Fu 01 : LOAD_CSF(FILE_ID:optional,FILE_PATH:mandatory)
-Fu 02 : LOAD_STR(FILE_ID:optional,FILE_PATH:mandatory)
-Fu 03 : LOAD_MULTI_STR(FILE_ID:optional,FILE_PATH:mandatory,LANGUAGE:[n]mandatory)
-Fu 04 : SAVE_CSF(FILE_ID:optional,FILE_PATH:mandatory)
-Fu 05 : SAVE_STR(FILE_ID:optional,FILE_PATH:mandatory)
-Fu 06 : SAVE_MULTI_STR(FILE_ID:optional,FILE_PATH:mandatory,LANGUAGE:[n]mandatory)
-Fu 07 : UNLOAD(FILE_ID:optional,LANGUAGE:[n]optional)
-Fu 08 : RESET(FILE_ID:optional)
-Fu 09 : MERGE_AND_OVERWRITE(FILE_ID:mandatory,FILE_ID:mandatory,LANGUAGE:[n]optional)
-Fu 10 : SET_OPTIONS(FILE_ID:optional,OPTION:[n]optional)
-Fu 11 : SET_LANGUAGE(FILE_ID:optional,LANGUAGE:[1]mandatory)
-Fu 12 : SWAP_LANGUAGE_STRINGS(FILE_ID:optional,LANGUAGE:[1]mandatory,LANGUAGE:[1]mandatory)
+No 01 : LOAD_CSF(FILE_ID:optional,FILE_PATH:mandatory)
+No 02 : LOAD_STR(FILE_ID:optional,FILE_PATH:mandatory)
+No 03 : LOAD_MULTI_STR(FILE_ID:optional,FILE_PATH:mandatory,LANGUAGE:[n]mandatory)
+No 04 : SAVE_CSF(FILE_ID:optional,FILE_PATH:mandatory)
+No 05 : SAVE_STR(FILE_ID:optional,FILE_PATH:mandatory)
+No 06 : SAVE_MULTI_STR(FILE_ID:optional,FILE_PATH:mandatory,LANGUAGE:[n]mandatory)
+No 07 : UNLOAD(FILE_ID:optional,LANGUAGE:[n]optional)
+No 08 : RESET(FILE_ID:optional)
+No 09 : MERGE_AND_OVERWRITE(FILE_ID:mandatory,FILE_ID:mandatory,LANGUAGE:[n]optional)
+No 10 : SET_OPTIONS(FILE_ID:optional,OPTION:[n]optional)
+No 11 : SET_LANGUAGE(FILE_ID:optional,LANGUAGE:[1]mandatory)
+No 12 : SWAP_LANGUAGE_STRINGS(FILE_ID:optional,LANGUAGE:[1]mandatory,LANGUAGE:[1]mandatory)
+No 13 : SWAP_AND_SET_LANGUAGE(FILE_ID:optional,LANGUAGE:[1]mandatory)
 
 .. 01 : Loads a CSF file from FILE_PATH into FILE_ID slot.
-.. 02 : Loads a STR file from FILE_PATH with LANGUAGE into FILE_ID slot.
+          File language is set to the one stored in CSF file.
+.. 02 : Loads a STR file from FILE_PATH into FILE_ID slot.
+          File language is not changed.
 .. 03 : Loads a Multi STR file from FILE_PATH with LANGUAGE into FILE_ID slot.
+          File language is set to the first loaded language.
 .. 04 : Saves a CSF file to FILE_PATH from FILE_ID slot.
 .. 05 : Saves a STR file to FILE_PATH from FILE_ID slot.
 .. 06 : Saves a Multi STR file to FILE_PATH with LANGUAGE from FILE_ID slot.
@@ -55,44 +67,56 @@ Fu 12 : SWAP_LANGUAGE_STRINGS(FILE_ID:optional,LANGUAGE:[1]mandatory,LANGUAGE:[1
 .. 10 : Sets options of OPTION in FILE_ID.
 .. 11 : Sets language of LANGUAGE in FILE_ID.
 .. 12 : Swaps string data in FILE_ID between 1st LANGUAGE and 2nd LANGUAGE.
+.. 13 : Swaps string data in FILE_ID between current selected file language and LANGUAGE.
 )#");
-
+//       1         2         3         4         5         6         7         8         9        10        11        12
+//3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
 captainslog_info(
-R"#(Command Argument List:
+    R"#(Command Argument List.
 
-Ar 01 : FILE_ID:Number
-Ar 02 : FILE_PATH:Path
-Ar 03 : LANGUAGE:English|German|French|Spanish|Italian|Japanese|Korean|Chinese|Brazilian|Polish|Unknown|Russian|Arabic
-Ar 04 : OPTION:None|Check_Buffer_Length_On_Load|Check_Buffer_Length_On_Save|Keep_Spaces_On_STR_Load|Print_Linebreaks_On_STR_Save|Optimize_Memory_Size
+No 01 : FILE_ID:Number
+No 02 : FILE_PATH:Path
+No 03 : LANGUAGE:English|German|French|Spanish|Italian|Japanese|Korean|
+                 Chinese|Brazilian|Polish|Unknown|Russian|Arabic
+No 04 : OPTION:None|Check_Buffer_Length_On_Load|Check_Buffer_Length_On_Save|
+               Keep_Spaces_On_STR_Load|Print_Linebreaks_On_STR_Save|Optimize_Memory_Size
 
 .. 01 : FILE_ID takes number and allows to manage multiple files in compiler. Default is 0.
 .. 02 : FILE_PATH takes any relative or absolute path.
 .. 03 : LANGUAGE takes one [1] or multiple [n] languages.
 .. 04 : OPTION takes one [1] or multiple [n] options.
 )#");
-
+//       1         2         3         4         5         6         7         8         9        10        11        12
+//3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
 captainslog_info(
-R"#(Simplified Command List (All capital words are interpreted keywords):
+    R"#(Simplified Command List.
+          All capital words are interpreted keywords and must not be omitted.
+          Commands are executed in the order they are listed here.
 
-Si 01 : -OPTIONS        option[n]
-Si 02 : -LOAD_LANGUAGES language[n]
-Si 03 : -LOAD_CSF_FILE  filepath.csf
-Si 04 : -LOAD_STR_FILE  filepath.str
-Si 05 : -SAVE_LANGUAGES language[n]
-Si 06 : -SAVE_CSF       filepath.csf
-Si 07 : -SAVE_STR       filepath.str
+No 01 : -OPTIONS               option[n]
+No 02 : -LOAD_CSF_FILE         filepath.csf
+No 03 : -LOAD_STR_FILE         filepath.str
+No 04 : -LOAD_STR_LANGUAGES    language[n]
+No 05 : -SWAP_AND_SET_LANGUAGE language[1]
+No 06 : -SAVE_CSF              filepath.csf
+No 07 : -SAVE_STR              filepath.str
+No 08 : -SAVE_STR_LANGUAGES    language[n]
 
-.. 01 : Sets option(s) for loaded and saved file (see Command Argument List).
-.. 02 : Sets language(s) to load file with (see Command Argument List).
-.. 03 : Loads a CSF file from given file path. If LOAD_LANGUAGES is specified, then CSF loads in first language as specified by LOAD_LANGUAGES, else CSF loads in language as stored by CSF file.
-.. 04 : Loads a STR file from given file path. If LOAD_LANGUAGES is specified, then STR loads in multi language format, else STR loads in regular format with unknown language.
-.. 05 : Sets language(s) to save file with (see Command Argument List).
-.. 06 : Saves a CSF file to given file path. If SAVE_LANGUAGES is specified, then CSF saves in first language as specified by LOAD_LANGUAGES, else CSF saves in language as was loaded with.
-.. 07 : Saves a STR file to given file path. If SAVE_LANGUAGES is specified, then STR saves in multi language format, else STR saves in regular format with unknown language.
+.. 01 : Sets option(s) for loaded and saved file.
+.. 02 : Loads a CSF file from given file path.
+          File language is set to the one stored in CSF file.
+.. 03 : Loads a STR file from given file path.
+          File language is not changed.
+.. 04 : Sets language(s) to load Multi STR file with.
+          File language is set to the first loaded language.
+.. 05 : Swaps language strings and sets file language from
+          current file language to the given language.
+.. 06 : Saves a CSF file to given file path.
+.. 07 : Saves a STR file to given file path.
+.. 08 : Sets language(s) to save Multi STR file with.
 )#");
-
-    // clang-format on
 }
+// clang-format on
 
 namespace
 {

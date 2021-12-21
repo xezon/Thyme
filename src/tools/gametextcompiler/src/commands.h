@@ -61,12 +61,13 @@ enum class CommandArgumentId
 enum class SimpleActionId
 {
     OPTIONS,
-    LOAD_LANGUAGES,
     LOAD_CSF_FILE,
     LOAD_STR_FILE,
-    SAVE_LANGUAGES,
+    LOAD_STR_LANGUAGES,
+    SWAP_AND_SET_LANGUAGE,
     SAVE_CSF,
     SAVE_STR,
+    SAVE_STR_LANGUAGES,
 
     COUNT
 };

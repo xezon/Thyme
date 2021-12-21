@@ -43,12 +43,13 @@ const char *const s_command_argument_names[] = {
 
 const char *const s_simple_action_names[] = {
     "OPTIONS",
-    "LOAD_LANGUAGES",
     "LOAD_CSF_FILE",
     "LOAD_STR_FILE",
-    "SAVE_LANGUAGES",
+    "LOAD_STR_LANGUAGES",
+    "SWAP_AND_SET_LANGUAGE",
     "SAVE_CSF",
     "SAVE_STR",
+    "SAVE_STR_LANGUAGES",
 };
 
 static_assert(ARRAY_SIZE(s_command_action_names) == g_commandActionCount);
