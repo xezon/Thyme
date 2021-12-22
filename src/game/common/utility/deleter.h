@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief General purpose template deleter (Thyme Feature)
+ * @brief General purpose template deleter. (Thyme Feature)
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License

@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief String utility functions.
+ * @brief String utility functions. (Thyme Feature)
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License

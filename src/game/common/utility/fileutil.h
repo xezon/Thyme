@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief File utility functions and similar
+ * @brief File utility functions. (Thyme Feature)
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License

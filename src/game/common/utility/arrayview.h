@@ -3,7 +3,8 @@
  *
  * @author xezon
  *
- * @brief Lightweight custom array view. Can be removed and replaced with std::span (c++20) if STL Port is abandoned.
+ * @brief Lightweight custom array view. (Thyme Feature)
+ *        Can be removed and replaced with std::span (c++20) if STL Port is abandoned.
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License

@@ -3,8 +3,8 @@
  *
  * @author xezon
  *
- * @brief Simple array class with static storage size.
- * Can be removed and replaced with std::array if STL Port is abandoned.
+ * @brief Simple array class with static storage size. (Thyme Feature)
+ *        Can be removed and replaced with std::array if STL Port is abandoned.
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License
@@ -24,6 +24,7 @@ namespace rts
 {
 
 // #TODO Add a constexpr reverse_iterator.
+// #TODO Remove Array class?
 
 template<typename T, std::size_t Size> class array
 {

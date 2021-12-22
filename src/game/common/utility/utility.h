@@ -3,7 +3,8 @@
  *
  * @author xezon
  *
- * @brief Utilities, equivalent to std utility. Can be removed if STL Port is abandoned.
+ * @brief Utilities, equivalent to std utility. (Thyme Feature)
+          Can be removed if STL Port is abandoned.
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License

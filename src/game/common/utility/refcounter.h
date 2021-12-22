@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief General purpose reference counter to inherit from (Thyme Feature)
+ * @brief General purpose reference counter to inherit from. (Thyme Feature)
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License

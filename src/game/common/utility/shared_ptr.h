@@ -3,8 +3,8 @@
  *
  * @author xezon
  *
- * @brief Lightweight shared pointer.
- * Could be removed and replaced with std::shared_ptr (c++11) if STL Port is abandoned.
+ * @brief Lightweight shared pointer. (Thyme Feature)
+ *        Could be removed and replaced with std::shared_ptr (c++11) if STL Port is abandoned.
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License

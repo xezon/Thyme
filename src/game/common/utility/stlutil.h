@@ -3,7 +3,7 @@
  *
  * @author xezon
  *
- * @brief Utilities for Standard Template Library classes (Thyme Feature)
+ * @brief Utilities for Standard Template Library classes. (Thyme Feature)
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License

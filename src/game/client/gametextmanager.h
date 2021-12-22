@@ -4,7 +4,7 @@
  * @author OmniBlade
  * @author xezon
  *
- * @brief Game Localization Manager with Thyme specific functionality.
+ * @brief Game Localization Manager. (Thyme Feature)
  *
  * @copyright Thyme is free software: you can redistribute it and/or
  *            modify it under the terms of the GNU General Public License
