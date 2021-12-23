@@ -19,107 +19,149 @@
 
 namespace Thyme
 {
+namespace
+{
+constexpr const char *const s_result_names[] = {
+    "SUCCESS",
+    "INVALID_COMMAND_ACTION",
+    "INVALID_COMMAND_ARGUMENT",
+    "INVALID_LANGUAGE_VALUE",
+    "INVALID_OPTION_VALUE",
+    "INVALID_FILE_ID_ARGUMENT",
+    "MISSING_FILE_PATH_ARGUMENT",
+    "MISSING_LANGUAGE_ARGUMENT",
+    "EXECUTION_ERROR",
+};
+
+static_assert(ARRAY_SIZE(s_result_names) == size_t(Processor::ResultId::COUNT));
+} // namespace
+
+const char *Processor::Get_Result_Name(ResultId id)
+{
+    return s_result_names[size_t(id)];
+}
 
 const Processor::FileId Processor::s_defaultFileId = { 0 };
 
 Processor::Processor() : m_fileMap(), m_commands() {}
 
-Processor::Result Processor::Parse_Commands(rts::array_view<const char *> commands)
+Processor::Result Processor::Parse_Commands(const CommandTexts &command_texts)
 {
-    if (Has_Simple_Command(commands)) {
-        return Parse_Simple_Commands(commands);
+    if (Has_Simple_Command(command_texts)) {
+        return Parse_Simple_Commands(command_texts);
     } else {
-        return Parse_Function_Commands(commands);
+        return Parse_Function_Commands(command_texts);
     }
 }
 
 Processor::Result Processor::Execute_Commands() const
 {
-    Result result = Result::SUCCESS;
+    Result result(ResultId::SUCCESS);
 
     for (const CommandPtr &command : m_commands) {
         if (!command->Execute()) {
-            result = Result::FAILURE;
+            result.id = ResultId::EXECUTION_ERROR;
+            result.error_command_index = command->Id();
             break;
         }
     }
     return result;
 }
 
-Processor::Result Processor::Parse_Function_Commands(rts::array_view<const char *> commands)
+Processor::Result Processor::Parse_Function_Commands(const CommandTexts &command_texts)
 {
-    Result result = Result::SUCCESS;
+    Result result(ResultId::SUCCESS);
+    CommandPtrs commands;
 
-    for (const char *command : commands) {
+    for (size_t index = 0; index < command_texts.size(); ++index) {
 
         CommandAction action;
+        result = Parse_Function_Command(action, command_texts[index], index);
 
-        result = Parse_Function_Command(action, command);
-
-        if (result != Result::SUCCESS) {
+        if (result.id != ResultId::SUCCESS) {
+            result.error_command_index = index;
             break;
         }
 
-        result = Add_New_Command(m_commands, m_fileMap, action);
+        result = Add_New_Command(commands, m_fileMap, action);
 
-        if (result != Result::SUCCESS) {
+        if (result.id != ResultId::SUCCESS) {
+            result.error_command_index = index;
             break;
         }
     }
+
+    if (result.id == ResultId::SUCCESS) {
+        m_commands.swap(commands);
+    }
+
     return result;
 }
 
-Processor::Result Processor::Parse_Simple_Commands(rts::array_view<const char *> commands)
+Processor::Result Processor::Parse_Simple_Commands(const CommandTexts &command_texts)
 {
-    Result result = Result::SUCCESS;
-    SimpleCommandActions actions;
+    Result result(ResultId::SUCCESS);
+    CommandActionSequence actions;
+    CommandPtrs commands;
 
-    if (!commands.empty()) {
+    if (!command_texts.empty()) {
 
-        const size_t size = commands.size();
+        const size_t size = command_texts.size();
 
         for (size_t index = 0; index < size - 1; ++index) {
 
-            if (!Is_Simple_Command(commands[index])) {
+            if (!Is_Simple_Command(command_texts[index])) {
                 continue;
             }
 
-            const char *command_name = commands[index] + 1;
-            const char *command_value = commands[index + 1];
+            const char *command_name = command_texts[index] + 1;
+            const char *command_value = command_texts[index + 1];
 
-            result = Parse_Simple_Command(actions, command_name, command_value);
+            result = Parse_Simple_Command(actions, command_name, command_value, index);
 
-            if (result != Result::SUCCESS) {
+            if (result.id != ResultId::SUCCESS) {
+                result.error_command_index = index;
                 break;
+            }
+
+            ++index;
+        }
+    }
+
+    if (result.id == ResultId::SUCCESS) {
+
+        for (const CommandAction &action : actions) {
+            if (action.action_id != CommandActionId::INVALID) {
+                result = Add_New_Command(commands, m_fileMap, action);
+
+                if (result.id != ResultId::SUCCESS) {
+                    result.error_command_index = action.command_index;
+                    break;
+                }
             }
         }
     }
 
-    for (const CommandAction &action : actions) {
-        if (action.action_id != CommandActionId::INVALID) {
-            result = Add_New_Command(m_commands, m_fileMap, action);
-            if (result != Result::SUCCESS) {
-                break;
-            }
-        }
+    if (result.id == ResultId::SUCCESS) {
+        m_commands.swap(commands);
     }
 
     return result;
 }
 
-bool Processor::Has_Simple_Command(rts::array_view<const char *> commands)
+bool Processor::Has_Simple_Command(const CommandTexts &command_texts)
 {
-    for (const char *command : commands) {
-        if (Is_Simple_Command(command)) {
+    for (const char *command_text : command_texts) {
+        if (Is_Simple_Command(command_text)) {
             return true;
         }
     }
     return false;
 }
 
-bool Processor::Is_Simple_Command(const char *command)
+bool Processor::Is_Simple_Command(const char *command_text)
 {
-    return command != nullptr && *command == '-';
+    return command_text != nullptr && *command_text == '-';
 }
 
 template<size_t Size> bool Processor::Parse_Next_Word(std::string &word, const char *&str, const char (&separators)[Size])
@@ -142,32 +184,37 @@ template<size_t Size> bool Processor::Parse_Next_Word(std::string &word, const c
     return false;
 }
 
-Processor::Result Processor::Parse_Function_Command(CommandAction &action, const char *command)
+Processor::Result Processor::Parse_Function_Command(CommandAction &action, const char *command_text, size_t command_index)
 {
-    Result result = Result::SUCCESS;
+    Result result(ResultId::SUCCESS);
     CommandActionId action_id = CommandActionId::INVALID;
     CommandArgumentId argument_id = CommandArgumentId::INVALID;
     CommandArguments arguments;
-    const char *reader = command;
+    const char *reader = command_text;
     std::string word;
 
     while (true) {
-        if (reader == command && Parse_Next_Word(word, reader, { '(' })) {
+        const char *word_begin = reader;
+
+        if (reader == command_text && Parse_Next_Word(word, reader, { '(' })) {
             if (!String_To_Command_Action_Id(word.c_str(), action_id)) {
-                result = Result::INVALID_COMMAND_ACTION;
+                result.id = ResultId::INVALID_COMMAND_ACTION;
+                result.error_text = ErrorText(word_begin, reader);
                 break;
             }
 
         } else if (argument_id == CommandArgumentId::INVALID && Parse_Next_Word(word, reader, { ':' })) {
             if (!String_To_Command_Argument_Id(word.c_str(), argument_id)) {
-                result = Result::INVALID_COMMAND_ARGUMENT;
+                result.id = ResultId::INVALID_COMMAND_ARGUMENT;
+                result.error_text = ErrorText(word_begin, reader);
                 break;
             }
             arguments.emplace_back();
 
         } else if (argument_id != CommandArgumentId::INVALID && Parse_Next_Word(word, reader, { ',', '|', ')' })) {
             result = Parse_Command_Argument(arguments.back(), word, argument_id);
-            if (result != Result::SUCCESS) {
+            if (result.id != ResultId::SUCCESS) {
+                result.error_text = ErrorText(word_begin, reader);
                 break;
             }
             if (*(reader - 1) == ',') {
@@ -179,75 +226,75 @@ Processor::Result Processor::Parse_Function_Command(CommandAction &action, const
         }
     }
 
-    if (result == Result::SUCCESS) {
-        if (action_id == CommandActionId::INVALID) {
-            result = Result::INVALID_COMMAND_ACTION;
-        }
-        if (arguments.empty()) {
-            result = Result::INVALID_COMMAND_ARGUMENT;
-        }
-        if (result == Result::SUCCESS) {
-            action.action_id = action_id;
-            action.arguments.swap(arguments);
-        }
+    if (action_id == CommandActionId::INVALID) {
+        result.id = ResultId::INVALID_COMMAND_ACTION;
+    }
+
+    if (result.id == ResultId::SUCCESS) {
+        action.action_id = action_id;
+        action.arguments.swap(arguments);
+        action.command_index = command_index;
     }
 
     return result;
 }
 
 Processor::Result Processor::Parse_Simple_Command(
-    SimpleCommandActions &actions, const char *command_name, const char *command_value)
+    CommandActionSequence &actions, const char *command_name, const char *command_value, size_t command_index)
 {
+    Result result(ResultId::SUCCESS);
     SimpleActionId simple_action_id;
 
     if (!String_To_Simple_Action_Id(command_name, simple_action_id)) {
-        return Result::INVALID_COMMAND_ACTION;
+        result.id = ResultId::INVALID_COMMAND_ACTION;
+        result.error_text = ErrorText(command_name, command_name + strlen(command_name));
+        return result;
     }
 
     bool overwrite_action_id = false;
-    SimpleSequenceId sequence_id = SimpleSequenceId::INVALID;
+    SequenceId sequence_id = SequenceId::INVALID;
     CommandActionId action_id = CommandActionId::INVALID;
     CommandArgumentId argument_id = CommandArgumentId::INVALID;
 
     switch (simple_action_id) {
         case SimpleActionId::OPTIONS:
-            sequence_id = SimpleSequenceId::SET_OPTIONS;
+            sequence_id = SequenceId::SET_OPTIONS;
             action_id = CommandActionId::SET_OPTIONS;
             argument_id = CommandArgumentId::OPTIONS;
             break;
         case SimpleActionId::LOAD_CSF_FILE:
-            sequence_id = SimpleSequenceId::LOAD;
+            sequence_id = SequenceId::LOAD;
             action_id = CommandActionId::LOAD_CSF;
             argument_id = CommandArgumentId::FILE_PATH;
             break;
         case SimpleActionId::LOAD_STR_FILE:
-            sequence_id = SimpleSequenceId::LOAD;
+            sequence_id = SequenceId::LOAD;
             action_id = CommandActionId::LOAD_STR;
             argument_id = CommandArgumentId::FILE_PATH;
             break;
         case SimpleActionId::LOAD_STR_LANGUAGES:
-            sequence_id = SimpleSequenceId::LOAD;
+            sequence_id = SequenceId::LOAD;
             action_id = CommandActionId::LOAD_MULTI_STR;
             argument_id = CommandArgumentId::LANGUAGES;
             overwrite_action_id = true;
             break;
         case SimpleActionId::SWAP_AND_SET_LANGUAGE:
-            sequence_id = SimpleSequenceId::SWAP_AND_SET_LANGUAGE;
+            sequence_id = SequenceId::SWAP_AND_SET_LANGUAGE;
             action_id = CommandActionId::SWAP_AND_SET_LANGUAGE;
             argument_id = CommandArgumentId::LANGUAGES;
             break;
         case SimpleActionId::SAVE_CSF:
-            sequence_id = SimpleSequenceId::SAVE;
+            sequence_id = SequenceId::SAVE;
             action_id = CommandActionId::SAVE_CSF;
             argument_id = CommandArgumentId::FILE_PATH;
             break;
         case SimpleActionId::SAVE_STR:
-            sequence_id = SimpleSequenceId::SAVE;
+            sequence_id = SequenceId::SAVE;
             action_id = CommandActionId::SAVE_STR;
             argument_id = CommandArgumentId::FILE_PATH;
             break;
         case SimpleActionId::SAVE_STR_LANGUAGES:
-            sequence_id = SimpleSequenceId::SAVE;
+            sequence_id = SequenceId::SAVE;
             action_id = CommandActionId::SAVE_MULTI_STR;
             argument_id = CommandArgumentId::LANGUAGES;
             overwrite_action_id = true;
@@ -256,29 +303,35 @@ Processor::Result Processor::Parse_Simple_Command(
 
     static_assert(g_simpleActionCount == 8, "SimpleAction is missing");
 
-    Result result = Result::SUCCESS;
+    captainslog_assert(sequence_id != SequenceId::INVALID);
 
-    if (sequence_id != SimpleSequenceId::INVALID) {
+    if (sequence_id != SequenceId::INVALID) {
         CommandArgument argument;
 
         {
             const char *reader = command_value;
+            const char *word_begin = reader;
             std::string word;
 
             while (Parse_Next_Word(word, reader, { '|', '\0' })) {
                 result = Parse_Command_Argument(argument, word, argument_id);
-                if (result != Result::SUCCESS) {
+                if (result.id != ResultId::SUCCESS) {
+                    result.error_text = ErrorText(word_begin, reader);
                     break;
                 }
+                word_begin = reader;
             }
         }
 
-        CommandAction &action = actions[size_t(sequence_id)];
+        if (result.id == ResultId::SUCCESS) {
+            CommandAction &action = actions[size_t(sequence_id)];
 
-        if (action.action_id == CommandActionId::INVALID || overwrite_action_id) {
-            action.action_id = action_id;
+            if (action.action_id == CommandActionId::INVALID || overwrite_action_id) {
+                action.action_id = action_id;
+                action.command_index = command_index;
+            }
+            action.arguments.emplace_back(std::move(argument));
         }
-        action.arguments.emplace_back(std::move(argument));
     }
 
     return result;
@@ -287,7 +340,7 @@ Processor::Result Processor::Parse_Simple_Command(
 Processor::Result Processor::Parse_Command_Argument(
     CommandArgument &argument, std::string &str, CommandArgumentId argument_id)
 {
-    Result result = Result::SUCCESS;
+    Result result(ResultId::SUCCESS);
 
     switch (argument_id) {
         case CommandArgumentId::FILE_ID: {
@@ -307,7 +360,7 @@ Processor::Result Processor::Parse_Command_Argument(
             Languages languages;
             LanguageID language;
             if (!Name_To_Language(str.c_str(), language)) {
-                result = Result::INVALID_LANGUAGE_VALUE;
+                result.id = ResultId::INVALID_LANGUAGE_VALUE;
                 break;
             }
             const Languages *languages_ptr = std::get_if<Languages>(&argument.value);
@@ -322,7 +375,7 @@ Processor::Result Processor::Parse_Command_Argument(
             GameTextOptions options;
             GameTextOption option;
             if (!Name_To_Game_Text_Option(str.c_str(), option)) {
-                result = Result::INVALID_OPTION_VALUE;
+                result.id = ResultId::INVALID_OPTION_VALUE;
                 break;
             }
             const GameTextOptions *options_ptr = std::get_if<GameTextOptions>(&argument.value);
@@ -342,7 +395,7 @@ Processor::Result Processor::Parse_Command_Argument(
 
 Processor::Result Processor::Add_New_Command(CommandPtrs &commands, FileMap &file_map, const CommandAction &action)
 {
-    Result result = Result::SUCCESS;
+    Result result(ResultId::SUCCESS);
 
     Populate_File_Map(file_map, action);
 
@@ -390,6 +443,10 @@ Processor::Result Processor::Add_New_Command(CommandPtrs &commands, FileMap &fil
 
     static_assert(g_commandActionCount == 13, "CommandAction is missing");
 
+    if (result.id == ResultId::SUCCESS) {
+        commands.back()->Set_Id(action.command_index);
+    }
+
     return result;
 }
 
@@ -400,11 +457,11 @@ Processor::Result Processor::Add_Load_CSF_Command(
     const auto file_path = Get_File_Path(action.arguments);
 
     if (file_path == nullptr) {
-        return Result::MISSING_FILE_PATH_ARGUMENT;
+        return Result(ResultId::MISSING_FILE_PATH_ARGUMENT);
     }
 
     commands.emplace_back(new LoadCsfCommand(file_ptr, file_path));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Load_STR_Command(
@@ -414,11 +471,11 @@ Processor::Result Processor::Add_Load_STR_Command(
     const auto file_path = Get_File_Path(action.arguments);
 
     if (file_path == nullptr) {
-        return Result::MISSING_FILE_PATH_ARGUMENT;
+        return Result(ResultId::MISSING_FILE_PATH_ARGUMENT);
     }
 
     commands.emplace_back(new LoadStrCommand(file_ptr, file_path));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Load_Multi_STR_Command(
@@ -429,15 +486,15 @@ Processor::Result Processor::Add_Load_Multi_STR_Command(
     const auto languages = Get_Languages(action.arguments);
 
     if (file_path == nullptr) {
-        return Result::MISSING_FILE_PATH_ARGUMENT;
+        return Result(ResultId::MISSING_FILE_PATH_ARGUMENT);
     }
 
     if (languages.none()) {
-        return Result::MISSING_LANGUAGE_ARGUMENT;
+        return Result(ResultId::MISSING_LANGUAGE_ARGUMENT);
     }
 
     commands.emplace_back(new LoadMultiStrCommand(file_ptr, file_path, languages));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Save_CSF_Command(
@@ -447,11 +504,11 @@ Processor::Result Processor::Add_Save_CSF_Command(
     const auto file_path = Get_File_Path(action.arguments);
 
     if (file_path == nullptr) {
-        return Result::MISSING_FILE_PATH_ARGUMENT;
+        return Result(ResultId::MISSING_FILE_PATH_ARGUMENT);
     }
 
     commands.emplace_back(new SaveCsfCommand(file_ptr, file_path));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Save_STR_Command(
@@ -461,11 +518,11 @@ Processor::Result Processor::Add_Save_STR_Command(
     const auto file_path = Get_File_Path(action.arguments);
 
     if (file_path == nullptr) {
-        return Result::MISSING_FILE_PATH_ARGUMENT;
+        return Result(ResultId::MISSING_FILE_PATH_ARGUMENT);
     }
 
     commands.emplace_back(new SaveStrCommand(file_ptr, file_path));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Save_Multi_STR_Command(
@@ -476,15 +533,15 @@ Processor::Result Processor::Add_Save_Multi_STR_Command(
     const auto languages = Get_Languages(action.arguments);
 
     if (file_path == nullptr) {
-        return Result::MISSING_FILE_PATH_ARGUMENT;
+        return Result(ResultId::MISSING_FILE_PATH_ARGUMENT);
     }
 
     if (languages.none()) {
-        return Result::MISSING_LANGUAGE_ARGUMENT;
+        return Result(ResultId::MISSING_LANGUAGE_ARGUMENT);
     }
 
     commands.emplace_back(new SaveMultiStrCommand(file_ptr, file_path, languages));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Unload_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
@@ -493,7 +550,7 @@ Processor::Result Processor::Add_Unload_Command(CommandPtrs &commands, const Fil
     const auto languages = Get_Languages(action.arguments);
 
     commands.emplace_back(new UnloadCommand(file_ptr, languages));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Reset_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
@@ -501,7 +558,7 @@ Processor::Result Processor::Add_Reset_Command(CommandPtrs &commands, const File
     const auto file_ptr = Get_File_Ptr(action.arguments, file_map);
 
     commands.emplace_back(new ResetCommand(file_ptr));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Merge_Command(CommandPtrs &commands, const FileMap &file_map, const CommandAction &action)
@@ -511,11 +568,11 @@ Processor::Result Processor::Add_Merge_Command(CommandPtrs &commands, const File
     const auto languages = Get_Languages(action.arguments);
 
     if (file_ptr_a == file_ptr_b) {
-        return Result::INVALID_FILE_ID_ARGUMENT;
+        return Result(ResultId::INVALID_FILE_ID_ARGUMENT);
     }
 
     commands.emplace_back(new MergeAndOverwriteCommand(file_ptr_a, file_ptr_b, languages));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Set_Options_Command(
@@ -525,7 +582,7 @@ Processor::Result Processor::Add_Set_Options_Command(
     const auto options = Get_Options(action.arguments);
 
     commands.emplace_back(new SetOptionsCommand(file_ptr, options));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Set_Language_Command(
@@ -535,11 +592,11 @@ Processor::Result Processor::Add_Set_Language_Command(
     const auto language = Get_Language(action.arguments);
 
     if (language == LanguageID::UNKNOWN) {
-        return Result::MISSING_LANGUAGE_ARGUMENT;
+        return Result(ResultId::MISSING_LANGUAGE_ARGUMENT);
     }
 
     commands.emplace_back(new SetLanguageCommand(file_ptr, language));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Swap_Language_Command(
@@ -550,14 +607,14 @@ Processor::Result Processor::Add_Swap_Language_Command(
     const auto language_b = Get_Language(action.arguments, 1);
 
     if (language_a == LanguageID::UNKNOWN) {
-        return Result::MISSING_LANGUAGE_ARGUMENT;
+        return Result(ResultId::MISSING_LANGUAGE_ARGUMENT);
     }
     if (language_b == LanguageID::UNKNOWN) {
-        return Result::MISSING_LANGUAGE_ARGUMENT;
+        return Result(ResultId::MISSING_LANGUAGE_ARGUMENT);
     }
 
     commands.emplace_back(new SwapLanguageStringsCommand(file_ptr, language_a, language_b));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 Processor::Result Processor::Add_Swap_Set_Language_Command(
@@ -567,11 +624,11 @@ Processor::Result Processor::Add_Swap_Set_Language_Command(
     const auto language = Get_Language(action.arguments, 0);
 
     if (language == LanguageID::UNKNOWN) {
-        return Result::MISSING_LANGUAGE_ARGUMENT;
+        return Result(ResultId::MISSING_LANGUAGE_ARGUMENT);
     }
 
     commands.emplace_back(new SwapAndSetLanguageCommand(file_ptr, language));
-    return Result::SUCCESS;
+    return Result(ResultId::SUCCESS);
 }
 
 void Processor::Populate_File_Map(FileMap &file_map, const CommandAction &action)

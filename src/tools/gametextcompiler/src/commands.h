@@ -20,7 +20,7 @@
 
 namespace Thyme
 {
-using CommandId = int;
+using CommandId = size_t;
 using GameTextOption = GameTextOption;
 using GameTextOptions = GameTextFile::Options;
 using GameTextFile = GameTextFile;
@@ -85,7 +85,9 @@ class Command
 public:
     Command() : m_id(s_id++) {}
     virtual ~Command() {}
+
     CommandId Id() const { return m_id; }
+    void Set_Id(CommandId id) { m_id = id; }
 
     virtual CommandActionId Type() const = 0;
     virtual bool Execute() const = 0;

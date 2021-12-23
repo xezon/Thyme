@@ -26,10 +26,9 @@ namespace Thyme
 class Processor
 {
 public:
-    enum class Result
+    enum class ResultId
     {
         SUCCESS,
-        FAILURE,
         INVALID_COMMAND_ACTION,
         INVALID_COMMAND_ARGUMENT,
         INVALID_LANGUAGE_VALUE,
@@ -37,12 +36,31 @@ public:
         INVALID_FILE_ID_ARGUMENT,
         MISSING_FILE_PATH_ARGUMENT,
         MISSING_LANGUAGE_ARGUMENT,
+        EXECUTION_ERROR,
+
+        // #TODO Add more detailed execution errors once GameTextFile supports it
+
+        COUNT
+    };
+
+    static const char *Get_Result_Name(ResultId id);
+
+    using ErrorText = rts::array_view<const char>;
+    using CommandTexts = rts::array_view<const char *>;
+
+    struct Result
+    {
+        explicit Result(ResultId id) : id(id), error_command_index(0), error_text() {}
+
+        ResultId id;
+        size_t error_command_index;
+        ErrorText error_text;
     };
 
 public:
     Processor();
 
-    Result Parse_Commands(rts::array_view<const char *> commands);
+    Result Parse_Commands(const CommandTexts &command_texts);
     Result Execute_Commands() const;
 
 private:
@@ -78,9 +96,10 @@ private:
     {
         CommandActionId action_id = CommandActionId::INVALID;
         CommandArguments arguments;
+        size_t command_index = 0;
     };
 
-    enum class SimpleSequenceId
+    enum class SequenceId
     {
         INVALID = -1,
         SET_OPTIONS,
@@ -91,19 +110,20 @@ private:
         COUNT
     };
 
-    using SimpleCommandActions = std::array<CommandAction, size_t(SimpleSequenceId::COUNT)>;
+    using CommandActionSequence = std::array<CommandAction, size_t(SequenceId::COUNT)>;
 
 private:
-    Result Parse_Function_Commands(rts::array_view<const char *> commands);
-    Result Parse_Simple_Commands(rts::array_view<const char *> commands);
+    Result Parse_Function_Commands(const CommandTexts &command_texts);
+    Result Parse_Simple_Commands(const CommandTexts &command_texts);
 
-    static bool Has_Simple_Command(rts::array_view<const char *> commands);
-    static bool Is_Simple_Command(const char *command);
+    static bool Has_Simple_Command(const CommandTexts &command_texts);
+    static bool Is_Simple_Command(const char *command_text);
 
     template<size_t Size> bool static Parse_Next_Word(std::string &word, const char *&str, const char (&separators)[Size]);
 
-    static Result Parse_Function_Command(CommandAction &action, const char *command);
-    static Result Parse_Simple_Command(SimpleCommandActions &actions, const char *command_name, const char *command_value);
+    static Result Parse_Function_Command(CommandAction &action, const char *command_text, size_t command_index);
+    static Result Parse_Simple_Command(
+        CommandActionSequence &actions, const char *command_name, const char *command_value, size_t command_index);
     static Result Parse_Command_Argument(CommandArgument &argument, std::string &str, CommandArgumentId argument_id);
 
     static Result Add_New_Command(CommandPtrs &commands, FileMap &file_map, const CommandAction &action);

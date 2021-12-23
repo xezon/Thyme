@@ -23,6 +23,8 @@
 #include <win32bigfilesystem.h>
 #include <win32localfilesystem.h>
 
+using namespace Thyme;
+
 // clang-format off
 void Log_Help()
 {
@@ -118,12 +120,26 @@ No 08 : -SAVE_STR_LANGUAGES    language[n]
 }
 // clang-format on
 
+void Log_Error(const Processor::Result &result, const Processor::CommandTexts &command_texts)
+{
+    const size_t command_index = result.error_command_index;
+    const char *result_name = Processor::Get_Result_Name(result.id);
+    const char *command_name = (command_index < command_texts.size()) ? command_texts[command_index] : "";
+    const std::string error_str(result.error_text.begin(), result.error_text.end());
+
+    captainslog_error("Execution stopped with error '%s' at command '%s' (%zu) and error string '%s'",
+        result_name,
+        command_name,
+        command_index,
+        error_str.c_str());
+}
+
 namespace
 {
 constexpr int NoError = 0;
 constexpr int MissingArgumentsError = 1;
-constexpr int ProcessorPrepareError = 2;
-constexpr int ProcessorRunError = 3;
+constexpr int ProcessorParseError = 2;
+constexpr int ProcessorExecuteError = 3;
 } // namespace
 
 class CaptainsLogCreator
@@ -154,7 +170,6 @@ class EngineSystemsCreator
 public:
     EngineSystemsCreator()
     {
-        Clean();
         g_theSubsystemList = new SubsystemInterfaceList;
         g_theFileSystem = new FileSystem;
         Init_Subsystem(g_theLocalFileSystem, "TheLocalFileSystem", Create_Local_File_System());
@@ -165,11 +180,6 @@ public:
 #endif
     }
     ~EngineSystemsCreator()
-    {
-        Clean();
-    }
-private:
-    void Clean()
     {
         delete g_theArchiveFileSystem;
         delete g_theLocalFileSystem;
@@ -195,24 +205,24 @@ int main(int argc, const char *argv[])
 
     EngineSystemsCreator engine_systems;
 
-    Thyme::Processor::Result processor_result;
-    Thyme::Processor processor;
+    const auto command_texts = rts::Make_Array_View(argv + 1, argc - 1);
+    Processor processor;
+    Processor::Result result = processor.Parse_Commands(command_texts);
 
-    const auto commands = rts::Make_Array_View(argv + 1, argc - 1);
-    processor_result = processor.Parse_Commands(commands);
-
-    if (processor_result != Thyme::Processor::Result::SUCCESS) {
-        captainslog_info("Processor prepare failed");
-        return ProcessorPrepareError;
+    if (result.id != Processor::ResultId::SUCCESS) {
+        captainslog_error("Game Text Compiler failed to parse commands");
+        Log_Error(result, command_texts);
+        return ProcessorParseError;
     }
 
-    processor_result = processor.Execute_Commands();
+    result = processor.Execute_Commands();
 
-    if (processor_result != Thyme::Processor::Result::SUCCESS) {
-        captainslog_info("Processor run failed");
-        return ProcessorRunError;
+    if (result.id != Processor::ResultId::SUCCESS) {
+        captainslog_error("Game Text Compiler failed to execute commands");
+        Log_Error(result, command_texts);
+        return ProcessorExecuteError;
     }
 
-    captainslog_info("Completed successfully");
+    captainslog_info("Game Text Compiler completed successfully");
     return NoError;
 }

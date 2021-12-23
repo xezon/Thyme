@@ -84,7 +84,7 @@ bool String_To_Simple_Action_Id(const char *str, SimpleActionId &action_id)
     return String_To_Enum_Id(str, action_id, s_simple_action_names);
 }
 
-CommandId Command::s_id = 0;
+CommandId Command::s_id = 1000000000;
 
 bool LoadCsfCommand::Execute() const
 {
