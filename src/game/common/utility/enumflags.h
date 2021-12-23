@@ -250,8 +250,7 @@ public:
     {
         size_type count = 0;
         for (size_type i = 0; i < size(); ++i) {
-            value_type value = static_cast<value_type>(i);
-            if (has(value)) {
+            if (has(static_cast<value_type>(i))) {
                 ++count;
             }
         }
@@ -269,7 +268,15 @@ public:
 
     constexpr bool any() const noexcept { return !none(); }
 
-    constexpr bool all() const noexcept { return count() == size(); }
+    constexpr bool all() const noexcept
+    {
+        for (size_type i = 0; i < size(); ++i) {
+            if (!has(static_cast<value_type>(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     constexpr bool has(value_type value) const { return ((access(value) & bit(value)) != storage_type(0)); }
 
