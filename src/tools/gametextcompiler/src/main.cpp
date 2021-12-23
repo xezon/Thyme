@@ -78,7 +78,7 @@ captainslog_info(
 
 No 01 : FILE_ID:Number
 No 02 : FILE_PATH:Path
-No 03 : LANGUAGE:English|German|French|Spanish|Italian|Japanese|Korean|
+No 03 : LANGUAGE:All|English|German|French|Spanish|Italian|Japanese|Korean|
                  Chinese|Brazilian|Polish|Unknown|Russian|Arabic
 No 04 : OPTION:None|Check_Buffer_Length_On_Load|Check_Buffer_Length_On_Save|
                Keep_Spaces_On_STR_Load|Print_Linebreaks_On_STR_Save|Optimize_Memory_Size

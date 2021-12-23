@@ -357,33 +357,40 @@ Processor::Result Processor::Parse_Command_Argument(
             break;
         }
         case CommandArgumentId::LANGUAGES: {
-            Languages languages;
             LanguageID language;
-            if (!Name_To_Language(str.c_str(), language)) {
+
+            if (strcasecmp(str.c_str(), "All") == 0) {
+                argument.value.emplace<Languages>(~Languages());
+
+            } else if (Name_To_Language(str.c_str(), language)) {
+                Languages languages;
+                const Languages *languages_ptr = std::get_if<Languages>(&argument.value);
+                if (languages_ptr != nullptr) {
+                    languages = *languages_ptr;
+                }
+                languages |= language;
+                argument.value.emplace<Languages>(std::move(languages));
+
+            } else {
                 result.id = ResultId::INVALID_LANGUAGE_VALUE;
-                break;
             }
-            const Languages *languages_ptr = std::get_if<Languages>(&argument.value);
-            if (languages_ptr != nullptr) {
-                languages = *languages_ptr;
-            }
-            languages |= language;
-            argument.value.emplace<Languages>(std::move(languages));
             break;
         }
         case CommandArgumentId::OPTIONS: {
-            GameTextOptions options;
             GameTextOption option;
-            if (!Name_To_Game_Text_Option(str.c_str(), option)) {
+
+            if (Name_To_Game_Text_Option(str.c_str(), option)) {
+                GameTextOptions options;
+                const GameTextOptions *options_ptr = std::get_if<GameTextOptions>(&argument.value);
+                if (options_ptr != nullptr) {
+                    options = *options_ptr;
+                }
+                options |= option;
+                argument.value.emplace<GameTextOptions>(std::move(options));
+
+            } else {
                 result.id = ResultId::INVALID_OPTION_VALUE;
-                break;
             }
-            const GameTextOptions *options_ptr = std::get_if<GameTextOptions>(&argument.value);
-            if (options_ptr != nullptr) {
-                options = *options_ptr;
-            }
-            options |= option;
-            argument.value.emplace<GameTextOptions>(std::move(options));
             break;
         }
     }
