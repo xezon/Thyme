@@ -178,6 +178,7 @@ private:
     static bool Get_Language_With_String_Infos(
         LanguageID &language, const StringInfosPtrArray &string_infos_ptrs, size_t occurence = 0);
 
+    static Languages Filter_Usable_Languages(Languages languages);
     static bool Supports_Multi_Language(FileType filetype);
     static FileType Get_File_Type(const char *filename, FileType filetype);
 

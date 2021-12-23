@@ -104,19 +104,22 @@ template<typename CharType> rts::escaped_char_alias_view<CharType> Escaped_Chara
 
 // ISO 639-1 language codes - sort of.
 
+constexpr const char *const s_langcode_invalid = "__";
+
 constexpr const char *const s_langcode_us = "US";
-constexpr const char *const s_langcode_en = "EN";
+constexpr const char *const s_langcode_en = s_langcode_invalid;
 constexpr const char *const s_langcode_de = "DE";
 constexpr const char *const s_langcode_fr = "FR";
 constexpr const char *const s_langcode_es = "ES";
 constexpr const char *const s_langcode_it = "IT";
 constexpr const char *const s_langcode_ja = "JA";
-constexpr const char *const s_langcode_jb = "JB";
+constexpr const char *const s_langcode_jb = s_langcode_invalid;
 constexpr const char *const s_langcode_ko = "KO";
 constexpr const char *const s_langcode_zh = "ZH";
-constexpr const char *const s_langcode___ = "__";
+constexpr const char *const s_langcode___ = s_langcode_invalid;
 constexpr const char *const s_langcode_bp = "BP";
 constexpr const char *const s_langcode_pl = "PL";
+constexpr const char *const s_langcode_uk = s_langcode_invalid;
 constexpr const char *const s_langcode_ru = "RU";
 constexpr const char *const s_langcode_ar = "AR";
 
@@ -134,7 +137,7 @@ constexpr const char *const s_langcodes[] = {
     s_langcode___,
     s_langcode_bp,
     s_langcode_pl,
-    s_langcode___,
+    s_langcode_uk,
     s_langcode_ru,
     s_langcode_ar,
 };
@@ -152,7 +155,7 @@ static_assert(s_langcode_zh == s_langcodes[size_t(LanguageID::CHINESE)], "Error"
 static_assert(s_langcode___ == s_langcodes[size_t(LanguageID::UNUSED_1)], "Error");
 static_assert(s_langcode_bp == s_langcodes[size_t(LanguageID::BRAZILIAN)], "Error");
 static_assert(s_langcode_pl == s_langcodes[size_t(LanguageID::POLISH)], "Error");
-static_assert(s_langcode___ == s_langcodes[size_t(LanguageID::UNKNOWN)], "Error");
+static_assert(s_langcode_uk == s_langcodes[size_t(LanguageID::UNKNOWN)], "Error");
 static_assert(s_langcode_ru == s_langcodes[size_t(LanguageID::RUSSIAN)], "Error");
 static_assert(s_langcode_ar == s_langcodes[size_t(LanguageID::ARABIC)], "Error");
 
@@ -268,6 +271,7 @@ bool GameTextFile::Load(const char *filename, FileType filetype, Languages langu
 
     bool success = false;
 
+    languages = Filter_Usable_Languages(languages);
     LanguageID read_language = m_language;
     StringInfosArray string_infos_array;
     StringInfos &string_infos = string_infos_array[size_t(read_language)];
@@ -323,6 +327,7 @@ bool GameTextFile::Save(const char *filename, FileType filetype, Languages langu
         return false;
     }
 
+    languages = Filter_Usable_Languages(languages);
     const Languages used_languages = Supports_Multi_Language(filetype) ? languages : m_language;
 
     if (!Is_Any_Loaded(used_languages)) {
@@ -617,6 +622,19 @@ bool GameTextFile::Get_Language_With_String_Infos(
     return false;
 }
 
+GameTextFile::Languages GameTextFile::Filter_Usable_Languages(Languages languages)
+{
+    for (rts::enumerator<LanguageID> it; it < LanguageID::COUNT; ++it) {
+        if (languages.has(it.value())) {
+            const char *langcode = s_langcodes[it.underlying()];
+            if (strcmp(langcode, s_langcode_invalid) == 0) {
+                languages.reset(it.value());
+            }
+        }
+    }
+    return languages;
+}
+
 bool GameTextFile::Supports_Multi_Language(FileType filetype)
 {
     switch (filetype) {
@@ -878,7 +896,7 @@ bool GameTextFile::Parse_STR_Language(const char *cstring, LanguageID &language,
     const size_t code_len = strlen(s_langcodes[0]);
     const size_t lng_len = strlen(s_str_lng);
 
-    for (rts::enumerator<LanguageID> it; it < LanguageID(g_languageCount); ++it) {
+    for (rts::enumerator<LanguageID> it; it < LanguageID::COUNT; ++it) {
         const char *code = s_langcodes[it.underlying()];
         if (strncasecmp(cstring, code, code_len) == 0) {
             if (strncasecmp(cstring + code_len, s_str_lng, lng_len) == 0) {
