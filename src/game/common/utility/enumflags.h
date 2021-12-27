@@ -143,8 +143,9 @@ public:
         return *this;
     }
 
-    // constexpr enumflags &operator<<=(size_type pos); // #TODO implement
-    // constexpr enumflags &operator>>=(size_type pos);
+    // #TODO implement
+    constexpr enumflags &operator<<=(size_type pos);
+    constexpr enumflags &operator>>=(size_type pos);
 
     constexpr bool operator==(const enumflags &other) const noexcept
     {
@@ -222,8 +223,9 @@ public:
         return inst;
     }
 
-    // constexpr enumflags operator<<(std::size pos) const; // #TODO implement
-    // constexpr enumflags operator>>(std::size pos) const;
+    // #TODO implement
+    constexpr enumflags operator<<(size_type pos) const;
+    constexpr enumflags operator>>(size_type pos) const;
 
     constexpr void set(value_type value) { access(value) |= bit(value); }
 
