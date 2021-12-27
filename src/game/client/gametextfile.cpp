@@ -22,6 +22,30 @@
 #include "utility/stlutil.h"
 #include "utility/stringutil.h"
 
+#define GAMETEXTLOG_TRACE(fmt, ...) \
+    captainslog_trace(fmt, ##__VA_ARGS__); \
+    GameTextFile::Log_Line("TRACE : ", fmt, ##__VA_ARGS__)
+
+#define GAMETEXTLOG_DEBUG(fmt, ...) \
+    captainslog_debug(fmt, ##__VA_ARGS__); \
+    GameTextFile::Log_Line("DEBUG : ", fmt, ##__VA_ARGS__)
+
+#define GAMETEXTLOG_INFO(fmt, ...) \
+    captainslog_info(fmt, ##__VA_ARGS__); \
+    GameTextFile::Log_Line("", fmt, ##__VA_ARGS__)
+
+#define GAMETEXTLOG_WARN(fmt, ...) \
+    captainslog_warn(fmt, ##__VA_ARGS__); \
+    GameTextFile::Log_Line("WARNING : ", fmt, ##__VA_ARGS__)
+
+#define GAMETEXTLOG_ERROR(fmt, ...) \
+    captainslog_error(fmt, ##__VA_ARGS__); \
+    GameTextFile::Log_Line("ERROR : ", fmt, ##__VA_ARGS__)
+
+#define GAMETEXTLOG_FATAL(fmt, ...) \
+    captainslog_fatal(fmt, ##__VA_ARGS__); \
+    GameTextFile::Log_Line("FATAL : ", fmt, ##__VA_ARGS__)
+
 namespace Thyme
 {
 
@@ -191,6 +215,11 @@ struct CSFSpeechHeader
 
 } // namespace
 
+FILE *GameTextFile::s_logfile = nullptr;
+
+GameTextFile::GameTextFile() :
+    m_options(GameTextOption::OPTIMIZE_MEMORY_SIZE), m_language(LanguageID::UNKNOWN), m_stringInfosArray(){};
+
 bool GameTextFile::Is_Loaded() const
 {
     return !Get_String_Infos().empty();
@@ -259,13 +288,13 @@ bool GameTextFile::Load(const char *filename, FileType filetype, Languages langu
     captainslog_assert(filetype != FileType::AUTO);
 
     if (!filename || !filename[0]) {
-        captainslog_error("File without name cannot be loaded");
+        GAMETEXTLOG_ERROR("File without name cannot be loaded");
         return false;
     }
 
     FileRef file = g_theFileSystem->Open(filename, File::READ | File::BINARY);
     if (!file.Is_Open()) {
-        captainslog_error("File '%s' cannot be opened for read", filename);
+        GAMETEXTLOG_ERROR("File '%s' cannot be opened for read", filename);
         return false;
     }
 
@@ -299,20 +328,20 @@ bool GameTextFile::Load(const char *filename, FileType filetype, Languages langu
         m_language = read_language;
         const Languages used_languages = Supports_Multi_Language(filetype) ? languages : read_language;
 
-        captainslog_info("File '%s' loaded successfully", filename);
+        GAMETEXTLOG_INFO("File '%s' loaded successfully", filename);
 
         For_Each_Language(used_languages, [&](LanguageID language) {
             Mutable_String_Infos(language).swap(string_infos_array[size_t(language)]);
 
-            captainslog_info("Read language: %s", Get_Language_Name(language));
-            captainslog_info("Read line count: %zu", Get_String_Infos(language).size());
+            GAMETEXTLOG_INFO("Read language: %s", Get_Language_Name(language));
+            GAMETEXTLOG_INFO("Read line count: %zu", Get_String_Infos(language).size());
 
             if (m_options.has(Options::Value::CHECK_BUFFER_LENGTH_ON_LOAD)) {
                 Check_Buffer_Lengths(language);
             }
         });
     } else {
-        captainslog_info("File '%s' failed to load", filename);
+        GAMETEXTLOG_ERROR("File '%s' failed to load", filename);
     }
 
     return success;
@@ -323,7 +352,7 @@ bool GameTextFile::Save(const char *filename, FileType filetype, Languages langu
     captainslog_assert(filetype != FileType::AUTO);
 
     if (!filename || !filename[0]) {
-        captainslog_error("File without name cannot be saved");
+        GAMETEXTLOG_ERROR("File without name cannot be saved");
         return false;
     }
 
@@ -331,13 +360,13 @@ bool GameTextFile::Save(const char *filename, FileType filetype, Languages langu
     const Languages used_languages = Supports_Multi_Language(filetype) ? languages : m_language;
 
     if (!Is_Any_Loaded(used_languages)) {
-        captainslog_error("File without string data cannot be saved");
+        GAMETEXTLOG_ERROR("File without string data cannot be saved");
         return false;
     }
 
     FileRef file = g_theFileSystem->Open(filename, File::WRITE | File::CREATE | File::BINARY);
     if (!file.Is_Open()) {
-        captainslog_error("File '%s' cannot be opened for write", filename);
+        GAMETEXTLOG_ERROR("File '%s' cannot be opened for write", filename);
         return false;
     }
 
@@ -361,18 +390,18 @@ bool GameTextFile::Save(const char *filename, FileType filetype, Languages langu
     }
 
     if (success) {
-        captainslog_info("File '%s' saved successfully", filename);
+        GAMETEXTLOG_INFO("File '%s' saved successfully", filename);
 
         For_Each_Language(used_languages, [&](LanguageID language) {
-            captainslog_info("Written language: %s", Get_Language_Name(language));
-            captainslog_info("Written line count: %zu", Get_String_Infos(language).size());
+            GAMETEXTLOG_INFO("Written language: %s", Get_Language_Name(language));
+            GAMETEXTLOG_INFO("Written line count: %zu", Get_String_Infos(language).size());
 
             if (m_options.has(Options::Value::CHECK_BUFFER_LENGTH_ON_SAVE)) {
                 Check_Buffer_Lengths(language);
             }
         });
     } else {
-        captainslog_info("File '%s' failed to save", filename);
+        GAMETEXTLOG_ERROR("File '%s' failed to save", filename);
     }
 
     return success;
@@ -487,6 +516,11 @@ void GameTextFile::Swap_String_Infos(LanguageID left, LanguageID right)
     if (left != right) {
         m_stringInfosArray[size_t(left)].swap(m_stringInfosArray[size_t(right)]);
     }
+}
+
+void GameTextFile::Set_Log_File(FILE *log)
+{
+    s_logfile = log;
 }
 
 template<typename Functor> static void GameTextFile::For_Each_Language(Languages languages, Functor functor)
@@ -690,15 +724,34 @@ void GameTextFile::Log_Length_Info(const LengthInfo &len_info)
     const int text16_len = len_info.max_text16_len;
     const int speech_len = len_info.max_speech_len;
 
-    const int label_err = (TEXT_8_SIZE - 1 > label_len) ? LOGLEVEL_INFO : LOGLEVEL_ERROR;
-    const int text8_err = (TEXT_8_SIZE - 1 > text8_len) ? LOGLEVEL_INFO : LOGLEVEL_ERROR;
-    const int text16_err = (TEXT_16_SIZE - 1 > text16_len) ? LOGLEVEL_INFO : LOGLEVEL_ERROR;
-    const int speech_err = (TEXT_8_SIZE - 1 > speech_len) ? LOGLEVEL_INFO : LOGLEVEL_ERROR;
+    const bool label_ok = (TEXT_8_SIZE - 1 > label_len);
+    const bool text8_ok = (TEXT_8_SIZE - 1 > text8_len);
+    const bool text16_ok = (TEXT_16_SIZE - 1 > text16_len);
+    const bool speech_ok = (TEXT_8_SIZE - 1 > speech_len);
 
-    captainslog_log(label_err, __FILE__, __LINE__, "Checked label len: %d, max: %d", label_len, TEXT_8_SIZE);
-    captainslog_log(text8_err, __FILE__, __LINE__, "Checked utf8 text len: %d, max: %d", text8_len, TEXT_8_SIZE);
-    captainslog_log(text16_err, __FILE__, __LINE__, "Checked utf16 text len: %d, max: %d", text16_len, TEXT_16_SIZE);
-    captainslog_log(speech_err, __FILE__, __LINE__, "Checked speech len: %d, max: %d", speech_len, TEXT_8_SIZE);
+    if (label_ok) {
+        GAMETEXTLOG_INFO("Checked label len: %d, max: %d", label_len, TEXT_8_SIZE);
+    } else {
+        GAMETEXTLOG_ERROR("Checked label len: %d, max: %d", label_len, TEXT_8_SIZE);
+    }
+
+    if (text8_ok) {
+        GAMETEXTLOG_INFO("Checked utf8 text len: %d, max: %d", text8_len, TEXT_8_SIZE);
+    } else {
+        GAMETEXTLOG_ERROR("Checked utf8 text len: %d, max: %d", text8_len, TEXT_8_SIZE);
+    }
+
+    if (text16_ok) {
+        GAMETEXTLOG_INFO("Checked utf16 text len: %d, max: %d", text16_len, TEXT_16_SIZE);
+    } else {
+        GAMETEXTLOG_ERROR("Checked utf16 text len: %d, max: %d", text16_len, TEXT_16_SIZE);
+    }
+
+    if (speech_ok) {
+        GAMETEXTLOG_INFO("Checked speech len: %d, max: %d", speech_len, TEXT_8_SIZE);
+    } else {
+        GAMETEXTLOG_ERROR("Checked speech len: %d, max: %d", speech_len, TEXT_8_SIZE);
+    }
 }
 
 void GameTextFile::Assert_Length_Info(const LengthInfo &len_info)
@@ -734,7 +787,7 @@ Utf8String &GameTextFile::Get_Speech(MultiStringInfo &string_info, LanguageID la
 bool GameTextFile::Read_Multi_STR_File(
     FileRef &file, StringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
-    captainslog_info("Reading text file '%s' in Multi STR format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Reading text file '%s' in Multi STR format", file->Get_File_Name().Str());
 
     MultiStringInfos multi_string_infos;
     multi_string_infos.reserve(8192);
@@ -748,7 +801,7 @@ bool GameTextFile::Read_Multi_STR_File(
 
 bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Options options)
 {
-    captainslog_info("Reading text file '%s' in STR format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Reading text file '%s' in STR format", file->Get_File_Name().Str());
 
     // Instead of reading the file once from top to bottom to get the number of the entries, we will allocate a very generous
     // buffer to begin with and shrink it down afterwards. This will reduce algorithm complexity and file access.
@@ -944,7 +997,7 @@ void GameTextFile::Change_Step(StrReadStep &step, StrReadStep new_step, const ch
 
 bool GameTextFile::Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language)
 {
-    captainslog_info("Reading text file '%s' in CSF format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Reading text file '%s' in CSF format", file->Get_File_Name().Str());
 
     bool success = false;
 
@@ -1073,7 +1126,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
 bool GameTextFile::Write_Multi_STR_File(
     FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
-    captainslog_info("Writing text file '%s' in Multi STR format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Writing text file '%s' in Multi STR format", file->Get_File_Name().Str());
 
     MultiStringInfos multi_string_infos;
     Build_Multi_String_Infos(multi_string_infos, string_infos_ptrs, options);
@@ -1131,7 +1184,7 @@ bool GameTextFile::Write_STR_Language(FileRef &file, LanguageID language)
 
 bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos, Options options)
 {
-    captainslog_info("Writing text file '%s' in STR format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Writing text file '%s' in STR format", file->Get_File_Name().Str());
 
     Utf8Array w1 = {};
     Utf8String w2;
@@ -1219,7 +1272,7 @@ bool GameTextFile::Write_STR_End(FileRef &file)
 
 bool GameTextFile::Write_CSF_File(FileRef &file, const StringInfos &string_infos, const LanguageID &language)
 {
-    captainslog_info("Writing text file '%s' in CSF format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Writing text file '%s' in CSF format", file->Get_File_Name().Str());
 
     bool success = false;
 
@@ -1232,7 +1285,7 @@ bool GameTextFile::Write_CSF_File(FileRef &file, const StringInfos &string_infos
             ++string_index;
 
             if (string_info.label.Is_Empty()) {
-                captainslog_error("String %d has no label", string_index);
+                GAMETEXTLOG_ERROR("String %d has no label", string_index);
                 continue;
             }
 
@@ -1337,4 +1390,26 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
     return text_ok && (speech_ok || !write_speech);
 }
 
+void GameTextFile::Log_Line(const char *prefix, const char *format, ...)
+{
+    FILE *file = s_logfile;
+
+    if (file != nullptr) {
+        va_list args;
+        va_start(args, format);
+        fprintf(file, prefix);
+        vfprintf(file, format, args);
+        fprintf(file, "\n");
+        va_end(args);
+        fflush(file);
+    }
+}
+
 } // namespace Thyme
+
+#undef GAMETEXTLOG_TRACE
+#undef GAMETEXTLOG_DEBUG
+#undef GAMETEXTLOG_INFO
+#undef GAMETEXTLOG_WARN
+#undef GAMETEXTLOG_ERROR
+#undef GAMETEXTLOG_FATAL

@@ -55,8 +55,8 @@ public:
     using Options = rts::ebitflags<GameTextOption>;
     using Languages = rts::enumflags<LanguageID, g_languageCount>;
 
-    GameTextFile() :
-        m_options(Options::Value::OPTIMIZE_MEMORY_SIZE), m_language(LanguageID::UNKNOWN), m_stringInfosArray(){};
+public:
+    GameTextFile();
 
     // Checks whether or not localization is loaded.
     bool Is_Loaded() const;
@@ -100,6 +100,9 @@ public:
 
     // Swaps strings from one language to another one.
     void Swap_String_Infos(LanguageID left, LanguageID right);
+
+    // Optional logging stream. Works besides captains log.
+    static void Set_Log_File(FILE *log);
 
 private:
     enum class FileType
@@ -236,10 +239,14 @@ private:
     static bool Write_CSF_Label(FileRef &file, const StringInfo &string_info);
     static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Array &write16);
 
+    static void Log_Line(const char *prefix, const char *format, ...);
+
 private:
     Options m_options;
     LanguageID m_language;
     StringInfosArray m_stringInfosArray;
+
+    static FILE *s_logfile;
 };
 
 } // namespace Thyme

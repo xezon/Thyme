@@ -12,9 +12,9 @@
  *            A full copy of the GNU General Public License can be found in
  *            LICENSE
  */
+#include "log.h"
 #include "processor.h"
 #include <archivefilesystem.h>
-#include <captainslog.h>
 #include <filesystem.h>
 #include <localfilesystem.h>
 #include <string>
@@ -26,19 +26,19 @@
 using namespace Thyme;
 
 // clang-format off
-void Log_Help()
+void Print_Help()
 {
 //       1         2         3         4         5         6         7         8         9        10        11        12
 //3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-captainslog_info(
-    R"#(Function Command List.
-          Syntax: COMMAND_NAME(ARGUMENT_NAME_A:value,ARGUMENT_NAME_B:value)
-          All capital words are interpreted keywords and must not be omitted.
-          All symbols of ( : , ) are part of the syntax and must not be omitted.
-          'mandatory' and 'optional' words show whether or not argument is mandatory.
-          [1] and [n] words show that argument takes one or multiple values.
-          Space character will end current Command and begin new Command in command line.
-          Commands are executed in the order they are written in the command line.
+Print_Line(
+R"#(Function Command List.
+  Syntax: COMMAND_NAME(ARGUMENT_NAME_A:value,ARGUMENT_NAME_B:value)
+  All capital words are interpreted keywords and must not be omitted.
+  All symbols of ( : , ) are part of the syntax and must not be omitted.
+  'mandatory' and 'optional' words show whether or not argument is mandatory.
+  [1] and [n] words show that argument takes one or multiple values.
+  Space character will end current Command and begin new Command in command line.
+  Commands are executed in the order they are written in the command line.
 
 No 01 : LOAD_CSF(FILE_ID:optional,FILE_PATH:mandatory)
 No 02 : LOAD_STR(FILE_ID:optional,FILE_PATH:mandatory)
@@ -63,9 +63,13 @@ No 13 : SWAP_AND_SET_LANGUAGE(FILE_ID:optional,LANGUAGE:[1]mandatory)
 .. 04 : Saves a CSF file to FILE_PATH from FILE_ID slot.
 .. 05 : Saves a STR file to FILE_PATH from FILE_ID slot.
 .. 06 : Saves a Multi STR file to FILE_PATH with LANGUAGE from FILE_ID slot.
-.. 07 : Unloads string data of LANGUAGE from FILE_ID slot.
+.. 07 : Unloads string data from FILE_ID slot.
+          Uses the optionally specified language(s),
+          otherwise the current selected file language.
 .. 08 : Resets all string data.
-.. 09 : Merges and overwrites string data of LANGUAGE in 1st FILE_ID from 2nd FILE_ID.
+.. 09 : Merges and overwrites string data in 1st FILE_ID from 2nd FILE_ID.
+          Uses the optionally specified language(s),
+          otherwise the current selected file language.
 .. 10 : Sets options of OPTION in FILE_ID.
 .. 11 : Sets language of LANGUAGE in FILE_ID.
 .. 12 : Swaps string data in FILE_ID between 1st LANGUAGE and 2nd LANGUAGE.
@@ -73,8 +77,8 @@ No 13 : SWAP_AND_SET_LANGUAGE(FILE_ID:optional,LANGUAGE:[1]mandatory)
 )#");
 //       1         2         3         4         5         6         7         8         9        10        11        12
 //3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-captainslog_info(
-    R"#(Command Argument List.
+Print_Line(
+R"#(Command Argument List.
 
 No 01 : FILE_ID:Number
 No 02 : FILE_PATH:Path
@@ -90,10 +94,10 @@ No 04 : OPTION:None|Check_Buffer_Length_On_Load|Check_Buffer_Length_On_Save|
 )#");
 //       1         2         3         4         5         6         7         8         9        10        11        12
 //3456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
-captainslog_info(
-    R"#(Simplified Command List.
-          All capital words are interpreted keywords and must not be omitted.
-          Commands are executed in the order they are listed here.
+Print_Line(
+R"#(Simplified Command List.
+  All capital words are interpreted keywords and must not be omitted.
+  Commands are executed in the order they are listed here.
 
 No 01 : -OPTIONS               option[n]
 No 02 : -LOAD_CSF_FILE         filepath.csf
@@ -120,14 +124,14 @@ No 08 : -SAVE_STR_LANGUAGES    language[n]
 }
 // clang-format on
 
-void Log_Error(const Processor::Result &result, const Processor::CommandTexts &command_texts)
+void Print_Error(const Processor::Result &result, const Processor::CommandTexts &command_texts)
 {
     const size_t command_index = result.error_command_index;
     const char *result_name = Processor::Get_Result_Name(result.id);
     const char *command_name = (command_index < command_texts.size()) ? command_texts[command_index] : "";
     const std::string error_str(result.error_text.begin(), result.error_text.end());
 
-    captainslog_error("Execution stopped with error '%s' at command '%s' (%zu) and error string '%s'",
+    Print_Line("Execution stopped with error '%s' at command '%s' (%zu) and error string '%s'",
         result_name,
         command_name,
         command_index,
@@ -141,19 +145,6 @@ constexpr int MissingArgumentsError = 1;
 constexpr int ProcessorParseError = 2;
 constexpr int ProcessorExecuteError = 3;
 } // namespace
-
-class CaptainsLogCreator
-{
-public:
-    CaptainsLogCreator()
-    {
-        captains_settings_t captains_settings = { 0 };
-        captains_settings.level = LOGLEVEL_DEBUG;
-        captains_settings.console = true;
-        captainslog_init(&captains_settings);
-    }
-    ~CaptainsLogCreator() { captainslog_deinit(); }
-};
 
 LocalFileSystem *Create_Local_File_System()
 {
@@ -194,15 +185,14 @@ public:
 
 int main(int argc, const char *argv[])
 {
-    CaptainsLogCreator captains_log;
-
-    captainslog_info("Thyme Game Text Compiler 1.0");
+    Print_Line("Thyme Game Text Compiler 1.0");
 
     if (argc < 2) {
-        Log_Help();
+        Print_Help();
         return MissingArgumentsError;
     }
 
+    GameTextFile::Set_Log_File(stderr);
     EngineSystemsCreator engine_systems;
 
     const auto command_texts = rts::Make_Array_View(argv + 1, argc - 1);
@@ -210,19 +200,19 @@ int main(int argc, const char *argv[])
     Processor::Result result = processor.Parse_Commands(command_texts);
 
     if (result.id != Processor::ResultId::SUCCESS) {
-        captainslog_error("Game Text Compiler failed to parse commands");
-        Log_Error(result, command_texts);
+        Print_Line("ERROR : Game Text Compiler failed to parse commands");
+        Print_Error(result, command_texts);
         return ProcessorParseError;
     }
 
     result = processor.Execute_Commands();
 
     if (result.id != Processor::ResultId::SUCCESS) {
-        captainslog_error("Game Text Compiler failed to execute commands");
-        Log_Error(result, command_texts);
+        Print_Line("ERROR : Game Text Compiler failed to execute commands");
+        Print_Error(result, command_texts);
         return ProcessorExecuteError;
     }
 
-    captainslog_info("Game Text Compiler completed successfully");
+    Print_Line("Game Text Compiler completed successfully");
     return NoError;
 }
