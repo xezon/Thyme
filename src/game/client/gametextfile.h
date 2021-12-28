@@ -211,9 +211,9 @@ private:
 
     static bool Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language, Options options);
     static bool Read_CSF_Header(FileRef &file, StringInfos &string_infos, LanguageID &language);
-    static bool Read_CSF_Entry(FileRef &file, StringInfo &string_info, Options options);
+    static bool Read_CSF_Entry(FileRef &file, StringInfo &string_info, Options options, Utf16Array &buf);
     static bool Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_t &texts);
-    static bool Read_CSF_Text(FileRef &file, StringInfo &string_info, Options options);
+    static bool Read_CSF_Text(FileRef &file, StringInfo &string_info, Options options, Utf16Array &buf);
 
     static bool Write_Multi_STR_File(
         FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options);

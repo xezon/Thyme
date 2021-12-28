@@ -730,27 +730,27 @@ void GameTextFile::Log_Length_Info(const LengthInfo &len_info)
     const bool speech_ok = (TEXT_8_SIZE - 1 > speech_len);
 
     if (label_ok) {
-        GAMETEXTLOG_INFO("Checked label len: %d, max: %d", label_len, TEXT_8_SIZE);
+        GAMETEXTLOG_INFO("Checked label len: %d, max: %d", label_len, TEXT_8_SIZE - 1);
     } else {
-        GAMETEXTLOG_ERROR("Checked label len: %d, max: %d", label_len, TEXT_8_SIZE);
+        GAMETEXTLOG_ERROR("Checked label len: %d, max: %d", label_len, TEXT_8_SIZE - 1);
     }
 
     if (text8_ok) {
-        GAMETEXTLOG_INFO("Checked utf8 text len: %d, max: %d", text8_len, TEXT_8_SIZE);
+        GAMETEXTLOG_INFO("Checked utf8 text len: %d, max: %d", text8_len, TEXT_8_SIZE - 1);
     } else {
-        GAMETEXTLOG_ERROR("Checked utf8 text len: %d, max: %d", text8_len, TEXT_8_SIZE);
+        GAMETEXTLOG_ERROR("Checked utf8 text len: %d, max: %d", text8_len, TEXT_8_SIZE - 1);
     }
 
     if (text16_ok) {
-        GAMETEXTLOG_INFO("Checked utf16 text len: %d, max: %d", text16_len, TEXT_16_SIZE);
+        GAMETEXTLOG_INFO("Checked utf16 text len: %d, max: %d", text16_len, TEXT_16_SIZE - 1);
     } else {
-        GAMETEXTLOG_ERROR("Checked utf16 text len: %d, max: %d", text16_len, TEXT_16_SIZE);
+        GAMETEXTLOG_ERROR("Checked utf16 text len: %d, max: %d", text16_len, TEXT_16_SIZE - 1);
     }
 
     if (speech_ok) {
-        GAMETEXTLOG_INFO("Checked speech len: %d, max: %d", speech_len, TEXT_8_SIZE);
+        GAMETEXTLOG_INFO("Checked speech len: %d, max: %d", speech_len, TEXT_8_SIZE - 1);
     } else {
-        GAMETEXTLOG_ERROR("Checked speech len: %d, max: %d", speech_len, TEXT_8_SIZE);
+        GAMETEXTLOG_ERROR("Checked speech len: %d, max: %d", speech_len, TEXT_8_SIZE - 1);
     }
 }
 
@@ -1000,12 +1000,13 @@ bool GameTextFile::Read_CSF_File(FileRef &file, StringInfos &string_infos, Langu
     GAMETEXTLOG_INFO("Reading text file '%s' in CSF format", file->Get_File_Name().Str());
 
     bool success = false;
+    Utf16Array buf = {};
 
     if (Read_CSF_Header(file, string_infos, language)) {
         success = true;
 
         for (StringInfo &string_info : string_infos) {
-            if (!Read_CSF_Entry(file, string_info, options)) {
+            if (!Read_CSF_Entry(file, string_info, options, buf)) {
                 success = false;
                 break;
             }
@@ -1036,7 +1037,7 @@ bool GameTextFile::Read_CSF_Header(FileRef &file, StringInfos &string_infos, Lan
     return false;
 }
 
-bool GameTextFile::Read_CSF_Entry(FileRef &file, StringInfo &string_info, Options options)
+bool GameTextFile::Read_CSF_Entry(FileRef &file, StringInfo &string_info, Options options, Utf16Array &buf)
 {
     int32_t texts;
 
@@ -1044,7 +1045,7 @@ bool GameTextFile::Read_CSF_Entry(FileRef &file, StringInfo &string_info, Option
         if (texts == 0) {
             return true;
         }
-        if (Read_CSF_Text(file, string_info, options)) {
+        if (Read_CSF_Text(file, string_info, options, buf)) {
             return true;
         }
     }
@@ -1071,7 +1072,7 @@ bool GameTextFile::Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_
     return false;
 }
 
-bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info, Options options)
+bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info, Options options, Utf16Array &buf)
 {
     bool text_ok = false;
     bool speech_ok = false;
@@ -1084,24 +1085,29 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info, Options
             letoh_ref(header.id);
             letoh_ref(header.length);
 
+            const size_t capped_text_len = std::min<size_t>(header.length, buf.size() - 1);
+
             read_speech = (header.id == rts::FourCC_LE<'S', 'T', 'R', 'W'>::value);
             const bool read_text = (header.id == rts::FourCC_LE<'S', 'T', 'R', ' '>::value);
 
             if (read_speech || read_text) {
-                auto str = rts::Make_Resized_Array_View(string_info.text, header.length);
+                auto bufview = rts::Make_Array_View(buf.data(), capped_text_len);
 
-                if (str.data() != nullptr && rts::Read_Str(file.Get(), str)) {
-                    for (int32_t i = 0; i < header.length; ++i) {
-                        letoh_ref(string_info.text[i]);
+                if (rts::Read_Str(file.Get(), bufview)) {
+                    buf[capped_text_len] = U_CHAR('\0');
+
+                    for (size_t i = 0; i < capped_text_len; ++i) {
+                        letoh_ref(bufview[i]);
                         // Every char is binary flipped here by design.
-                        string_info.text[i] = ~string_info.text[i];
+                        bufview[i] = ~bufview[i];
                     }
 
                     if (!options.has(GameTextOption::KEEP_OBSOLETE_SPACES_ON_LOAD)) {
                         // Strip obsolete spaces for cleaner presentation in game.
-                        rts::Strip_Obsolete_Spaces(str.data());
+                        rts::Strip_Obsolete_Spaces(bufview.data());
                     }
 
+                    string_info.text = buf.data();
                     text_ok = true;
                 }
             }
@@ -1355,8 +1361,7 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
     const bool write_speech = (speech_len > 0);
 
     if (write_text) {
-        captainslog_dbgassert(text_len < buf.size(), "Buffer is expected to be larger or equal text");
-        const size_t capped_text_len = std::min(text_len, buf.size() - 1);
+        const size_t capped_text_len = std::min<size_t>(text_len, buf.size() - 1);
 
         CSFTextHeader header;
         header.id = write_speech ? rts::FourCC_LE<'S', 'T', 'R', 'W'>::value : rts::FourCC_LE<'S', 'T', 'R', ' '>::value;
