@@ -1331,7 +1331,7 @@ bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info)
 {
     CSFLabelHeader header;
     header.id = rts::FourCC_LE<'L', 'B', 'L', ' '>::value;
-    header.texts = 1;
+    header.texts = string_info.text.Is_Empty() ? 0 : 1;
     header.length = string_info.label.Get_Length();
     htole_ref(header.id);
     htole_ref(header.texts);
@@ -1349,28 +1349,30 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
 {
     bool text_ok = false;
     bool speech_ok = false;
-    bool write_speech = !string_info.speech.Is_Empty();
+    const size_t text_len = string_info.text.Get_Length();
+    const size_t speech_len = string_info.speech.Get_Length();
+    const bool write_text = (text_len > 0);
+    const bool write_speech = (speech_len > 0);
 
-    {
-        size_t text_len = string_info.text.Get_Length();
+    if (write_text) {
+        captainslog_dbgassert(text_len < write16.size(), "Buffer is expected to be larger or equal text");
+        const size_t capped_text_len = std::min(text_len, write16.size() - 1);
 
         CSFTextHeader header;
         header.id = write_speech ? rts::FourCC_LE<'S', 'T', 'R', 'W'>::value : rts::FourCC_LE<'S', 'T', 'R', ' '>::value;
-        header.length = text_len;
+        header.length = capped_text_len;
         htole_ref(header.id);
         htole_ref(header.length);
 
         if (rts::Write_Any(file.Get(), header)) {
-            captainslog_dbgassert(write16.size() >= text_len, "Buffer is expected to be larger or equal text");
-            text_len = std::min(text_len, write16.size());
 
-            for (size_t i = 0; i < text_len; ++i) {
+            for (size_t i = 0; i < capped_text_len; ++i) {
                 // Every char is binary flipped here by design.
                 write16[i] = ~string_info.text[i];
                 htole_ref(write16[i]);
             }
 
-            if (rts::Write(file.Get(), write16.data(), text_len * sizeof(Utf16View::value_type))) {
+            if (rts::Write(file.Get(), write16.data(), capped_text_len * sizeof(Utf16View::value_type))) {
                 text_ok = true;
             }
         }
@@ -1387,7 +1389,7 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
             }
         }
     }
-    return text_ok && (speech_ok || !write_speech);
+    return (text_ok || !write_text) && (speech_ok || !write_speech);
 }
 
 void GameTextFile::Log_Line(const char *prefix, const char *format, ...)
