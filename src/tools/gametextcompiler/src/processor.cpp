@@ -350,7 +350,6 @@ Processor::Result Processor::Parse_Command_Argument(
             break;
         }
         case CommandArgumentId::FILE_PATH: {
-            rts::Strip_Characters(str.data(), "\"");
             FilePath file_path;
             file_path.value = str.c_str();
             argument.value.emplace<FilePath>(std::move(file_path));
