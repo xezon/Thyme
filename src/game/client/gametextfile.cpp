@@ -64,11 +64,11 @@ template<typename IntegerType> constexpr size_t Bit_To_Index(IntegerType integer
 }
 
 constexpr const char *const s_option_0 = "None";
-constexpr const char *const s_option_1 = "Check_Buffer_Length_On_Load";
-constexpr const char *const s_option_2 = "Check_Buffer_Length_On_Save";
-constexpr const char *const s_option_3 = "Keep_Spaces_On_Load";
-constexpr const char *const s_option_4 = "Print_Linebreaks_On_STR_Save";
-constexpr const char *const s_option_5 = "Optimize_Memory_Size";
+constexpr const char *const s_option_1 = "Optimize_Memory_Size";
+constexpr const char *const s_option_2 = "Check_Buffer_Length_On_Load";
+constexpr const char *const s_option_3 = "Check_Buffer_Length_On_Save";
+constexpr const char *const s_option_4 = "Keep_Obsolete_Spaces_On_Load";
+constexpr const char *const s_option_5 = "Write_Extra_LF_On_STR_Save";
 
 constexpr const char *const s_options[] = {
     s_option_0,
@@ -80,11 +80,11 @@ constexpr const char *const s_options[] = {
 };
 
 static_assert(s_option_0 == s_options[size_t(GameTextOption::NONE)], "Error");
-static_assert(s_option_1 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_LOAD)], "Error");
-static_assert(s_option_2 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_SAVE)], "Error");
-static_assert(s_option_3 == s_options[1 + Bit_To_Index(GameTextOption::KEEP_SPACES_ON_LOAD)], "Error");
-static_assert(s_option_4 == s_options[1 + Bit_To_Index(GameTextOption::PRINT_LINEBREAKS_ON_STR_SAVE)], "Error");
-static_assert(s_option_5 == s_options[1 + Bit_To_Index(GameTextOption::OPTIMIZE_MEMORY_SIZE)], "Error");
+static_assert(s_option_1 == s_options[1 + Bit_To_Index(GameTextOption::OPTIMIZE_MEMORY_SIZE)], "Error");
+static_assert(s_option_2 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_LOAD)], "Error");
+static_assert(s_option_3 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_SAVE)], "Error");
+static_assert(s_option_4 == s_options[1 + Bit_To_Index(GameTextOption::KEEP_OBSOLETE_SPACES_ON_LOAD)], "Error");
+static_assert(s_option_5 == s_options[1 + Bit_To_Index(GameTextOption::WRITE_EXTRA_LF_ON_STR_SAVE)], "Error");
 } // namespace
 
 bool Name_To_Game_Text_Option(const char *name, GameTextOption &option)
@@ -928,7 +928,7 @@ void GameTextFile::Parse_STR_Text(Utf8Array &read, Utf16String &text, Options op
         read[len - 1] = '\0';
     }
 
-    if (!options.has(GameTextOption::KEEP_SPACES_ON_LOAD)) {
+    if (!options.has(GameTextOption::KEEP_OBSOLETE_SPACES_ON_LOAD)) {
         // Strip any remaining obsolete spaces for cleaner presentation in game.
         rts::Strip_Obsolete_Spaces(read.data());
     }
@@ -1097,7 +1097,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info, Options
                         string_info.text[i] = ~string_info.text[i];
                     }
 
-                    if (!options.has(GameTextOption::KEEP_SPACES_ON_LOAD)) {
+                    if (!options.has(GameTextOption::KEEP_OBSOLETE_SPACES_ON_LOAD)) {
                         // Strip obsolete spaces for cleaner presentation in game.
                         rts::Strip_Obsolete_Spaces(str.data());
                     }
@@ -1236,7 +1236,7 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Option
         len = rts::Convert_To_Escaped_Characters(w1.data(), w1.size(), w2.Str(), escaped_chars_view);
     }
 
-    if (options.has(Options::Value::PRINT_LINEBREAKS_ON_STR_SAVE)) {
+    if (options.has(Options::Value::WRITE_EXTRA_LF_ON_STR_SAVE)) {
         // Add CR LF characters behind each written out line feed for better readability. These characters will be ignored
         // when read back from the STR file.
         w2 = w1.data();

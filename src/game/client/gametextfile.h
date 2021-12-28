@@ -28,11 +28,11 @@ namespace Thyme
 enum class GameTextOption : uint32_t
 {
     NONE = 0,
-    CHECK_BUFFER_LENGTH_ON_LOAD = BIT(0),
-    CHECK_BUFFER_LENGTH_ON_SAVE = BIT(1),
-    KEEP_SPACES_ON_LOAD = BIT(2),
-    PRINT_LINEBREAKS_ON_STR_SAVE = BIT(3),
-    OPTIMIZE_MEMORY_SIZE = BIT(4),
+    OPTIMIZE_MEMORY_SIZE = BIT(0),
+    CHECK_BUFFER_LENGTH_ON_LOAD = BIT(1),
+    CHECK_BUFFER_LENGTH_ON_SAVE = BIT(2),
+    KEEP_OBSOLETE_SPACES_ON_LOAD = BIT(3),
+    WRITE_EXTRA_LF_ON_STR_SAVE = BIT(4),
 };
 
 bool Name_To_Game_Text_Option(const char *name, GameTextOption &option);
