@@ -80,7 +80,6 @@ template<> struct hash<Utf8String>
     }
 };
 
-
 template<int a, int b, int c, int d> struct FourCC
 {
 #ifdef SYSTEM_LITTLE_ENDIAN
