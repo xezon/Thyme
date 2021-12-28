@@ -15,24 +15,15 @@
  */
 #include "gametextmanager.h"
 #include "filesystem.h"
-#include "main.h" // For g_applicationHWnd
 #include "registry.h"
 #include "rtsutils.h"
 #include <algorithm>
 #include <captainslog.h>
 
 #ifdef PLATFORM_WINDOWS
+#include "main.h"
 #include <winuser.h>
 #endif
-
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
-#endif
-
-#ifdef GAME_DLL
-#include "hookcrt.h"
-#endif
-
 
 namespace Thyme
 {
