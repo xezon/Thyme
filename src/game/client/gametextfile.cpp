@@ -66,7 +66,7 @@ template<typename IntegerType> constexpr size_t Bit_To_Index(IntegerType integer
 constexpr const char *const s_option_0 = "None";
 constexpr const char *const s_option_1 = "Check_Buffer_Length_On_Load";
 constexpr const char *const s_option_2 = "Check_Buffer_Length_On_Save";
-constexpr const char *const s_option_3 = "Keep_Spaces_On_STR_Load";
+constexpr const char *const s_option_3 = "Keep_Spaces_On_Load";
 constexpr const char *const s_option_4 = "Print_Linebreaks_On_STR_Save";
 constexpr const char *const s_option_5 = "Optimize_Memory_Size";
 
@@ -82,7 +82,7 @@ constexpr const char *const s_options[] = {
 static_assert(s_option_0 == s_options[size_t(GameTextOption::NONE)], "Error");
 static_assert(s_option_1 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_LOAD)], "Error");
 static_assert(s_option_2 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_SAVE)], "Error");
-static_assert(s_option_3 == s_options[1 + Bit_To_Index(GameTextOption::KEEP_SPACES_ON_STR_LOAD)], "Error");
+static_assert(s_option_3 == s_options[1 + Bit_To_Index(GameTextOption::KEEP_SPACES_ON_LOAD)], "Error");
 static_assert(s_option_4 == s_options[1 + Bit_To_Index(GameTextOption::PRINT_LINEBREAKS_ON_STR_SAVE)], "Error");
 static_assert(s_option_5 == s_options[1 + Bit_To_Index(GameTextOption::OPTIMIZE_MEMORY_SIZE)], "Error");
 } // namespace
@@ -308,7 +308,7 @@ bool GameTextFile::Load(const char *filename, FileType filetype, Languages langu
     switch (filetype) {
 
         case FileType::CSF: {
-            success = Read_CSF_File(file, string_infos, read_language);
+            success = Read_CSF_File(file, string_infos, read_language, m_options);
             string_infos_array[size_t(read_language)].swap(string_infos);
             break;
         }
@@ -928,7 +928,7 @@ void GameTextFile::Parse_STR_Text(Utf8Array &read, Utf16String &text, Options op
         read[len - 1] = '\0';
     }
 
-    if (!options.has(GameTextOption::KEEP_SPACES_ON_STR_LOAD)) {
+    if (!options.has(GameTextOption::KEEP_SPACES_ON_LOAD)) {
         // Strip any remaining obsolete spaces for cleaner presentation in game.
         rts::Strip_Obsolete_Spaces(read.data());
     }
@@ -995,7 +995,7 @@ void GameTextFile::Change_Step(StrReadStep &step, StrReadStep new_step, const ch
     }
 }
 
-bool GameTextFile::Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language)
+bool GameTextFile::Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language, Options options)
 {
     GAMETEXTLOG_INFO("Reading text file '%s' in CSF format", file->Get_File_Name().Str());
 
@@ -1005,7 +1005,7 @@ bool GameTextFile::Read_CSF_File(FileRef &file, StringInfos &string_infos, Langu
         success = true;
 
         for (StringInfo &string_info : string_infos) {
-            if (!Read_CSF_Entry(file, string_info)) {
+            if (!Read_CSF_Entry(file, string_info, options)) {
                 success = false;
                 break;
             }
@@ -1036,7 +1036,7 @@ bool GameTextFile::Read_CSF_Header(FileRef &file, StringInfos &string_infos, Lan
     return false;
 }
 
-bool GameTextFile::Read_CSF_Entry(FileRef &file, StringInfo &string_info)
+bool GameTextFile::Read_CSF_Entry(FileRef &file, StringInfo &string_info, Options options)
 {
     int32_t texts;
 
@@ -1044,7 +1044,7 @@ bool GameTextFile::Read_CSF_Entry(FileRef &file, StringInfo &string_info)
         if (texts == 0) {
             return true;
         }
-        if (Read_CSF_Text(file, string_info)) {
+        if (Read_CSF_Text(file, string_info, options)) {
             return true;
         }
     }
@@ -1071,7 +1071,7 @@ bool GameTextFile::Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_
     return false;
 }
 
-bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
+bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info, Options options)
 {
     bool text_ok = false;
     bool speech_ok = false;
@@ -1090,14 +1090,14 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info)
             if (read_speech || read_text) {
                 auto str = rts::Make_Resized_Array_View(string_info.text, header.length);
 
-                if (rts::Read_Str(file.Get(), str)) {
+                if (str.data() != nullptr && rts::Read_Str(file.Get(), str)) {
                     for (int32_t i = 0; i < header.length; ++i) {
                         letoh_ref(string_info.text[i]);
                         // Every char is binary flipped here by design.
                         string_info.text[i] = ~string_info.text[i];
                     }
 
-                    if (str.data() != nullptr) {
+                    if (!options.has(GameTextOption::KEEP_SPACES_ON_LOAD)) {
                         // Strip obsolete spaces for cleaner presentation in game.
                         rts::Strip_Obsolete_Spaces(str.data());
                     }

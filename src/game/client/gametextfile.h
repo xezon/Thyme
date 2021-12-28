@@ -30,7 +30,7 @@ enum class GameTextOption : uint32_t
     NONE = 0,
     CHECK_BUFFER_LENGTH_ON_LOAD = BIT(0),
     CHECK_BUFFER_LENGTH_ON_SAVE = BIT(1),
-    KEEP_SPACES_ON_STR_LOAD = BIT(2),
+    KEEP_SPACES_ON_LOAD = BIT(2),
     PRINT_LINEBREAKS_ON_STR_SAVE = BIT(3),
     OPTIMIZE_MEMORY_SIZE = BIT(4),
 };
@@ -209,11 +209,11 @@ private:
     static bool Is_STR_End(const char *cstring);
     static void Change_Step(StrReadStep &step, StrReadStep new_step, const char *&eol_chars);
 
-    static bool Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language);
+    static bool Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language, Options options);
     static bool Read_CSF_Header(FileRef &file, StringInfos &string_infos, LanguageID &language);
-    static bool Read_CSF_Entry(FileRef &file, StringInfo &string_info);
+    static bool Read_CSF_Entry(FileRef &file, StringInfo &string_info, Options options);
     static bool Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_t &texts);
-    static bool Read_CSF_Text(FileRef &file, StringInfo &string_info);
+    static bool Read_CSF_Text(FileRef &file, StringInfo &string_info, Options options);
 
     static bool Write_Multi_STR_File(
         FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options);

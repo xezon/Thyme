@@ -112,7 +112,7 @@ Russian|Arabic
 OPTION:None|
 Check_Buffer_Length_On_Load|
 Check_Buffer_Length_On_Save|
-Keep_Spaces_On_STR_Load|
+Keep_Spaces_On_Load|
 Print_Linebreaks_On_STR_Save|
 Optimize_Memory_Size
                                     // OPTION takes one [1] or multiple [n] options.
