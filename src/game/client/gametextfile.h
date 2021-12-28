@@ -199,12 +199,12 @@ private:
     static bool Read_STR_File(FileRef &file, StringInfos &string_infos, Options options);
     template<typename StringInfosType>
     static void Read_STR_File_T(FileRef &file, StringInfosType &string_infos, Options options);
-    static StrParseResult Parse_STR_Label(Utf8Array &read, Utf8String &label);
-    static StrParseResult Parse_STR_Search(Utf8Array &read);
-    static void Parse_STR_Text(Utf8Array &read, Utf16String &text, Options options);
-    static void Parse_STR_Speech(Utf8View &read, Utf8String &speech);
+    static StrParseResult Parse_STR_Label(Utf8Array &buf, Utf8String &label);
+    static StrParseResult Parse_STR_Search(Utf8Array &buf);
+    static void Parse_STR_Text(Utf8Array &buf, Utf16String &text, Options options);
+    static void Parse_STR_Speech(Utf8View &buf, Utf8String &speech);
     static bool Parse_STR_Language(const char *cstring, LanguageID &language, size_t &parsed_count);
-    static bool Is_STR_Pre_Text(Utf8View read);
+    static bool Is_STR_Pre_Text(Utf8View buf);
     static bool Is_STR_Comment(const char *cstring);
     static bool Is_STR_End(const char *cstring);
     static void Change_Step(StrReadStep &step, StrReadStep new_step, const char *&eol_chars);
@@ -221,23 +221,23 @@ private:
         const MultiStringInfo &string_info,
         Languages languages,
         Options options,
-        Utf8Array &w1,
-        Utf8String &w2);
+        Utf8Array &buf,
+        Utf8String &str);
     static bool Write_STR_Language(FileRef &file, LanguageID language);
 
     static bool Write_STR_File(FileRef &file, const StringInfos &string_infos, Options options);
     static bool Write_STR_Entry(
-        FileRef &file, const StringInfo &string_info, Options options, Utf8Array &w1, Utf8String &w2);
+        FileRef &file, const StringInfo &string_info, Options options, Utf8Array &buf, Utf8String &str);
     static bool Write_STR_Label(FileRef &file, const Utf8String &label);
-    static bool Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8Array &w1, Utf8String &w2);
+    static bool Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8Array &buf, Utf8String &str);
     static bool Write_STR_Speech(FileRef &file, const Utf8String &speech);
     static bool Write_STR_End(FileRef &file);
 
     static bool Write_CSF_File(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
     static bool Write_CSF_Header(FileRef &file, const StringInfos &string_infos, const LanguageID &language);
-    static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Array &write16);
+    static bool Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Array &buf);
     static bool Write_CSF_Label(FileRef &file, const StringInfo &string_info);
-    static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Array &write16);
+    static bool Write_CSF_Text(FileRef &file, const StringInfo &string_info, Utf16Array &buf);
 
     static void Log_Line(const char *prefix, const char *format, ...);
 
