@@ -43,8 +43,8 @@ const char *const s_command_argument_names[] = {
 
 const char *const s_simple_action_names[] = {
     "OPTIONS",
-    "LOAD_CSF_FILE",
-    "LOAD_STR_FILE",
+    "LOAD_CSF",
+    "LOAD_STR",
     "LOAD_STR_LANGUAGES",
     "SWAP_AND_SET_LANGUAGE",
     "SAVE_CSF",

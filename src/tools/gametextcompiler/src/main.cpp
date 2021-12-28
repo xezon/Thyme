@@ -127,11 +127,11 @@ R"#(// Simplified Command List
 -OPTIONS option[n]
                                     // Sets option(s) for loaded and saved file.
 
--LOAD_CSF_FILE filepath.csf
+-LOAD_CSF filepath.csf
                                     // Loads a CSF file from given file path.
                                     // File language is set to the one stored in CSF file.
 
--LOAD_STR_FILE filepath.str
+-LOAD_STR filepath.str
                                     // Loads a STR file from given file path.
                                     // File language is not changed.
 
