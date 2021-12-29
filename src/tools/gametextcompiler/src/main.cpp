@@ -216,8 +216,7 @@ public:
 
 int main(int argc, const char *argv[])
 {
-    Print_Line("Thyme Game Text Compiler 1.0");
-    Print_Line("============================");
+    Print_Line("Game Text Compiler 1.0 by The Assembly Armada");
 
     if (argc < 2) {
         Print_Help();
