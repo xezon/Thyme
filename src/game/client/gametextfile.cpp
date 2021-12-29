@@ -947,7 +947,7 @@ void GameTextFile::Parse_STR_Speech(Utf8View &buf, Utf8String &speech)
 bool GameTextFile::Parse_STR_Language(const char *cstring, LanguageID &language, size_t &parsed_count)
 {
     const size_t code_len = strlen(s_langcodes[0]);
-    const size_t lng_len = strlen(s_str_lng);
+    const size_t lng_len = sizeof(s_str_lng);
 
     for (rts::enumerator<LanguageID> it; it < LanguageID::COUNT; ++it) {
         const char *code = s_langcodes[it.underlying()];
