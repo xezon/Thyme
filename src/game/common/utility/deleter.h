@@ -14,35 +14,31 @@
  */
 #pragma once
 
-// #FEATURE Deleter for objects created by 'new'
+// Deleter for objects created by 'new'
 template<typename Type> struct NewDeleter
 {
-    using DeleteType = Type;
     void operator()(Type *instance) const { delete instance; }
 };
 
-// #FEATURE Deleter for objects created by 'new[]'
+// Deleter for objects created by 'new[]'
 template<typename Type> struct NewArrayDeleter
 {
-    using DeleteType = Type;
     void operator()(Type *instance) const { delete[] instance; }
 };
 
-// #FEATURE Deleter for objects created by 'malloc()'
+// Deleter for objects created by 'malloc()'
 template<typename Type> struct AllocDeleter
 {
-    using DeleteType = Type;
     void operator()(Type *instance) const { free(instance); }
 };
 
-// #FEATURE Deleter for objects created by 'NEW_POOL_OBJ'
+// Deleter for objects created by 'NEW_POOL_OBJ'
 template<typename Type> struct MemoryPoolObjectDeleter
 {
-    using DeleteType = Type;
     void operator()(Type *instance) const { instance->Delete_Instance(); }
 };
 
-template<typename Deleter> inline void Invoke_Deleter(typename Deleter::DeleteType *instance)
+template<typename Deleter, typename DeleteType> inline void Invoke_Deleter(DeleteType *instance)
 {
     Deleter deleter;
     deleter(instance);

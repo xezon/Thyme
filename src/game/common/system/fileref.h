@@ -33,8 +33,6 @@ private:
 
     struct FileWrapperDeleter
     {
-        using DeleteType = FileWrapper;
-
         void operator()(FileWrapper *instance) const
         {
             if (instance->file != nullptr) {
