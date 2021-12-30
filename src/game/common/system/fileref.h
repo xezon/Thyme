@@ -14,6 +14,7 @@
  */
 #pragma once
 
+#include "file.h"
 #include "utility/shared_ptr.h"
 
 class File;
@@ -21,57 +22,127 @@ class File;
 namespace Thyme
 {
 
-// #FEATURE File deleter
-struct FileDeleter
-{
-    using DeleteType = File;
-    void operator()(File *instance) const;
-};
-
 // #FEATURE Reference counted file class that automatically closes the assigned file when all references are destroyed.
 template<typename Counter> class FileRefT
 {
+private:
+    struct FileWrapper
+    {
+        File *file = nullptr;
+    };
+
+    struct FileWrapperDeleter
+    {
+        using DeleteType = FileWrapper;
+
+        void operator()(FileWrapper *instance) const
+        {
+            if (instance->file != nullptr) {
+                instance->file->Set_Del_On_Close(true);
+                instance->file->Close();
+            }
+            delete instance;
+        }
+    };
+
 public:
-    FileRefT() : m_file(nullptr) {}
+    FileRefT() : m_wrapper(nullptr) {}
 
     ~FileRefT() {}
 
-    FileRefT(File *file)
-    {
-        m_file = file;
-        if (m_file)
-            m_file->Set_Del_On_Close(false);
-    }
+    FileRefT(File *file) { Assign(file); }
 
-    FileRefT(const FileRefT &other) { m_file = other.m_file; }
+    FileRefT(const FileRefT &other) { *this = other; }
 
     FileRefT &operator=(File *file)
     {
-        m_file = file;
-        if (m_file)
-            m_file->Set_Del_On_Close(false);
+        Assign(file);
         return *this;
     }
 
     FileRefT &operator=(const FileRefT &other)
     {
-        m_file = other.m_file;
+        m_wrapper.reset(other.m_wrapper);
         return *this;
     }
 
-    File &operator*() { return *m_file; }
-    File *operator->() { return m_file.get(); }
-    File *Get() { return m_file.get(); }
+    File *Get_File() { return m_wrapper ? m_wrapper->file : nullptr; }
 
-    const File &operator*() const { return *m_file; }
-    const File *operator->() const { return m_file.get(); }
-    const File *Get() const { return m_file.get(); }
+    const File *Get_File() const { return m_wrapper ? m_wrapper->file : nullptr; }
 
-    // Returns whether or not file is open. Unopened file should not be referenced.
-    bool Is_Open() const { return m_file.get() && m_file->m_access; }
+    // Returns whether or not file is open. Unopened file must not be used.
+    bool Is_Open() const { return m_wrapper && m_wrapper->file && m_wrapper->file->m_access; }
+
+    void Close()
+    {
+        m_wrapper->file->Set_Del_On_Close(true);
+        m_wrapper->file->Close();
+        m_wrapper->file = nullptr;
+        m_wrapper.reset();
+    }
+
+    int Read(void *dst, int bytes) { return m_wrapper->file->Read(dst, bytes); }
+
+    int Write(void const *src, int bytes) { return m_wrapper->file->Write(src, bytes); }
+
+    int Seek(int offset, File::SeekMode mode) { return m_wrapper->file->Seek(offset, mode); }
+
+    void Next_Line(char *dst, int bytes) { m_wrapper->file->Next_Line(dst, bytes); }
+
+    bool Scan_Int(int &integer) { return m_wrapper->file->Scan_Int(integer); }
+
+    bool Scan_Real(float &real) { return m_wrapper->file->Scan_Real(real); }
+
+    bool Scan_String(Utf8String &string) { return m_wrapper->file->Scan_String(string); }
+
+    template<typename... Args> void Print(const char *format, Args... args) { m_wrapper->file->Print(format, args...); }
+
+    int Size() { return m_wrapper->file->Size(); }
+
+    int Position() { return m_wrapper->file->Position(); }
+
+    void *Read_All_And_Close()
+    {
+        m_wrapper->file->Set_Del_On_Close(true);
+        void *data = m_wrapper->file->Read_All_And_Close();
+        m_wrapper->file = nullptr;
+        m_wrapper.reset();
+        return data;
+    }
+
+    bool To_RAM_File()
+    {
+        bool converted = false;
+
+        m_wrapper->file->Set_Del_On_Close(true);
+        File *old_file = m_wrapper->file;
+        File *new_file = m_wrapper->file->Convert_To_RAM();
+        converted = (old_file != new_file);
+        m_wrapper->file = new_file;
+        m_wrapper->file->Set_Del_On_Close(false);
+
+        return converted;
+    }
+
+    const Utf8String &Get_File_Name() const { return m_wrapper->file->Get_File_Name(); }
+
+    int Get_File_Mode() const { return m_wrapper->file->Get_File_Mode(); }
 
 private:
-    rts::shared_ptr_t<File, FileDeleter, Counter> m_file;
+    void Assign(File *file)
+    {
+        if (m_wrapper.get() == nullptr || m_wrapper->file != file) {
+            if (file == nullptr) {
+                m_wrapper.reset();
+            } else {
+                m_wrapper.reset(new FileWrapper);
+                m_wrapper->file = file;
+                m_wrapper->file->Set_Del_On_Close(false);
+            }
+        }
+    }
+
+    rts::shared_ptr_t<FileWrapper, FileWrapperDeleter, Counter> m_wrapper;
 };
 
 using FileRef = FileRefT<rts::shared_counter>;

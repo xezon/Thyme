@@ -787,7 +787,7 @@ Utf8String &GameTextFile::Get_Speech(MultiStringInfo &string_info, LanguageID la
 bool GameTextFile::Read_Multi_STR_File(
     FileRef &file, StringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
-    GAMETEXTLOG_INFO("Reading text file '%s' in Multi STR format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Reading text file '%s' in Multi STR format", file.Get_File_Name().Str());
 
     MultiStringInfos multi_string_infos;
     multi_string_infos.reserve(8192);
@@ -801,7 +801,7 @@ bool GameTextFile::Read_Multi_STR_File(
 
 bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Options options)
 {
-    GAMETEXTLOG_INFO("Reading text file '%s' in STR format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Reading text file '%s' in STR format", file.Get_File_Name().Str());
 
     // Instead of reading the file once from top to bottom to get the number of the entries, we will allocate a very generous
     // buffer to begin with and shrink it down afterwards. This will reduce algorithm complexity and file access.
@@ -828,7 +828,7 @@ static void GameTextFile::Read_STR_File_T(FileRef &file, StringInfosType &string
     StrReadStep step = StrReadStep::LABEL;
     const char *eol_chars = "\n";
 
-    while (rts::Read_Line(file.Get(), buf.data(), buf.size(), eol_chars)) {
+    while (rts::Read_Line(file.Get_File(), buf.data(), buf.size(), eol_chars)) {
 
         switch (step) {
             case StrReadStep::LABEL:
@@ -997,7 +997,7 @@ void GameTextFile::Change_Step(StrReadStep &step, StrReadStep new_step, const ch
 
 bool GameTextFile::Read_CSF_File(FileRef &file, StringInfos &string_infos, LanguageID &language, Options options)
 {
-    GAMETEXTLOG_INFO("Reading text file '%s' in CSF format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Reading text file '%s' in CSF format", file.Get_File_Name().Str());
 
     bool success = false;
     Utf16Array buf = {};
@@ -1019,7 +1019,7 @@ bool GameTextFile::Read_CSF_Header(FileRef &file, StringInfos &string_infos, Lan
 {
     CSFHeader header;
 
-    if (rts::Read_Any(file.Get(), header)) {
+    if (rts::Read_Any(file.Get_File(), header)) {
         letoh_ref(header.id);
         letoh_ref(header.langid);
         letoh_ref(header.num_labels);
@@ -1056,13 +1056,13 @@ bool GameTextFile::Read_CSF_Label(FileRef &file, StringInfo &string_info, int32_
 {
     CSFLabelHeader header;
 
-    if (rts::Read_Any(file.Get(), header)) {
+    if (rts::Read_Any(file.Get_File(), header)) {
         letoh_ref(header.id);
         letoh_ref(header.texts);
         letoh_ref(header.length);
 
         if (header.id == rts::FourCC_LE<'L', 'B', 'L', ' '>::value) {
-            if (rts::Read_Str(file.Get(), rts::Make_Resized_Array_View(string_info.label, header.length))) {
+            if (rts::Read_Str(file.Get_File(), rts::Make_Resized_Array_View(string_info.label, header.length))) {
                 texts = header.texts;
                 return true;
             }
@@ -1081,7 +1081,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info, Options
     {
         CSFTextHeader header;
 
-        if (rts::Read_Any(file.Get(), header)) {
+        if (rts::Read_Any(file.Get_File(), header)) {
             letoh_ref(header.id);
             letoh_ref(header.length);
 
@@ -1093,7 +1093,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info, Options
             if (read_speech || read_text) {
                 auto bufview = rts::Make_Array_View(buf.data(), capped_text_len);
 
-                if (rts::Read_Str(file.Get(), bufview)) {
+                if (rts::Read_Str(file.Get_File(), bufview)) {
                     buf[capped_text_len] = U_CHAR('\0');
 
                     for (size_t i = 0; i < capped_text_len; ++i) {
@@ -1117,10 +1117,10 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info, Options
     if (read_speech) {
         CSFSpeechHeader header;
 
-        if (rts::Read_Any(file.Get(), header)) {
+        if (rts::Read_Any(file.Get_File(), header)) {
             letoh_ref(header.length);
 
-            if (rts::Read_Str(file.Get(), rts::Make_Resized_Array_View(string_info.speech, header.length))) {
+            if (rts::Read_Str(file.Get_File(), rts::Make_Resized_Array_View(string_info.speech, header.length))) {
                 speech_ok = true;
             }
         }
@@ -1132,7 +1132,7 @@ bool GameTextFile::Read_CSF_Text(FileRef &file, StringInfo &string_info, Options
 bool GameTextFile::Write_Multi_STR_File(
     FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options)
 {
-    GAMETEXTLOG_INFO("Writing text file '%s' in Multi STR format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Writing text file '%s' in Multi STR format", file.Get_File_Name().Str());
 
     MultiStringInfos multi_string_infos;
     Build_Multi_String_Infos(multi_string_infos, string_infos_ptrs, options);
@@ -1182,15 +1182,15 @@ bool GameTextFile::Write_STR_Language(FileRef &file, LanguageID language)
     const char *code = Get_Language_Code(language);
 
     bool ok = true;
-    ok &= rts::Write_Str(file.Get(), rts::Make_Array_View(code));
-    ok &= rts::Write_Any(file.Get(), s_str_lng);
-    ok &= rts::Write_Any(file.Get(), ' ');
+    ok &= rts::Write_Str(file.Get_File(), rts::Make_Array_View(code));
+    ok &= rts::Write_Any(file.Get_File(), s_str_lng);
+    ok &= rts::Write_Any(file.Get_File(), ' ');
     return ok;
 }
 
 bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos, Options options)
 {
-    GAMETEXTLOG_INFO("Writing text file '%s' in STR format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Writing text file '%s' in STR format", file.Get_File_Name().Str());
 
     Utf8Array buf = {};
     Utf8String str;
@@ -1223,8 +1223,8 @@ bool GameTextFile::Write_STR_Entry(
 bool GameTextFile::Write_STR_Label(FileRef &file, const Utf8String &label)
 {
     bool ok = true;
-    ok &= rts::Write_Str(file.Get(), rts::Make_Array_View(label));
-    ok &= rts::Write_Any(file.Get(), s_str_eol);
+    ok &= rts::Write_Str(file.Get_File(), rts::Make_Array_View(label));
+    ok &= rts::Write_Any(file.Get_File(), s_str_eol);
     return ok;
 }
 
@@ -1252,33 +1252,33 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Option
     }
 
     bool ok = true;
-    ok &= rts::Write_Any(file.Get(), s_str_quo);
-    ok &= rts::Write_Str(file.Get(), rts::Make_Array_View(buf.data(), len));
-    ok &= rts::Write_Any(file.Get(), s_str_quo);
-    ok &= rts::Write_Any(file.Get(), s_str_eol);
+    ok &= rts::Write_Any(file.Get_File(), s_str_quo);
+    ok &= rts::Write_Str(file.Get_File(), rts::Make_Array_View(buf.data(), len));
+    ok &= rts::Write_Any(file.Get_File(), s_str_quo);
+    ok &= rts::Write_Any(file.Get_File(), s_str_eol);
     return ok;
 }
 
 bool GameTextFile::Write_STR_Speech(FileRef &file, const Utf8String &speech)
 {
     bool ok = true;
-    ok &= rts::Write_Str(file.Get(), rts::Make_Array_View(speech));
-    ok &= rts::Write_Any(file.Get(), s_str_eol);
+    ok &= rts::Write_Str(file.Get_File(), rts::Make_Array_View(speech));
+    ok &= rts::Write_Any(file.Get_File(), s_str_eol);
     return ok;
 }
 
 bool GameTextFile::Write_STR_End(FileRef &file)
 {
     bool ok = true;
-    ok &= rts::Write_Any(file.Get(), s_str_end);
-    ok &= rts::Write_Any(file.Get(), s_str_eol);
-    ok &= rts::Write_Any(file.Get(), s_str_eol);
+    ok &= rts::Write_Any(file.Get_File(), s_str_end);
+    ok &= rts::Write_Any(file.Get_File(), s_str_eol);
+    ok &= rts::Write_Any(file.Get_File(), s_str_eol);
     return ok;
 }
 
 bool GameTextFile::Write_CSF_File(FileRef &file, const StringInfos &string_infos, const LanguageID &language)
 {
-    GAMETEXTLOG_INFO("Writing text file '%s' in CSF format", file->Get_File_Name().Str());
+    GAMETEXTLOG_INFO("Writing text file '%s' in CSF format", file.Get_File_Name().Str());
 
     bool success = false;
 
@@ -1320,7 +1320,7 @@ bool GameTextFile::Write_CSF_Header(FileRef &file, const StringInfos &string_inf
     htole_ref(header.skip);
     htole_ref(header.langid);
 
-    return rts::Write_Any(file.Get(), header);
+    return rts::Write_Any(file.Get_File(), header);
 }
 
 bool GameTextFile::Write_CSF_Entry(FileRef &file, const StringInfo &string_info, Utf16Array &buf)
@@ -1343,8 +1343,8 @@ bool GameTextFile::Write_CSF_Label(FileRef &file, const StringInfo &string_info)
     htole_ref(header.texts);
     htole_ref(header.length);
 
-    if (rts::Write_Any(file.Get(), header)) {
-        if (rts::Write_Str(file.Get(), rts::Make_Array_View(string_info.label))) {
+    if (rts::Write_Any(file.Get_File(), header)) {
+        if (rts::Write_Str(file.Get_File(), rts::Make_Array_View(string_info.label))) {
             return true;
         }
     }
@@ -1369,7 +1369,7 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
         htole_ref(header.id);
         htole_ref(header.length);
 
-        if (rts::Write_Any(file.Get(), header)) {
+        if (rts::Write_Any(file.Get_File(), header)) {
 
             for (size_t i = 0; i < capped_text_len; ++i) {
                 // Every char is binary flipped here by design.
@@ -1377,7 +1377,7 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
                 htole_ref(buf[i]);
             }
 
-            if (rts::Write(file.Get(), buf.data(), capped_text_len * sizeof(Utf16View::value_type))) {
+            if (rts::Write(file.Get_File(), buf.data(), capped_text_len * sizeof(Utf16View::value_type))) {
                 text_ok = true;
             }
         }
@@ -1388,8 +1388,8 @@ bool GameTextFile::Write_CSF_Text(FileRef &file, const StringInfo &string_info, 
         header.length = string_info.speech.Get_Length();
         htole_ref(header.length);
 
-        if (rts::Write_Any(file.Get(), header)) {
-            if (rts::Write_Str(file.Get(), rts::Make_Array_View(string_info.speech))) {
+        if (rts::Write_Any(file.Get_File(), header)) {
+            if (rts::Write_Str(file.Get_File(), rts::Make_Array_View(string_info.speech))) {
                 speech_ok = true;
             }
         }

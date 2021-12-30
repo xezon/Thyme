@@ -175,7 +175,6 @@ set(GAMEENGINE_SRC
     game/common/system/datachunk.cpp
     game/common/system/datachunktoc.cpp
     game/common/system/file.cpp
-    game/common/system/fileref.cpp
     game/common/system/filesystem.cpp
     game/common/system/functionlexicon.cpp
     game/common/system/gamememory.cpp
