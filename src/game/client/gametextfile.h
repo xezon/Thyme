@@ -198,7 +198,7 @@ private:
         FileRef &file, StringInfosPtrArray &string_infos_ptrs, Languages languages, Options options);
     static bool Read_STR_File(FileRef &file, StringInfos &string_infos, Options options);
     template<typename StringInfosType>
-    static void Read_STR_File_T(FileRef &file, StringInfosType &string_infos, Options options);
+    static void Read_STR_File_T(FileRef &file, StringInfosType &string_infos, Languages languages, Options options);
     static StrParseResult Parse_STR_Label(Utf8Array &buf, Utf8String &label);
     static StrParseResult Parse_STR_Search(Utf8Array &buf);
     static void Parse_STR_Text(Utf8Array &buf, Utf16String &text, Options options);

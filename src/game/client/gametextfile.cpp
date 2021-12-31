@@ -796,7 +796,7 @@ bool GameTextFile::Read_Multi_STR_File(
     MultiStringInfos multi_string_infos;
     multi_string_infos.reserve(8192);
 
-    Read_STR_File_T(file, multi_string_infos, options);
+    Read_STR_File_T(file, multi_string_infos, languages, options);
 
     Build_String_Infos(string_infos_ptrs, multi_string_infos, options);
 
@@ -811,7 +811,7 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Optio
     // buffer to begin with and shrink it down afterwards. This will reduce algorithm complexity and file access.
     string_infos.reserve(8192);
 
-    Read_STR_File_T(file, string_infos, options);
+    Read_STR_File_T(file, string_infos, LanguageID::UNKNOWN, options);
 
     if (options.has(Options::Value::OPTIMIZE_MEMORY_SIZE)) {
         rts::shrink_to_fit(string_infos);
@@ -821,7 +821,7 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Optio
 }
 
 template<typename StringInfosType>
-static void GameTextFile::Read_STR_File_T(FileRef &file, StringInfosType &string_infos, Options options)
+static void GameTextFile::Read_STR_File_T(FileRef &file, StringInfosType &string_infos, Languages languages, Options options)
 {
     using StringInfoType = typename StringInfosType::value_type;
 
@@ -856,8 +856,11 @@ static void GameTextFile::Read_STR_File_T(FileRef &file, StringInfosType &string
                 } else if (result == StrParseResult::IS_SPEECH) {
                     size_t parsed_count;
                     Parse_STR_Language(buf.data(), read_language, parsed_count);
-                    Utf8View view(buf.data() + parsed_count, buf.size() - parsed_count);
-                    Parse_STR_Speech(view, Get_Speech(string_info, read_language));
+
+                    if (languages.has(read_language)) {
+                        Utf8View view(buf.data() + parsed_count, buf.size() - parsed_count);
+                        Parse_STR_Speech(view, Get_Speech(string_info, read_language));
+                    }
 
                 } else if (result == StrParseResult::IS_END) {
                     string_infos.push_back(string_info);
@@ -866,7 +869,9 @@ static void GameTextFile::Read_STR_File_T(FileRef &file, StringInfosType &string
                 break;
 
             case StrReadStep::TEXT:
-                Parse_STR_Text(buf, Get_Text(string_info, read_language), options);
+                if (languages.has(read_language)) {
+                    Parse_STR_Text(buf, Get_Text(string_info, read_language), options);
+                }
                 Change_Step(step, StrReadStep::SEARCH, eol_chars);
                 break;
         }
