@@ -292,7 +292,9 @@ bool GameTextFile::Load(const char *filename, FileType filetype, Languages langu
         return false;
     }
 
-    FileRef file = g_theFileSystem->Open(filename, File::READ | File::BINARY);
+    const int filemode = Encode_Buffered_File_Mode(File::READ | File::BINARY, 1024 * 32);
+    FileRef file = g_theFileSystem->Open(filename, filemode);
+
     if (!file.Is_Open()) {
         GAMETEXTLOG_ERROR("File '%s' cannot be opened for read", filename);
         return false;
@@ -364,7 +366,9 @@ bool GameTextFile::Save(const char *filename, FileType filetype, Languages langu
         return false;
     }
 
-    FileRef file = g_theFileSystem->Open(filename, File::WRITE | File::CREATE | File::BINARY);
+    const int filemode = Encode_Buffered_File_Mode(File::WRITE | File::CREATE | File::BINARY, 1024 * 32);
+    FileRef file = g_theFileSystem->Open(filename, filemode);
+
     if (!file.Is_Open()) {
         GAMETEXTLOG_ERROR("File '%s' cannot be opened for write", filename);
         return false;
