@@ -65,8 +65,8 @@ GameTextManager::GameTextManager() :
 
 GameTextManager::~GameTextManager()
 {
-    Deinit();
     Reset();
+    Deinit();
 }
 
 void GameTextManager::Init()

@@ -67,7 +67,7 @@ template<typename T> using remove_volatile_t = typename remove_volatile<T>::type
 template<typename T> using remove_reference_t = typename remove_reference<T>::type;
 
 // std::underlying_type uses compiler intrinsics to deduce the enum type.
-// rts::underlying_type cannot do that automatically and instead relies specializated template.
+// rts::underlying_type cannot do that automatically and instead relies on specializated template.
 // Example:
 //
 // namespace MyNamespace
