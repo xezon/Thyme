@@ -369,30 +369,6 @@ bool GameTextManager::Get_String_Count(const char *filename, int &count)
 }
 
 // Read info from a CSF file header.
-bool GameTextFile::Get_CSF_Info(const char *filename, int &text_count, LanguageID &language)
-{
-    static_assert(sizeof(CSFHeader) == 24, "CSFHeader struct not expected size.");
-    CSFHeader header;
-    File *file = g_theFileSystem->Open(filename, File::BINARY | File::READ);
-
-    if (file == nullptr || file->Read(&header, sizeof(header)) != sizeof(header)
-        || header.id != FourCC<' ', 'F', 'S', 'C'>::value) {
-        return false;
-    }
-
-    text_count = le32toh(header.num_labels);
-
-    if (le32toh(header.version) <= 1) {
-        m_language = LanguageID::US;
-    } else {
-        m_language = letoh<LanguageID>(header.langid);
-    }
-
-    file->Close();
-
-    return true;
-}
-
 bool GameTextManager::Get_CSF_Info(const char *filename)
 {
     static_assert(sizeof(CSFHeader) == 24, "CSFHeader struct not expected size.");
