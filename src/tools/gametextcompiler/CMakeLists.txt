@@ -12,8 +12,6 @@ set(GAMETEXTCOMPILER_SOURCES
 
 set(GAMETEXTCOMPILER_INCLUDES src)
 
-add_definitions(-DHAVE_STD_CLAMP) # This line can be removed when HAVE_STD_CLAMP is removed.
-
 add_executable(gametextcompiler ${GAMETEXTCOMPILER_SOURCES})
 target_include_directories(gametextcompiler PRIVATE ${GAMETEXTCOMPILER_INCLUDES})
 target_link_libraries(gametextcompiler PRIVATE thyme_lib)
