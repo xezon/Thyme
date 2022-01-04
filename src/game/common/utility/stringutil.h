@@ -191,8 +191,8 @@ template<typename CharType> std::size_t Strip_Obsolete_Spaces(CharType *dest)
     return len;
 }
 
-// Replaces string characters by given search characters with replacement character. Compatible with UTF-16.
-// Compatible with UTF-8 if search and replace are ASCII characters.
+// Replaces any search character with replacement character. Compatible with UTF-16. Compatible with UTF-8 if search and
+// replace are ASCII characters.
 template<typename CharType> void Replace_Characters(CharType *dest, const CharType *search, CharType replace)
 {
     CharType *writer = dest;
@@ -209,11 +209,11 @@ template<typename CharType> void Replace_Characters(CharType *dest, const CharTy
     }
 }
 
-// Replaces string characters by given search character sequence with replacement character sequence. Returns count of
-// characters copied to destination string, not including null terminator Compatible with UTF-16. Compatible with UTF-8 if
-// search and replace are ASCII characters.
+// Replaces search character sequence with replacement character sequence. Returns count of characters copied to destination
+// string, not including null terminator. Compatible with UTF-16. Compatible with UTF-8 if search and replace are ASCII
+// characters.
 template<typename CharType>
-std::size_t Replace_Characters_Sequence(
+std::size_t Replace_Character_Sequence(
     CharType *dest, std::size_t size, const CharType *src, const CharType *search, const CharType *replace)
 {
     const CharType null_char = Get_Char<CharType>('\0');
@@ -234,6 +234,53 @@ std::size_t Replace_Characters_Sequence(
             replace_count = replace_len;
         } else {
             *writer++ = *reader++;
+        }
+    }
+
+    *writer = null_char;
+
+    return (writer - dest);
+}
+
+// Replaces search character sequence(s) with replacement character sequence(s). Returns count of characters copied to
+// destination string, not including null terminator. Compatible with UTF-16. Compatible with UTF-8 if search and replace are
+// ASCII characters.
+template<typename CharType, std::size_t Count>
+std::size_t Replace_Character_Sequences(CharType *dest,
+    std::size_t size,
+    const CharType *src,
+    const CharType *(&search)[Count],
+    const CharType *(&replace)[Count])
+{
+    const CharType null_char = Get_Char<CharType>('\0');
+    std::size_t i;
+    std::size_t search_len[Count];
+    std::size_t replace_len[Count];
+    for (i = 0; i < Count; ++i) {
+        search_len[i] = String_Length(search[i]);
+        replace_len[i] = String_Length(replace[i]);
+    }
+    const CharType *reader = src;
+    const CharType *writer_end = dest + size - 1;
+    CharType *writer = dest;
+    std::size_t replace_count = 0;
+
+    while (*reader != null_char && writer != writer_end) {
+        if (replace_count > 0) {
+            *writer++ = *(replace[i] + replace_len[i] - replace_count);
+            if (--replace_count == 0) {
+                reader += search_len[i];
+            }
+        } else {
+            for (i = 0; i < Count; ++i) {
+                if (String_N_Compare(reader, search[i], search_len[i]) == 0) {
+                    replace_count = replace_len[i];
+                    break;
+                }
+            }
+            if (replace_count == 0) {
+                *writer++ = *reader++;
+            }
         }
     }
 
@@ -271,134 +318,6 @@ template<typename CharType> void Strip_Characters(CharType *dest, const CharType
     while (writer != reader) {
         *writer++ = null_char;
     }
-}
-
-template<typename CharType> struct escaped_char_alias
-{
-    static CHAR_TRAITS_CONSTEXPR escaped_char_alias Make_Real_Alias2(char real, char alias1, char alias2)
-    {
-        return { Get_Char<CharType>(real), Get_Char<CharType>(alias1), Get_Char<CharType>(alias2) };
-    }
-
-    CharType real;
-    CharType alias[2];
-};
-
-template<typename CharType> using escaped_char_alias_view = array_view<const escaped_char_alias<CharType>>;
-
-template<typename CharType> escaped_char_alias_view<CharType> Get_Standard_Escaped_Characters()
-{
-    static CHAR_TRAITS_CONSTEXPR escaped_char_alias<CharType> escaped_chars[] = {
-        escaped_char_alias<CharType>::Make_Real_Alias2('\0', '\\', '0'),
-        escaped_char_alias<CharType>::Make_Real_Alias2('\a', '\\', 'a'),
-        escaped_char_alias<CharType>::Make_Real_Alias2('\b', '\\', 'b'),
-        escaped_char_alias<CharType>::Make_Real_Alias2('\t', '\\', 't'),
-        escaped_char_alias<CharType>::Make_Real_Alias2('\n', '\\', 'n'),
-        escaped_char_alias<CharType>::Make_Real_Alias2('\v', '\\', 'v'),
-        escaped_char_alias<CharType>::Make_Real_Alias2('\f', '\\', 'f'),
-        escaped_char_alias<CharType>::Make_Real_Alias2('\r', '\\', 'r'),
-    };
-    return escaped_char_alias_view<CharType>(escaped_chars);
-}
-
-template<typename CharType>
-bool Is_Escaped_Character_Alias(CharType alias1,
-    CharType alias2,
-    const escaped_char_alias_view<CharType> &escaped_chars_view,
-    const escaped_char_alias<CharType> **out_escaped_char)
-{
-    for (const escaped_char_alias<CharType> &escaped_char : escaped_chars_view) {
-        if (alias1 == escaped_char.alias[0] && alias2 == escaped_char.alias[1]) {
-            *out_escaped_char = &escaped_char;
-            return true;
-        }
-    }
-    return false;
-}
-
-template<typename CharType>
-bool Is_Escaped_Character_Real(CharType real,
-    const escaped_char_alias_view<CharType> &escaped_chars_view,
-    const escaped_char_alias<CharType> **out_escaped_char)
-{
-    for (const escaped_char_alias<CharType> &escaped_char : escaped_chars_view) {
-        if (real == escaped_char.real) {
-            *out_escaped_char = &escaped_char;
-            return true;
-        }
-    }
-    return false;
-}
-
-// Converts from escaped characters, meaning a 2 character sequence is converted to a 1 character sequence. Returns count of
-// characters copied to destination string, not including null terminator. Writes null at the end. Compatible with UTF-16.
-// Compatible with UTF-8 if escaped character symbols are ASCII only.
-template<typename CharType>
-std::size_t Convert_From_Escaped_Characters(CharType *dest,
-    std::size_t size,
-    const CharType *src,
-    escaped_char_alias_view<CharType> escaped_chars_view = Get_Standard_Escaped_Characters<CharType>())
-{
-    const escaped_char_alias<CharType> *escaped_char;
-    const CharType null_char = Get_Char<CharType>('\0');
-    const CharType *reader = src;
-    const CharType *writer_end = dest + size - 1;
-    CharType *writer = dest;
-
-    while (*reader != null_char && writer != writer_end) {
-        CharType curr_char = *reader;
-        CharType next_char = *++reader;
-
-        if (Is_Escaped_Character_Alias(curr_char, next_char, escaped_chars_view, &escaped_char)) {
-            // Write out the real character.
-            *writer++ = escaped_char->real;
-            ++reader;
-            continue;
-        }
-
-        // Write out the character as is.
-        *writer++ = curr_char;
-    }
-
-    *writer = null_char;
-
-    return (writer - dest);
-}
-
-// Converts to escaped characters, meaning a 1 character sequence is converted to a 2 character sequence. Returns count of
-// characters copied to destination string, not including null terminator. Writes null at the end. Compatible with UTF-16.
-// Compatible with UTF-8 if escaped character symbols are ASCII only.
-template<typename CharType>
-std::size_t Convert_To_Escaped_Characters(CharType *dest,
-    std::size_t size,
-    const CharType *src,
-    escaped_char_alias_view<CharType> escaped_chars_view = Get_Standard_Escaped_Characters<CharType>())
-{
-    const escaped_char_alias<CharType> *escaped_char;
-    const CharType null_char = Get_Char<CharType>('\0');
-    const CharType *reader = src;
-    const CharType *writer_end = dest + size - 1;
-    CharType *writer = dest;
-
-    while (*reader != null_char && writer != writer_end) {
-        CharType curr_char = *reader++;
-
-        if (Is_Escaped_Character_Real(curr_char, escaped_chars_view, &escaped_char)) {
-            // Write out the escaped character sequence.
-            *writer++ = escaped_char->alias[0];
-            if (writer != writer_end) {
-                *writer++ = escaped_char->alias[1];
-            }
-            continue;
-        }
-
-        // Write out the character as is.
-        *writer++ = curr_char;
-    }
-
-    *writer = null_char;
-
-    return (writer - dest);
 }
 
 // Return the file extension of a given string.

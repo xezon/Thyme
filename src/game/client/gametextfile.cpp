@@ -102,30 +102,6 @@ bool Name_To_Game_Text_Option(const char *name, GameTextOption &option)
 
 namespace
 {
-template<typename CharType> rts::escaped_char_alias_view<CharType> Escaped_Characters_For_STR_Read()
-{
-    static CHAR_TRAITS_CONSTEXPR rts::escaped_char_alias<CharType> escaped_chars[] = {
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('\n', '\\', 'n'),
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('\t', '\\', 't'),
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('"', '\\', '"'),
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('?', '\\', '?'),
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('\'', '\\', '\''),
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('\\', '\\', '\\'),
-    };
-    return rts::escaped_char_alias_view<CharType>(escaped_chars);
-}
-
-template<typename CharType> rts::escaped_char_alias_view<CharType> Escaped_Characters_For_STR_Write()
-{
-    static CHAR_TRAITS_CONSTEXPR rts::escaped_char_alias<CharType> escaped_chars[] = {
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('\n', '\\', 'n'),
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('\t', '\\', 't'),
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('"', '\\', '"'),
-        rts::escaped_char_alias<CharType>::Make_Real_Alias2('\\', '\\', '\\'),
-    };
-    return rts::escaped_char_alias_view<CharType>(escaped_chars);
-}
-
 // ISO 639-1 language codes - sort of.
 
 constexpr const char *const s_langcode_invalid = "__";
@@ -922,15 +898,14 @@ GameTextFile::StrParseResult GameTextFile::Parse_STR_Search(Utf8Array &buf)
 void GameTextFile::Parse_STR_Text(Utf8Array &buf, Utf16String &text, Options options)
 {
     // Read string can be empty.
-
-    const auto escaped_chars_view = Escaped_Characters_For_STR_Read<char>();
-
     rts::Strip_Characters(buf.data(), "\n\r");
     rts::Replace_Characters(buf.data(), "\t\v\f", ' ');
 
     // STR does support escaped characters for special control characters. When written out as 2 symbol sequence, it will be
     // converted into single character here. Convert in place.
-    size_t len = rts::Convert_From_Escaped_Characters(buf.data(), buf.size(), buf.data(), escaped_chars_view);
+    const char *search[6] = { "\\n", "\\t", "\\\"", "\\?", "\\\'", "\\\\" };
+    const char *replace[6] = { "\n", "\t", "\"", "?", "\'", "\\" };
+    size_t len = rts::Replace_Character_Sequences(buf.data(), buf.size(), buf.data(), search, replace);
 
     // Read string is expected to close with a quote. Remove it here.
     if (buf[len - 1] == '\"') {
@@ -1242,23 +1217,15 @@ bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Option
     // Convert utf16 to utf8.
     str.Translate(text.Str());
 
-    size_t len;
-
-    // STR does support escaped characters for special control characters. Write them out as escaped characters so they are
-    // easily modifiable in text editor.
-    {
-        const auto escaped_chars_view = Escaped_Characters_For_STR_Write<char>();
-        len = rts::Convert_To_Escaped_Characters(buf.data(), buf.size(), str.Str(), escaped_chars_view);
-    }
+    // STR does support escaped characters for special control characters. Write them out as escaped characters so they
+    // are easily modifiable in text editor.
+    const char *search[4] = { "\n", "\t", "\"", "\\" };
+    const char *replace[4] = { "\\n", "\\t", "\\\"", "\\\\" };
 
     if (options.has(Options::Value::WRITE_EXTRA_LF_ON_STR_SAVE)) {
-        // Add CR LF characters behind each written out line feed for better readability. These characters will be ignored
-        // when read back from the STR file.
-        str = buf.data();
-        const char *search = "\\n";
-        const char *replace = "\\n\r\n";
-        len = rts::Replace_Characters_Sequence(buf.data(), buf.size(), str.Str(), search, replace);
+        replace[0] = "\\n\r\n";
     }
+    size_t len = rts::Replace_Character_Sequences(buf.data(), buf.size(), str.Str(), search, replace);
 
     bool ok = true;
     ok &= rts::Write_Any(file.Get_File(), s_str_quo);
