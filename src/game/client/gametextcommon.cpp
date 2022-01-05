@@ -54,24 +54,24 @@ constexpr const char *const s_localizations[] = {
     s_localization_ar,
 };
 
-static_assert(s_localization_us == s_localizations[size_t(LanguageID::US)], "Error");
-static_assert(s_localization_en == s_localizations[size_t(LanguageID::UK)], "Error");
-static_assert(s_localization_de == s_localizations[size_t(LanguageID::GERMAN)], "Error");
-static_assert(s_localization_fr == s_localizations[size_t(LanguageID::FRENCH)], "Error");
-static_assert(s_localization_es == s_localizations[size_t(LanguageID::SPANISH)], "Error");
-static_assert(s_localization_it == s_localizations[size_t(LanguageID::ITALIAN)], "Error");
-static_assert(s_localization_ja == s_localizations[size_t(LanguageID::JAPANESE)], "Error");
-static_assert(s_localization_jb == s_localizations[size_t(LanguageID::JABBER)], "Error");
-static_assert(s_localization_ko == s_localizations[size_t(LanguageID::KOREAN)], "Error");
-static_assert(s_localization_zh == s_localizations[size_t(LanguageID::CHINESE)], "Error");
-static_assert(s_localization___ == s_localizations[size_t(LanguageID::UNUSED_1)], "Error");
-static_assert(s_localization_bp == s_localizations[size_t(LanguageID::BRAZILIAN)], "Error");
-static_assert(s_localization_pl == s_localizations[size_t(LanguageID::POLISH)], "Error");
-static_assert(s_localization_uk == s_localizations[size_t(LanguageID::UNKNOWN)], "Error");
-static_assert(s_localization_ru == s_localizations[size_t(LanguageID::RUSSIAN)], "Error");
-static_assert(s_localization_ar == s_localizations[size_t(LanguageID::ARABIC)], "Error");
+static_assert(s_localization_us == s_localizations[size_t(LanguageID::US)]);
+static_assert(s_localization_en == s_localizations[size_t(LanguageID::UK)]);
+static_assert(s_localization_de == s_localizations[size_t(LanguageID::GERMAN)]);
+static_assert(s_localization_fr == s_localizations[size_t(LanguageID::FRENCH)]);
+static_assert(s_localization_es == s_localizations[size_t(LanguageID::SPANISH)]);
+static_assert(s_localization_it == s_localizations[size_t(LanguageID::ITALIAN)]);
+static_assert(s_localization_ja == s_localizations[size_t(LanguageID::JAPANESE)]);
+static_assert(s_localization_jb == s_localizations[size_t(LanguageID::JABBER)]);
+static_assert(s_localization_ko == s_localizations[size_t(LanguageID::KOREAN)]);
+static_assert(s_localization_zh == s_localizations[size_t(LanguageID::CHINESE)]);
+static_assert(s_localization___ == s_localizations[size_t(LanguageID::UNUSED_1)]);
+static_assert(s_localization_bp == s_localizations[size_t(LanguageID::BRAZILIAN)]);
+static_assert(s_localization_pl == s_localizations[size_t(LanguageID::POLISH)]);
+static_assert(s_localization_uk == s_localizations[size_t(LanguageID::UNKNOWN)]);
+static_assert(s_localization_ru == s_localizations[size_t(LanguageID::RUSSIAN)]);
+static_assert(s_localization_ar == s_localizations[size_t(LanguageID::ARABIC)]);
 
-static_assert(ARRAY_SIZE(s_localizations) == g_languageCount, "Error");
+static_assert(ARRAY_SIZE(s_localizations) == g_languageCount);
 
 bool Name_To_Language(const char *localization, LanguageID &language)
 {

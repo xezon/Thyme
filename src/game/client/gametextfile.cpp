@@ -79,12 +79,12 @@ constexpr const char *const s_options[] = {
     s_option_5,
 };
 
-static_assert(s_option_0 == s_options[size_t(GameTextOption::NONE)], "Error");
-static_assert(s_option_1 == s_options[1 + Bit_To_Index(GameTextOption::OPTIMIZE_MEMORY_SIZE)], "Error");
-static_assert(s_option_2 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_LOAD)], "Error");
-static_assert(s_option_3 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_SAVE)], "Error");
-static_assert(s_option_4 == s_options[1 + Bit_To_Index(GameTextOption::KEEP_OBSOLETE_SPACES_ON_LOAD)], "Error");
-static_assert(s_option_5 == s_options[1 + Bit_To_Index(GameTextOption::WRITE_EXTRA_LF_ON_STR_SAVE)], "Error");
+static_assert(s_option_0 == s_options[size_t(GameTextOption::NONE)]);
+static_assert(s_option_1 == s_options[1 + Bit_To_Index(GameTextOption::OPTIMIZE_MEMORY_SIZE)]);
+static_assert(s_option_2 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_LOAD)]);
+static_assert(s_option_3 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_SAVE)]);
+static_assert(s_option_4 == s_options[1 + Bit_To_Index(GameTextOption::KEEP_OBSOLETE_SPACES_ON_LOAD)]);
+static_assert(s_option_5 == s_options[1 + Bit_To_Index(GameTextOption::WRITE_EXTRA_LF_ON_STR_SAVE)]);
 } // namespace
 
 bool Name_To_Game_Text_Option(const char *name, GameTextOption &option)
@@ -142,24 +142,24 @@ constexpr const char *const s_langcodes[] = {
     s_langcode_ar,
 };
 
-static_assert(s_langcode_us == s_langcodes[size_t(LanguageID::US)], "Error");
-static_assert(s_langcode_en == s_langcodes[size_t(LanguageID::UK)], "Error");
-static_assert(s_langcode_de == s_langcodes[size_t(LanguageID::GERMAN)], "Error");
-static_assert(s_langcode_fr == s_langcodes[size_t(LanguageID::FRENCH)], "Error");
-static_assert(s_langcode_es == s_langcodes[size_t(LanguageID::SPANISH)], "Error");
-static_assert(s_langcode_it == s_langcodes[size_t(LanguageID::ITALIAN)], "Error");
-static_assert(s_langcode_ja == s_langcodes[size_t(LanguageID::JAPANESE)], "Error");
-static_assert(s_langcode_jb == s_langcodes[size_t(LanguageID::JABBER)], "Error");
-static_assert(s_langcode_ko == s_langcodes[size_t(LanguageID::KOREAN)], "Error");
-static_assert(s_langcode_zh == s_langcodes[size_t(LanguageID::CHINESE)], "Error");
-static_assert(s_langcode___ == s_langcodes[size_t(LanguageID::UNUSED_1)], "Error");
-static_assert(s_langcode_bp == s_langcodes[size_t(LanguageID::BRAZILIAN)], "Error");
-static_assert(s_langcode_pl == s_langcodes[size_t(LanguageID::POLISH)], "Error");
-static_assert(s_langcode_uk == s_langcodes[size_t(LanguageID::UNKNOWN)], "Error");
-static_assert(s_langcode_ru == s_langcodes[size_t(LanguageID::RUSSIAN)], "Error");
-static_assert(s_langcode_ar == s_langcodes[size_t(LanguageID::ARABIC)], "Error");
+static_assert(s_langcode_us == s_langcodes[size_t(LanguageID::US)]);
+static_assert(s_langcode_en == s_langcodes[size_t(LanguageID::UK)]);
+static_assert(s_langcode_de == s_langcodes[size_t(LanguageID::GERMAN)]);
+static_assert(s_langcode_fr == s_langcodes[size_t(LanguageID::FRENCH)]);
+static_assert(s_langcode_es == s_langcodes[size_t(LanguageID::SPANISH)]);
+static_assert(s_langcode_it == s_langcodes[size_t(LanguageID::ITALIAN)]);
+static_assert(s_langcode_ja == s_langcodes[size_t(LanguageID::JAPANESE)]);
+static_assert(s_langcode_jb == s_langcodes[size_t(LanguageID::JABBER)]);
+static_assert(s_langcode_ko == s_langcodes[size_t(LanguageID::KOREAN)]);
+static_assert(s_langcode_zh == s_langcodes[size_t(LanguageID::CHINESE)]);
+static_assert(s_langcode___ == s_langcodes[size_t(LanguageID::UNUSED_1)]);
+static_assert(s_langcode_bp == s_langcodes[size_t(LanguageID::BRAZILIAN)]);
+static_assert(s_langcode_pl == s_langcodes[size_t(LanguageID::POLISH)]);
+static_assert(s_langcode_uk == s_langcodes[size_t(LanguageID::UNKNOWN)]);
+static_assert(s_langcode_ru == s_langcodes[size_t(LanguageID::RUSSIAN)]);
+static_assert(s_langcode_ar == s_langcodes[size_t(LanguageID::ARABIC)]);
 
-static_assert(ARRAY_SIZE(s_langcodes) == g_languageCount, "Error");
+static_assert(ARRAY_SIZE(s_langcodes) == g_languageCount);
 
 constexpr const char *Get_Language_Code(LanguageID language)
 {
