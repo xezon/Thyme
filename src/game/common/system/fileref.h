@@ -60,7 +60,7 @@ public:
 
     FileRefT &operator=(const FileRefT &other)
     {
-        m_wrapper.reset(other.m_wrapper);
+        m_wrapper = other.m_wrapper;
         return *this;
     }
 
