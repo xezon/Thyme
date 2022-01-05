@@ -74,13 +74,7 @@ public:
 
     intrusive_ptr &operator=(const intrusive_ptr &other)
     {
-        if (this != &other) {
-            if (other.m_ptr != nullptr)
-                other.m_ptr->AddRef();
-            if (m_ptr != nullptr)
-                m_ptr->Release();
-            m_ptr = other.m_ptr;
-        }
+        reset(other.m_ptr);
         return *this;
     }
 
@@ -97,21 +91,13 @@ public:
 
     template<typename RelatedType> intrusive_ptr &operator=(const intrusive_ptr<RelatedType> &other)
     {
-        if (other.m_ptr != nullptr)
-            other.m_ptr->AddRef();
-        if (m_ptr != nullptr)
-            m_ptr->Release();
-        m_ptr = other.m_ptr;
+        reset(other.m_ptr);
         return *this;
     }
 
     intrusive_ptr &operator=(value_type *ptr)
     {
-        if (ptr != nullptr)
-            ptr->AddRef();
-        if (m_ptr != nullptr)
-            m_ptr->Release();
-        m_ptr = ptr;
+        reset(ptr);
         return *this;
     }
 
@@ -126,13 +112,22 @@ public:
     operator bool() const noexcept { return m_ptr != nullptr; }
 
     // Reset smart pointer to null.
-    void reset() { intrusive_ptr().swap(*this); }
+    void reset()
+    {
+        if (m_ptr != nullptr)
+            m_ptr->Release();
+        m_ptr = nullptr;
+    }
 
     // Reset smart pointer with new pointer.
     void reset(value_type *ptr)
     {
         if (ptr != m_ptr) {
-            intrusive_ptr(ptr).swap(*this);
+            if (ptr != nullptr)
+                ptr->AddRef();
+            if (m_ptr != nullptr)
+                m_ptr->Release();
+            m_ptr = ptr;
         }
     }
 
@@ -143,7 +138,8 @@ public:
     // Used for example if the reference target already has a reference count on creation.
     void assign_without_add_ref(value_type *ptr)
     {
-        reset();
+        if (m_ptr != nullptr)
+            m_ptr->Release();
         m_ptr = ptr;
     }
 

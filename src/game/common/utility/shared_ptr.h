@@ -79,10 +79,12 @@ public:
 
     shared_ptr_t &operator=(const shared_ptr_t &other)
     {
-        add_ref_for(other.m_counter);
-        remove_ref_for(m_counter, m_ptr);
-        m_ptr = other.m_ptr;
-        m_counter = other.m_counter;
+        if (this != &other) {
+            add_ref_for(other.m_counter);
+            remove_ref_for(m_counter, m_ptr);
+            m_ptr = other.m_ptr;
+            m_counter = other.m_counter;
+        }
         return *this;
     }
 
@@ -157,15 +159,13 @@ private:
         }
     }
 
-    static void remove_ref_for(counter_type *&counter, value_type *&ptr)
+    static void remove_ref_for(counter_type *counter, value_type *ptr)
     {
         if (counter != nullptr) {
             const integer_type ref = counter->Release();
             if (ref == 0) {
                 Invoke_Deleter<Deleter>(ptr);
                 delete counter;
-                ptr = nullptr;
-                counter = nullptr;
             }
         }
     }
