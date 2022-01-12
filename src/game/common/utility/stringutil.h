@@ -96,22 +96,22 @@ template<typename CharType> CHAR_TRAITS_CONSTEXPR std::size_t String_Length(cons
 
 template<typename CharType> CHAR_TRAITS_CONSTEXPR int String_Compare(const CharType *s1, const CharType *s2)
 {
-    using unsigned_type = typename unsigned_integer_for_size<sizeof(CharType)>::type;
+    using UnsignedType = typename unsigned_integer_for_size<sizeof(CharType)>::type;
     const CharType null_char = Get_Char<CharType>('\0');
 
     while (*s1 != null_char && *s1 == *s2) {
         ++s1;
         ++s2;
     }
-    const auto i1 = *reinterpret_cast<const unsigned_type *>(s1);
-    const auto i2 = *reinterpret_cast<const unsigned_type *>(s2);
+    const auto i1 = *reinterpret_cast<const UnsignedType *>(s1);
+    const auto i2 = *reinterpret_cast<const UnsignedType *>(s2);
     return (i1 > i2) - (i2 > i1);
 }
 
 template<typename CharType>
 CHAR_TRAITS_CONSTEXPR int String_N_Compare(const CharType *s1, const CharType *s2, std::size_t count)
 {
-    using unsigned_type = typename unsigned_integer_for_size<sizeof(CharType)>::type;
+    using UnsignedType = typename unsigned_integer_for_size<sizeof(CharType)>::type;
     const CharType null_char = Get_Char<CharType>('\0');
 
     while (count != 0 && *s1 != null_char && *s1 == *s2) {
@@ -122,8 +122,8 @@ CHAR_TRAITS_CONSTEXPR int String_N_Compare(const CharType *s1, const CharType *s
     if (count == 0) {
         return 0;
     } else {
-        const auto i1 = *reinterpret_cast<const unsigned_type *>(s1);
-        const auto i2 = *reinterpret_cast<const unsigned_type *>(s2);
+        const auto i1 = *reinterpret_cast<const UnsignedType *>(s1);
+        const auto i2 = *reinterpret_cast<const UnsignedType *>(s2);
         return (i1 > i2) - (i2 > i1);
     }
 }

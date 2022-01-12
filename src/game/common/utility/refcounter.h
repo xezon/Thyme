@@ -42,40 +42,40 @@ namespace detail
 template<typename Integer> inline void Destructor_Ref_Check(Integer counter, Integer expected_counter = Integer{ 0 })
 {
 #if REFCOUNTER_CHECK
-    using signed_int = signed_integer<Integer>::type;
-    if (static_cast<signed_int>(counter) < static_cast<signed_int>(expected_counter))
+    using SignedInt = signed_integer<Integer>::type;
+    if (static_cast<SignedInt>(counter) < static_cast<SignedInt>(expected_counter))
         captainslog_dbgassert(false,
             "REFCOUNTER_CHECK Deleting reference counted object more than once. Counter %d is not equal %d.",
-            static_cast<signed_int>(counter),
-            static_cast<signed_int>(expected_counter));
+            static_cast<SignedInt>(counter),
+            static_cast<SignedInt>(expected_counter));
 
-    if (static_cast<signed_int>(counter) > static_cast<signed_int>(expected_counter))
+    if (static_cast<SignedInt>(counter) > static_cast<SignedInt>(expected_counter))
         captainslog_dbgassert(false,
             "REFCOUNTER_CHECK Deleting reference counted object without releasing all owners. Counter %d is not equal %d.",
-            static_cast<signed_int>(counter),
-            static_cast<signed_int>(expected_counter));
+            static_cast<SignedInt>(counter),
+            static_cast<SignedInt>(expected_counter));
 #endif
 }
 
 template<typename Integer> inline void AddRef_Check(Integer counter, Integer min_counter = Integer{ 1 })
 {
 #if REFCOUNTER_CHECK
-    using signed_int = signed_integer<Integer>::type;
-    captainslog_dbgassert(static_cast<signed_int>(counter) >= static_cast<signed_int>(min_counter),
+    using SignedInt = signed_integer<Integer>::type;
+    captainslog_dbgassert(static_cast<SignedInt>(counter) >= static_cast<SignedInt>(min_counter),
         "REFCOUNTER_CHECK Unexpected reference add. Counter %d is smaller than %d.",
-        static_cast<signed_int>(counter),
-        static_cast<signed_int>(min_counter));
+        static_cast<SignedInt>(counter),
+        static_cast<SignedInt>(min_counter));
 #endif
 }
 
 template<typename Integer> inline void Release_Check(Integer counter, Integer min_counter = Integer{ 0 })
 {
 #if REFCOUNTER_CHECK
-    using signed_int = signed_integer<Integer>::type;
-    captainslog_dbgassert(static_cast<signed_int>(counter) >= static_cast<signed_int>(min_counter),
+    using SignedInt = signed_integer<Integer>::type;
+    captainslog_dbgassert(static_cast<SignedInt>(counter) >= static_cast<SignedInt>(min_counter),
         "REFCOUNTER_CHECK Unexpected reference removal. Counter %d is smaller than %d.",
-        static_cast<signed_int>(counter),
-        static_cast<signed_int>(min_counter));
+        static_cast<SignedInt>(counter),
+        static_cast<SignedInt>(min_counter));
 #endif
 }
 

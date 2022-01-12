@@ -394,13 +394,13 @@ void GameTextFile::Unload()
 
 void GameTextFile::Unload(Languages languages)
 {
-    For_Each_Language(languages, [&](LanguageID language) { rts::free_container(Mutable_String_Infos(language)); });
+    For_Each_Language(languages, [&](LanguageID language) { rts::Free_Container(Mutable_String_Infos(language)); });
 }
 
 void GameTextFile::Reset()
 {
     for (StringInfos &string_infos : m_stringInfosArray) {
-        rts::free_container(string_infos);
+        rts::Free_Container(string_infos);
     }
     m_options = Options::Value::NONE;
     m_language = LanguageID::UNKNOWN;
@@ -440,7 +440,7 @@ void GameTextFile::Merge_And_Overwrite_Internal(const GameTextFile &other, Langu
         }
     }
 
-    rts::append_container(this_strings, other_new_strings);
+    rts::Append_Container(this_strings, other_new_strings);
 }
 
 void GameTextFile::Check_Buffer_Lengths(LanguageID language)
@@ -583,14 +583,14 @@ void GameTextFile::Build_Multi_String_Infos(
                     multi_string_lookup->string_info->speech[language_index] = string_info.speech;
                 }
             }
-            rts::append_container(multi_string_infos, tmp_multi_string_infos);
+            rts::Append_Container(multi_string_infos, tmp_multi_string_infos);
             tmp_multi_string_infos.clear();
         }
         ++language_index;
     }
 
     if (options.has(Options::Value::OPTIMIZE_MEMORY_SIZE)) {
-        rts::shrink_to_fit(multi_string_infos);
+        rts::Shrink_To_Fit(multi_string_infos);
     }
 }
 
@@ -603,7 +603,7 @@ void GameTextFile::Build_String_Infos(
         if (string_infos_ptr != nullptr) {
             StringInfos &string_infos = *string_infos_ptr;
             if (options.has(Options::Value::OPTIMIZE_MEMORY_SIZE)) {
-                rts::free_container(string_infos);
+                rts::Free_Container(string_infos);
             }
             string_infos.resize(multi_string_infos.size());
             size_t string_index = 0;
@@ -790,7 +790,7 @@ bool GameTextFile::Read_STR_File(FileRef &file, StringInfos &string_infos, Optio
     Read_STR_File_T(file, string_infos, LanguageID::UNKNOWN, options);
 
     if (options.has(Options::Value::OPTIMIZE_MEMORY_SIZE)) {
-        rts::shrink_to_fit(string_infos);
+        rts::Shrink_To_Fit(string_infos);
     }
 
     return !string_infos.empty();

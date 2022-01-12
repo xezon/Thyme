@@ -17,17 +17,17 @@
 namespace rts
 {
 
-template<class ContainerType> void free_container(ContainerType &container)
+template<class ContainerType> void Free_Container(ContainerType &container)
 {
     ContainerType().swap(container);
 }
 
-template<class ContainerType> void append_container(ContainerType &dest, const ContainerType &src)
+template<class ContainerType> void Append_Container(ContainerType &dest, const ContainerType &src)
 {
     dest.insert(dest.end(), src.begin(), src.end());
 }
 
-template<class ContainerType> void shrink_to_fit(ContainerType &container)
+template<class ContainerType> void Shrink_To_Fit(ContainerType &container)
 {
 #if THYME_USE_STLPORT
     if (container.capacity() > container.size()) {

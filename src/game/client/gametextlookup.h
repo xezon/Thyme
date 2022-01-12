@@ -77,7 +77,7 @@ public:
         qsort(base, item_count, item_size, Compare_LUT);
     }
 
-    void Unload() { rts::free_container(m_stringLookups); }
+    void Unload() { rts::Free_Container(m_stringLookups); }
 
     const StringLookup *Find(const char *label) const
     {
