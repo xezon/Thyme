@@ -19,19 +19,23 @@
 
 namespace rts
 {
-// #FEATURE Intrusive reference counted smart pointer.
+
+// Intrusive reference counted smart pointer.
 // Works similar to std::shared_ptr<>, but does not hold reference counter by itself.
 // Can be assigned a raw pointer at any time without worrying about colliding with another reference counter.
-template<class Value> class intrusive_ptr
+// Adapter type needs to be set according to the Counter type used.
+// Default adapter is set for Counter types using rts::atomic_intrusive_counter<> or rts::intrusive_counter<>.
+template<class Counter, class Adapter = intrusive_counter_adapter<Counter>> class intrusive_ptr
 {
 public:
-    using element_type = Value;
-    using value_type = Value;
+    using element_type = Counter;
+    using value_type = Counter;
     using reference = value_type &;
     using const_reference = const value_type &;
     using pointer = value_type *;
     using const_pointer = const value_type *;
-    using integer_type = typename Value::integer_type;
+    using integer_type = typename Adapter::integer_type;
+    using adapter_type = typename Adapter;
 
 private:
     value_type *m_ptr;
@@ -42,14 +46,14 @@ public:
     intrusive_ptr(value_type *ptr)
     {
         if (ptr != nullptr)
-            ptr->AddRef();
+            adapter_type::Add_Ref(ptr);
         m_ptr = ptr;
     }
 
     intrusive_ptr(const intrusive_ptr &other)
     {
         if (other.m_ptr != nullptr)
-            other.m_ptr->AddRef();
+            adapter_type::Add_Ref(other.m_ptr);
         m_ptr = other.m_ptr;
     }
 
@@ -62,14 +66,14 @@ public:
     template<typename RelatedType> intrusive_ptr(const intrusive_ptr<RelatedType> &other)
     {
         if (other.m_ptr != nullptr)
-            other.m_ptr->AddRef();
+            adapter_type::Add_Ref(other.m_ptr);
         m_ptr = other.m_ptr;
     }
 
     ~intrusive_ptr()
     {
         if (m_ptr != nullptr)
-            m_ptr->Release();
+            adapter_type::Remove_Ref(m_ptr);
     }
 
     intrusive_ptr &operator=(const intrusive_ptr &other)
@@ -82,7 +86,7 @@ public:
     {
         if (this != &other) {
             if (m_ptr != nullptr)
-                m_ptr->Release();
+                adapter_type::Remove_Ref(m_ptr);
             m_ptr = other.m_ptr;
             other.m_ptr = nullptr;
         }
@@ -115,7 +119,7 @@ public:
     void reset()
     {
         if (m_ptr != nullptr)
-            m_ptr->Release();
+            adapter_type::Remove_Ref(m_ptr);
         m_ptr = nullptr;
     }
 
@@ -124,9 +128,9 @@ public:
     {
         if (ptr != m_ptr) {
             if (ptr != nullptr)
-                ptr->AddRef();
+                adapter_type::Add_Ref(ptr);
             if (m_ptr != nullptr)
-                m_ptr->Release();
+                adapter_type::Remove_Ref(m_ptr);
             m_ptr = ptr;
         }
     }
@@ -139,7 +143,7 @@ public:
     void assign_without_add_ref(value_type *ptr)
     {
         if (m_ptr != nullptr)
-            m_ptr->Release();
+            adapter_type::Remove_Ref(m_ptr);
         m_ptr = ptr;
     }
 
@@ -152,7 +156,20 @@ public:
     }
 
     // Get the count of how many times the pointer is referenced.
-    integer_type use_count() const { return m_ptr->UseCount(); }
+    integer_type use_count() const { return adapter_type::Use_Count(m_ptr); }
 };
+
+// Adapter for DirectX and COM reference counted objects.
+template<class Counter> class intrusive_ptr_adapter
+{
+public:
+    using integer_type = ULONG;
+
+    static integer_type Add_Ref(Counter *counter) { return counter->AddRef(); }
+    static integer_type Remove_Ref(Counter *counter) { return counter->Release(); }
+    static integer_type Use_Count(const Counter *counter) { return integer_type{ ~0u }; }
+};
+
+template<class Counter> using dx_intrusive_ptr = intrusive_ptr<Counter, intrusive_ptr_adapter<Counter>>;
 
 } // namespace rts

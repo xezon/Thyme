@@ -20,7 +20,7 @@
 
 namespace rts
 {
-// #FEATURE Non-intrusive reference counted smart pointer.
+// Non-intrusive reference counted smart pointer.
 // Works similar to std::shared_ptr<>. Prefer using intrusive_ptr<> over shared_ptr_t<>.
 // Provide a custom deleter when not using new & delete. Uses thread unsafe counter by default.
 // If multiple threads are involved, then atomic_shared_counter can be used.
@@ -153,17 +153,17 @@ private:
     {
         if (counter == nullptr) {
             counter = new Counter;
-            counter->AddRef();
+            counter->Add_Ref();
         } else {
-            counter->AddRef();
+            counter->Add_Ref();
         }
     }
 
     static void remove_ref_for(counter_type *counter, value_type *ptr)
     {
         if (counter != nullptr) {
-            const integer_type ref = counter->Release();
-            if (ref == 0) {
+            const integer_type ref = counter->Remove_Ref();
+            if (ref == integer_type{ 0 }) {
                 Invoke_Deleter<Deleter>(ptr);
                 delete counter;
             }

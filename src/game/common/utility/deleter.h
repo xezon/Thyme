@@ -14,25 +14,25 @@
  */
 #pragma once
 
-// Deleter for objects created by 'new'
+// Deleter for objects created by 'new'.
 template<typename Type> struct NewDeleter
 {
     void operator()(Type *instance) const { delete instance; }
 };
 
-// Deleter for objects created by 'new[]'
+// Deleter for objects created by 'new[]'.
 template<typename Type> struct NewArrayDeleter
 {
     void operator()(Type *instance) const { delete[] instance; }
 };
 
-// Deleter for objects created by 'malloc()'
+// Deleter for objects created by 'malloc()'.
 template<typename Type> struct AllocDeleter
 {
     void operator()(Type *instance) const { free(instance); }
 };
 
-// Deleter for objects created by 'NEW_POOL_OBJ'
+// Deleter for objects using a game memory pool.
 template<typename Type> struct MemoryPoolObjectDeleter
 {
     void operator()(Type *instance) const { instance->Delete_Instance(); }

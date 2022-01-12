@@ -57,7 +57,7 @@ template<typename Integer> inline void Destructor_Ref_Check(Integer counter, Int
 #endif
 }
 
-template<typename Integer> inline void AddRef_Check(Integer counter, Integer min_counter = Integer{ 1 })
+template<typename Integer> inline void Add_Ref_Check(Integer counter, Integer min_counter = Integer{ 1 })
 {
 #if REFCOUNTER_CHECK
     using SignedInt = SignedInteger<Integer>::type;
@@ -68,7 +68,7 @@ template<typename Integer> inline void AddRef_Check(Integer counter, Integer min
 #endif
 }
 
-template<typename Integer> inline void Release_Check(Integer counter, Integer min_counter = Integer{ 0 })
+template<typename Integer> inline void Remove_Ref_Check(Integer counter, Integer min_counter = Integer{ 0 })
 {
 #if REFCOUNTER_CHECK
     using SignedInt = SignedInteger<Integer>::type;
@@ -79,37 +79,48 @@ template<typename Integer> inline void Release_Check(Integer counter, Integer mi
 #endif
 }
 
-template<typename Integer> inline Integer AddRef(Integer &counter)
+template<typename Integer> inline Integer Add_Ref(Integer &counter)
 {
     ++counter;
-    AddRef_Check(counter);
+    Add_Ref_Check(counter);
     return counter;
 }
 
-template<typename Integer> inline Integer Release(Integer &counter)
+template<typename Integer> inline Integer Remove_Ref(Integer &counter)
 {
     --counter;
-    Release_Check(counter);
+    Remove_Ref_Check(counter);
     return counter;
 }
 
-template<typename Integer> inline Integer AddRef_Atomic(volatile Integer &counter)
+template<typename Integer> inline Integer Add_Ref_Atomic(volatile Integer &counter)
 {
     const Integer new_count = Atomic_Increment(&counter);
-    AddRef_Check(new_count);
+    Add_Ref_Check(new_count);
     return new_count;
 }
 
-template<typename Integer> inline Integer Release_Atomic(volatile Integer &counter)
+template<typename Integer> inline Integer Remove_Ref_Atomic(volatile Integer &counter)
 {
     const Integer new_counter = Atomic_Decrement(&counter);
-    Release_Check(new_counter);
+    Remove_Ref_Check(new_counter);
     return new_counter;
 }
 
 } // namespace detail
 
-// #FEATURE Intrusive atomic counter for multi threaded use. Can be used with: intrusive_ptr<>.
+// Adapter for intrusive counters below.
+template<class Counter> class intrusive_counter_adapter
+{
+public:
+    using integer_type = typename Counter::integer_type;
+
+    static integer_type Add_Ref(Counter *counter) { return counter->Add_Ref(); }
+    static integer_type Remove_Ref(Counter *counter) { return counter->Remove_Ref(); }
+    static integer_type Use_Count(const Counter *counter) { return counter->Use_Count(); }
+};
+
+// Intrusive atomic counter for multi threaded use. Can be used with rts::intrusive_ptr<>.
 template<typename Integer, typename Derived, typename Deleter = NewDeleter<Derived>> class atomic_intrusive_counter_i
 {
 public:
@@ -130,8 +141,8 @@ public:
     ~atomic_intrusive_counter_i() {}
 #endif
 
-    integer_type AddRef() const { return detail::AddRef_Atomic<integer_type>(m_counter); }
-    integer_type Release() const
+    integer_type Add_Ref() const { return detail::Add_Ref_Atomic<integer_type>(m_counter); }
+    integer_type Remove_Ref() const
     {
         const integer_type new_counter = Atomic_Decrement(&m_counter);
         if (new_counter == integer_type{ 0 }) {
@@ -140,11 +151,11 @@ public:
 #endif
             Invoke_Deleter<deleter_type>(const_cast<derived_type *>(static_cast<const derived_type *>(this)));
         } else {
-            detail::Release_Check(new_counter);
+            detail::Remove_Ref_Check(new_counter);
         }
         return new_counter;
     }
-    integer_type UseCount() const
+    integer_type Use_Count() const
     {
         captainslog_dbgassert(false, "Use count cannot be used in multi threaded context");
         return integer_type{ -1 };
@@ -154,7 +165,7 @@ private:
     mutable volatile integer_type m_counter = integer_type{ 0 };
 };
 
-// #FEATURE Non-intrusive atomic counter for multi threaded use. Can be used with: shared_ptr_t<>.
+// Non-intrusive atomic counter for multi threaded use. Can be used with rts::shared_ptr_t<>.
 template<typename Integer> class atomic_shared_counter_i
 {
 public:
@@ -165,9 +176,9 @@ public:
     atomic_shared_counter_i &operator=(const atomic_shared_counter_i &) = delete;
     ~atomic_shared_counter_i() { detail::Destructor_Ref_Check(m_counter); }
 
-    integer_type AddRef() const { return detail::AddRef_Atomic<integer_type>(m_counter); }
-    integer_type Release() const { return detail::Release_Atomic<integer_type>(m_counter); }
-    integer_type UseCount() const
+    integer_type Add_Ref() const { return detail::Add_Ref_Atomic<integer_type>(m_counter); }
+    integer_type Remove_Ref() const { return detail::Remove_Ref_Atomic<integer_type>(m_counter); }
+    integer_type Use_Count() const
     {
         captainslog_dbgassert(false, "Use count cannot be used in multi threaded context");
         return integer_type{ -1 };
@@ -177,8 +188,9 @@ private:
     mutable volatile integer_type m_counter = integer_type{ 0 };
 };
 
-// #FEATURE Intrusive counter for single threaded use. Can be used with intrusive_ptr<>.
 // #TODO Add debug feature to verify counter is not touched from 2 different threads.
+
+// Intrusive counter for single threaded use. Can be used with rts::intrusive_ptr<>.
 template<typename Integer, typename Derived, typename Deleter = NewDeleter<Derived>> class intrusive_counter_i
 {
 public:
@@ -199,8 +211,8 @@ public:
     ~intrusive_counter_i() {}
 #endif
 
-    integer_type AddRef() const { return detail::AddRef<integer_type>(m_counter); }
-    integer_type Release() const
+    integer_type Add_Ref() const { return detail::Add_Ref<integer_type>(m_counter); }
+    integer_type Remove_Ref() const
     {
         integer_type counter = --m_counter;
         if (counter == integer_type{ 0 }) {
@@ -209,18 +221,19 @@ public:
 #endif
             Invoke_Deleter<deleter_type>(const_cast<derived_type *>(static_cast<const derived_type *>(this)));
         } else {
-            detail::Release_Check(counter);
+            detail::Remove_Ref_Check(counter);
         }
         return counter;
     }
-    integer_type UseCount() const { return m_counter; }
+    integer_type Use_Count() const { return m_counter; }
 
 private:
     mutable integer_type m_counter = integer_type{ 0 };
 };
 
-// #FEATURE Non-intrusive counter for single threaded use. Can be used with shared_ptr_t<>.
 // #TODO Add debug feature to verify counter is not touched from 2 different threads.
+
+// Non-intrusive counter for single threaded use. Can be used with rts::shared_ptr_t<>.
 template<typename Integer> class shared_counter_i
 {
 public:
@@ -231,9 +244,9 @@ public:
     shared_counter_i &operator=(const shared_counter_i &) = delete;
     ~shared_counter_i() { detail::Destructor_Ref_Check(m_counter); }
 
-    integer_type AddRef() const { return detail::AddRef<integer_type>(m_counter); }
-    integer_type Release() const { return detail::Release<integer_type>(m_counter); }
-    integer_type UseCount() const { return m_counter; }
+    integer_type Add_Ref() const { return detail::Add_Ref<integer_type>(m_counter); }
+    integer_type Remove_Ref() const { return detail::Remove_Ref<integer_type>(m_counter); }
+    integer_type Use_Count() const { return m_counter; }
 
 private:
     mutable integer_type m_counter = integer_type{ 0 };
@@ -245,10 +258,12 @@ using RefCounterInteger = AtomicType32;
 
 template<typename Derived, typename Deleter = NewDeleter<Derived>>
 using atomic_intrusive_counter = atomic_intrusive_counter_i<RefCounterInteger, Derived, Deleter>;
+
 template<typename Derived, typename Deleter = NewDeleter<Derived>>
 using intrusive_counter = intrusive_counter_i<RefCounterInteger, Derived, Deleter>;
 
 using atomic_shared_counter = atomic_shared_counter_i<RefCounterInteger>;
+
 using shared_counter = shared_counter_i<RefCounterInteger>;
 
 } // namespace rts
