@@ -16,30 +16,32 @@
 
 #include "bittype.h"
 
+// #TODO Remove this file and use "typesize.h" when available
+
 namespace rts
 {
 
 // clang-format off
 
-template<size_t Size> struct signed_integer_for_size;
-template<size_t Size> struct unsigned_integer_for_size;
+template<size_t Size> struct SignedIntegerForSize;
+template<size_t Size> struct UnsignedIntegerForSize;
 
-template<> struct signed_integer_for_size<1>{ using type = int8_t; };
-template<> struct signed_integer_for_size<2>{ using type = int16_t; };
-template<> struct signed_integer_for_size<4>{ using type = int32_t; };
-template<> struct signed_integer_for_size<8>{ using type = int64_t; };
+template<> struct SignedIntegerForSize<1>{ using type = int8_t; };
+template<> struct SignedIntegerForSize<2>{ using type = int16_t; };
+template<> struct SignedIntegerForSize<4>{ using type = int32_t; };
+template<> struct SignedIntegerForSize<8>{ using type = int64_t; };
 
-template<> struct unsigned_integer_for_size<1>{ using type = uint8_t; };
-template<> struct unsigned_integer_for_size<2>{ using type = uint16_t; };
-template<> struct unsigned_integer_for_size<4>{ using type = uint32_t; };
-template<> struct unsigned_integer_for_size<8>{ using type = uint64_t; };
+template<> struct UnsignedIntegerForSize<1>{ using type = uint8_t; };
+template<> struct UnsignedIntegerForSize<2>{ using type = uint16_t; };
+template<> struct UnsignedIntegerForSize<4>{ using type = uint32_t; };
+template<> struct UnsignedIntegerForSize<8>{ using type = uint64_t; };
 
-template<class T> struct signed_integer{ using type = typename signed_integer_for_size<sizeof(T)>::type; };
-template<class T> struct unsigned_integer{ using type = typename unsigned_integer_for_size<sizeof(T)>::type; };
+template<class T> struct SignedInteger{ using type = typename SignedIntegerForSize<sizeof(T)>::type; };
+template<class T> struct UnsignedInteger{ using type = typename UnsignedIntegerForSize<sizeof(T)>::type; };
 
-template<class T> using signed_integer_t = typename signed_integer<T>::type;
-template<class T> using unsigned_integer_t = typename unsigned_integer<T>::type;
+template<class T> using SignedIntegerT = typename SignedInteger<T>::type;
+template<class T> using UnsignedIntegerT = typename UnsignedInteger<T>::type;
 
 // clang-format off
 
-}
+} // namespace rts

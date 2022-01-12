@@ -53,10 +53,10 @@ namespace
 {
 template<typename IntegerType> constexpr size_t Bit_To_Index(IntegerType integer)
 {
-    using UnsignedIntegerType = rts::unsigned_integer<IntegerType>::type;
+    using UnsignedInt = rts::UnsignedInteger<IntegerType>::type;
     size_t n = 0;
     for (; n < sizeof(IntegerType) * 8; ++n) {
-        if (UnsignedIntegerType(integer) & (UnsignedIntegerType(1) << n)) {
+        if (UnsignedInt(integer) & (UnsignedInt(1) << n)) {
             return n;
         }
     }

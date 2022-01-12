@@ -96,7 +96,7 @@ template<typename CharType> CHAR_TRAITS_CONSTEXPR std::size_t String_Length(cons
 
 template<typename CharType> CHAR_TRAITS_CONSTEXPR int String_Compare(const CharType *s1, const CharType *s2)
 {
-    using UnsignedType = typename unsigned_integer_for_size<sizeof(CharType)>::type;
+    using UnsignedType = typename UnsignedIntegerForSize<sizeof(CharType)>::type;
     const CharType null_char = Get_Char<CharType>('\0');
 
     while (*s1 != null_char && *s1 == *s2) {
@@ -111,7 +111,7 @@ template<typename CharType> CHAR_TRAITS_CONSTEXPR int String_Compare(const CharT
 template<typename CharType>
 CHAR_TRAITS_CONSTEXPR int String_N_Compare(const CharType *s1, const CharType *s2, std::size_t count)
 {
-    using UnsignedType = typename unsigned_integer_for_size<sizeof(CharType)>::type;
+    using UnsignedType = typename UnsignedIntegerForSize<sizeof(CharType)>::type;
     const CharType null_char = Get_Char<CharType>('\0');
 
     while (count != 0 && *s1 != null_char && *s1 == *s2) {
