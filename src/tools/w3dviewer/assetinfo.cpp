@@ -18,6 +18,7 @@
 AssetInfoClass::AssetInfoClass(const char *name, AssetType type, RenderObjClass *robj, TextureClass *texture) :
     m_name(name), m_type(type), m_texture(texture), m_renderObj(nullptr)
 {
+    // Note: The reference for m_texture is added and removed externally (bad).
     Ref_Ptr_Set(m_renderObj, robj);
     GetHierarchyName();
 }

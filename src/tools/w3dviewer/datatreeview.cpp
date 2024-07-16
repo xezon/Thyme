@@ -458,6 +458,7 @@ void CDataTreeView::AddTextures()
                 m_categoryTreeItems[CATEGORY_MATERIAL],
                 TVI_SORT);
 
+            texture->Add_Ref();
             AssetInfoClass *info = new AssetInfoClass(texture->Get_Name(), ASSET_TYPE_TEXTURE, nullptr, texture);
             GetTreeCtrl().SetItem(newitem, TVIF_PARAM, nullptr, 0, 0, 0, 0, (LPARAM)info);
         }
