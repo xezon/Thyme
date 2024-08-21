@@ -298,8 +298,10 @@ void TextureLoader::Request_Thumbnail(TextureBaseClass *texture)
             // Possibly this code isn't ever actually used with Thumbnail code in general being minimally
             // called.
             if (texture->Get_Thumbnail_Load_Task() != nullptr) {
-                FastCriticalSectionClass::LockClass lock(g_foregroundCritSec);
-                g_foregroundQueue.Remove(texture->Get_Thumbnail_Load_Task());
+                {
+                    FastCriticalSectionClass::LockClass lock(g_foregroundCritSec);
+                    g_foregroundQueue.Remove(texture->Get_Thumbnail_Load_Task());
+                }
                 texture->Get_Thumbnail_Load_Task()->Destroy();
             }
         } else {
@@ -496,7 +498,8 @@ void TextureLoader::Process_Foreground_Thumbnail(TextureLoadTaskClass *task)
     switch (task->Get_Load_State()) {
         case TextureLoadTaskClass::STATE_NONE:
             Load_Thumbnail(task->Get_Texture());
-        case TextureLoadTaskClass::STATE_FOREGROUND_OVERRIDE: // Fallthrough
+            [[fallthrough]];
+        case TextureLoadTaskClass::STATE_FOREGROUND_OVERRIDE:
             task->Destroy();
             break;
         default:
