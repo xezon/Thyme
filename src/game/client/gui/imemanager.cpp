@@ -566,7 +566,7 @@ void IMEManager::Update_Candidate_List(int candidate_flags)
                     CANDIDATELIST *list = new CANDIDATELIST[size];
 
                     if (list != nullptr) {
-                        memset(list, 0, size);
+                        memset(list, 0, sizeof(CANDIDATELIST) * size);
                         bool b2 = true;
                         DWORD size2;
 
