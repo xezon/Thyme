@@ -94,8 +94,7 @@ void Init_Memory_Manager()
         captainslog_dbgassert(g_thePreMainInitFlag, "memory manager is already inited");
     }
 
-#if defined GAME_DEBUG && !defined __SANITIZE_ADDRESS__
-
+#if defined GAME_DEBUG
     // Check that new and delete both use our custom implementation.
     g_theLinkChecker = 0;
 
@@ -180,7 +179,6 @@ void Free_From_W3D_Mem_Pool(void *pool, void *data)
 }
 
 // These all override the global news and deletes just by being linked.
-#ifndef __SANITIZE_ADDRESS__
 void *operator new(size_t bytes)
 {
     ++g_theLinkChecker;
@@ -199,7 +197,7 @@ void *operator new[](size_t bytes)
     return g_dynamicMemoryAllocator->Allocate_Bytes(bytes);
 }
 
-void operator delete(void *ptr)
+void operator delete(void *ptr) noexcept
 {
     ++g_theLinkChecker;
     Init_Memory_Manager_Pre_Main();
@@ -208,12 +206,23 @@ void operator delete(void *ptr)
     g_dynamicMemoryAllocator->Free_Bytes(ptr);
 }
 
-void operator delete[](void *ptr)
+void operator delete[](void *ptr) noexcept
 {
     ++g_theLinkChecker;
     Init_Memory_Manager_Pre_Main();
     captainslog_dbgassert(g_dynamicMemoryAllocator, "must init memory manager before calling global operator delete");
 
     g_dynamicMemoryAllocator->Free_Bytes(ptr);
+}
+
+#if __cplusplus >= 201402L
+void operator delete(void *ptr, size_t sz) noexcept
+{
+    operator delete(ptr);
+}
+
+void operator delete[](void *ptr, size_t sz) noexcept
+{
+    operator delete[](ptr);
 }
 #endif
