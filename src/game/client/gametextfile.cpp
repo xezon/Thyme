@@ -849,10 +849,6 @@ void GameTextFile::Read_STR_File_T(FileRef &file, StringInfosType &string_infos,
 
             case StrReadStep::TEXT:
                 if (languages.has(read_language)) {
-                    if (read_language == LanguageID::ARABIC)
-                    {
-                        options = Options::Value::RTL_REVERSE;
-                    }
                     Parse_STR_Text(buf, Get_Text(string_info, read_language), options);
                 }
                 Change_Step(step, StrReadStep::SEARCH, eol_chars);
