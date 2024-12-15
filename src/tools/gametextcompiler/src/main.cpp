@@ -106,7 +106,7 @@ All|English|German|French|Spanish|Italian|Japanese|Korean|Chinese|Brazilian|Poli
 
 OPTION:enum
 OPTION takes one [1] or multiple [n] options, separated by pipe:
-None|Check_Buffer_Length_On_Load|Check_Buffer_Length_On_Save|
+None|Check_Buffer_Length_On_Load|Check_Buffer_Length_On_Save|RTL_Reverse
 Keep_Obsolete_Spaces_On_Load|Write_Extra_LF_On_STR_Save|Optimize_Memory_Size
 )#");
 //       1         2         3         4         5         6         7         8         9        10        11        12
