@@ -849,6 +849,10 @@ void GameTextFile::Read_STR_File_T(FileRef &file, StringInfosType &string_infos,
 
             case StrReadStep::TEXT:
                 if (languages.has(read_language)) {
+                    if (read_language == LanguageID::ARABIC)
+                    {
+                        options = Options::Value::RTL_REVERSE;
+                    }
                     Parse_STR_Text(buf, Get_Text(string_info, read_language), options);
                 }
                 Change_Step(step, StrReadStep::SEARCH, eol_chars);
@@ -922,6 +926,10 @@ void GameTextFile::Parse_STR_Text(Utf8Array &buf, Utf16String &text, Options opt
 
     // Translate final UTF16 string.
     text.Translate(buf.data());
+    if (options.has(Options::Value::RTL_REVERSE)) {
+        text.ReverseString();
+    }
+
 }
 
 void GameTextFile::Parse_STR_Speech(Utf8View &buf, Utf8String &speech)
@@ -1151,6 +1159,10 @@ bool GameTextFile::Write_Multi_STR_Entry(
     For_Each_Language(languages, [&](LanguageID language) {
         const size_t index = static_cast<size_t>(language);
         ok &= Write_STR_Language(file, language);
+        if (language == LanguageID::US)
+        {
+            options = Options::Value::RTL_REVERSE;
+        }
         ok &= Write_STR_Text(file, string_info.text[index], options, buf, str);
     });
 
@@ -1221,6 +1233,9 @@ bool GameTextFile::Write_STR_Label(FileRef &file, const Utf8String &label)
 bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8Array &buf, Utf8String &str)
 {
     // Convert utf16 to utf8.
+    if (options.has(Options::Value::RTL_REVERSE)) {
+        text.ReverseString();
+    }
     str.Translate(text.Str());
 
     // STR does support escaped characters for special control characters. Write them out as escaped characters so they
