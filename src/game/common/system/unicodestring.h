@@ -132,6 +132,7 @@ public:
     void Concat(unichar_t c);
     void Concat(const unichar_t *s);
     void Concat(Utf16String const &string) { Concat(string.Str()); }
+    void ReverseString();
 
     void Trim();
     void To_Lower();

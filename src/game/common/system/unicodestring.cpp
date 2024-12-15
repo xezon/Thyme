@@ -334,6 +334,36 @@ void Utf16String::Trim()
     }
 }
 
+/**
+ * Reverse string for RTL languages
+ */
+void Utf16String::ReverseString()
+{
+    if (m_data == nullptr) {
+        return;
+    }
+
+    size_type len = Get_Length();
+    if (len <= 1) {
+        return;
+    }
+
+    unichar_t* buffer = Get_Buffer_For_Read(len);
+
+    size_t start = 0;
+    size_t end = len - 1;
+
+    while (start < end) {
+        unichar_t temp = buffer[start];
+        buffer[start] = buffer[end];
+        buffer[end] = temp;
+
+        start++;
+        end--;
+    }
+}
+
+
 void Utf16String::To_Lower()
 {
     unichar_t buf[MAX_FORMAT_BUF_LEN];
