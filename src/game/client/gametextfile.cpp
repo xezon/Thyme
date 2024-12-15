@@ -362,7 +362,7 @@ bool GameTextFile::Save(const char *filename, FileType filetype, Languages langu
             break;
         }
         case FileType::STR: {
-            success = Write_STR_File(file, Get_String_Infos(), m_options);
+            success = Write_STR_File(file, const_cast<StringInfos &>(Get_String_Infos()), m_options);
             break;
         }
         case FileType::MULTI_STR: {
@@ -1139,7 +1139,7 @@ bool GameTextFile::Write_Multi_STR_File(
     Utf8String str;
     str.Get_Buffer_For_Read(TEXT_8_SIZE);
 
-    for (const MultiStringInfo &string_info : multi_string_infos) {
+    for (MultiStringInfo &string_info : multi_string_infos) {
         if (!string_info.label.Is_Empty()) {
             if (!Write_Multi_STR_Entry(file, string_info, languages, options, buf, str)) {
                 return false;
@@ -1150,7 +1150,7 @@ bool GameTextFile::Write_Multi_STR_File(
 }
 
 bool GameTextFile::Write_Multi_STR_Entry(
-    FileRef &file, const MultiStringInfo &string_info, Languages languages, Options options, Utf8Array &buf, Utf8String &str)
+    FileRef &file, MultiStringInfo &string_info, Languages languages, Options options, Utf8Array &buf, Utf8String &str)
 {
     bool ok = true;
 
@@ -1190,7 +1190,7 @@ bool GameTextFile::Write_STR_Language(FileRef &file, LanguageID language)
     return ok;
 }
 
-bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos, Options options)
+bool GameTextFile::Write_STR_File(FileRef &file, StringInfos &string_infos, Options options)
 {
     GAMETEXTLOG_INFO("Writing text file '%s' in STR format", file.Get_File_Name().Str());
 
@@ -1198,7 +1198,7 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
     Utf8String str;
     str.Get_Buffer_For_Read(TEXT_8_SIZE);
 
-    for (const StringInfo &string_info : string_infos) {
+    for (StringInfo &string_info : string_infos) {
         if (!string_info.label.Is_Empty()) {
             if (!Write_STR_Entry(file, string_info, options, buf, str)) {
                 return false;
@@ -1209,7 +1209,7 @@ bool GameTextFile::Write_STR_File(FileRef &file, const StringInfos &string_infos
 }
 
 bool GameTextFile::Write_STR_Entry(
-    FileRef &file, const StringInfo &string_info, Options options, Utf8Array &buf, Utf8String &str)
+    FileRef &file, StringInfo &string_info, Options options, Utf8Array &buf, Utf8String &str)
 {
     bool ok = true;
     ok &= Write_STR_Label(file, string_info.label);
@@ -1230,7 +1230,7 @@ bool GameTextFile::Write_STR_Label(FileRef &file, const Utf8String &label)
     return ok;
 }
 
-bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8Array &buf, Utf8String &str)
+bool GameTextFile::Write_STR_Text(FileRef &file, Utf16String &text, Options options, Utf8Array &buf, Utf8String &str)
 {
     // Convert utf16 to utf8.
     if (options.has(Options::Value::RTL_REVERSE)) {
