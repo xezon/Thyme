@@ -119,6 +119,8 @@ All capital words are NOT interpreted keywords and are substituted by the comman
 [1] and [n] words show that argument takes one or multiple values.
 Commands and command arguments are not case sensitive.
 
+WARNING: Commands that save files will overwrite existing files without confirmation.
+
 -options OPTION[n]
   > Sets option(s) for loaded and saved file.
 
@@ -142,6 +144,18 @@ Commands and command arguments are not case sensitive.
 
 -save_str_languages LANGUAGE[n]
   > Sets language(s) to save Multi STR file with.
+
+Example 1: Convert a CSF file to STR format
+  > gametextcompiler.exe -load_csf D:\generals.csf -save_str D:\generals.str
+
+Example 2: Convert an STR file to CSF format with given language
+  > gametextcompiler.exe -load_str D:\generals.str -swap_and_set_language English -save_csf D:\generals.csf
+
+Example 3: Load a specific language from a multi-language file and save to a CSF file
+  > gametextcompiler.exe -load_str_languages English -load_str D:\generals.str -save_csf D:\generals.csf
+
+Example 4: Convert a CSF file to STR format with RTL reversing
+  > -load_csf D:\generals.csf -save_str D:\generals.str -options RTL_REVERSE
 )#");
 }
 // clang-format on
@@ -219,7 +233,7 @@ struct EngineSystemsCreator
 
 int main(int argc, const char *argv[])
 {
-    Print_Line("Game Text Compiler 1.1 by The Assembly Armada");
+    Print_Line("Game Text Compiler 1.2 by The Assembly Armada");
 
     if (argc < 2) {
         Print_Help();

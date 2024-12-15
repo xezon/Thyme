@@ -314,6 +314,9 @@ endif()
 # Build Thyme
 add_subdirectory(src)
 
+# Build gametextcompiler
+add_subdirectory(src/tools/gametextcompiler)
+
 if(STANDALONE)
     list(APPEND INSTALL_TARGETS thyme)
 endif()
