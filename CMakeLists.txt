@@ -314,6 +314,9 @@ endif()
 # Build Thyme
 add_subdirectory(src)
 
+# Build Game Model Converter
+add_subdirectory(src/tools/gamemodelconverter)
+
 if(STANDALONE)
     list(APPEND INSTALL_TARGETS thyme)
 endif()
