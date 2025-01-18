@@ -1,6 +1,9 @@
 set(CMAKE_CXX_STANDARD 17)
 
 set(GAMEMODELCONVERTER_SOURCES
+        src/gamemodelcommon.h
+        src/gamemodelfile.cpp
+        src/gamemodelfile.h
         src/commands.cpp
         src/commands.h
         src/log.cpp
@@ -12,6 +15,6 @@ set(GAMEMODELCONVERTER_SOURCES
 
 set(GAMEMODELCONVERTER_INCLUDES src)
 
-add_executable(gamemodelconverter ${GAMEMODELCONVERTER_SOURCES})
-target_include_directories(gamemodelconverter PRIVATE ${GAMEMODELCONVERTER_INCLUDES})
-target_link_libraries(gamemodelconverter PRIVATE thyme_lib)
+add_executable(GameModelConverter ${GAMEMODELCONVERTER_SOURCES})
+target_include_directories(GameModelConverter PRIVATE ${GAMEMODELCONVERTER_INCLUDES})
+target_link_libraries(GameModelConverter PRIVATE thyme_lib)

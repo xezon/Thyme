@@ -86,7 +86,7 @@ CommandId Command::s_id = 1000000000;
 
 bool LoadW3DCommand::Execute() const
 {
-    return m_filePtr->Load_CSF(m_filePath.c_str());
+    return m_filePtr->Load_W3D(m_filePath.c_str());
 }
 
 bool LoadW3XCommand::Execute() const

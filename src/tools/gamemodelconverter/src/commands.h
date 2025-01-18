@@ -14,8 +14,7 @@
  */
 #pragma once
 
-// TODO gameGameModelfile.h
-#include <gametextfile.h>
+#include <gamemodelfile.h>
 #include <memory>
 #include <string>
 

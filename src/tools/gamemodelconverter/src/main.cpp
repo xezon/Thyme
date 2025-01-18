@@ -132,16 +132,16 @@ WARNING: Commands that save files will overwrite existing files without confirma
  > Saves the loaded data as a 3ds Max file to the given file path.
 
 Example 1: Convert a W3D file to W3X format
- > w3d2w3xcompiler.exe -load_w3d D:\models\model.w3d -convert_w3d_to_w3x D:\models\model.w3x
+ > GameModelConverter.exe -load_w3d D:\models\model.w3d -convert_w3d_to_w3x D:\models\model.w3x
 
 Example 2: Convert a W3X file to W3D format
- > w3d2w3xcompiler.exe -load_w3x D:\models\model.w3x -convert_w3x_to_w3d D:\models\model.w3d
+ > GameModelConverter.exe -load_w3x D:\models\model.w3x -convert_w3x_to_w3d D:\models\model.w3d
 
 Example 3: Load a Blender file and save as W3D
- > w3d2w3xcompiler.exe -load_blend D:\models\model.blend -save_w3d D:\models\model.w3d
+ > GameModelConverter.exe -load_blend D:\models\model.blend -save_w3d D:\models\model.w3d
 
 Example 4: Load a W3D file and save as Max format
- > w3d2w3xcompiler.exe -load_w3d D:\models\model.w3d -save_max D:\models\model.max
+ > GameModelConverter.exe -load_w3d D:\models\model.w3d -save_max D:\models\model.max
 )#");
 }
 // clang-format on
@@ -226,8 +226,7 @@ int main(int argc, const char *argv[])
         Print_Help();
         return MissingArgumentsError;
     }
-    // TODO: W3DFILE
-    GameModelFILE::Set_Log_File(stderr);
+    GameModelFile::Set_Log_File(stderr);
     CaptainsLogCreator captains_log_creator;
     EngineSystemsCreator engine_systems_creator;
 

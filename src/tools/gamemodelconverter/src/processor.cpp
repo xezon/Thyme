@@ -359,7 +359,7 @@ Processor::Result Processor::Parse_Command_Argument(
         case CommandArgumentId::OPTIONS: {
             GameModelOption option;
 
-            if (Name_To_Game_Text_Option(str.c_str(), option)) {
+            if (Name_To_Game_Model_Option(str.c_str(), option)) {
                 GameModelOptions options;
                 const GameModelOptions *options_ptr = std::get_if<GameModelOptions>(&argument.value);
                 if (options_ptr != nullptr) {
