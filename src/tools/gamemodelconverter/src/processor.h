@@ -75,7 +75,6 @@ private:
     {
         std::size_t operator()(const FileId &key) const { return std::hash<int>{}(key.value); }
     };
-    // TODO GameModelFilePtr change
     using FileMap = std::unordered_map<FileId, GameModelFilePtr, FileIdHash>;
 
     struct FilePath
@@ -85,7 +84,6 @@ private:
 
     struct CommandArgument
     {
-        // TODO GameModelOptions change
         std::variant<FileId, FilePath, GameModelOptions> value;
     };
 

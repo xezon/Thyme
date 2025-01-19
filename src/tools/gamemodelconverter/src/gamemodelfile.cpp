@@ -86,7 +86,7 @@ bool Name_To_Game_Model_Option(const char *name, GameModelOption &option)
 
 FILE *GameModelFile::s_logfile = nullptr;
 GameModelFile::GameModelFile() : // Initialize with default options
-                                 // TODO chunks array
+                                 // TODO chunks array/buffer
     m_options(GameModelOption::NONE), m_chunkInfos() {};
 
 bool GameModelFile::Is_Loaded() const
@@ -209,7 +209,6 @@ bool GameModelFile::Load(const char *filename, FileType filetype)
             // success = Read_W3X_File(file, chunk_infos, m_options);
         case FileType::BLEND:
         case FileType::MAX: {
-            // TODO: Implement loading for other file types
             GAMEMODELLOG_WARN("Loading for file type '%s' not yet implemented.", filetype);
             break;
         }
@@ -260,8 +259,6 @@ bool GameModelFile::Save(const char *filename, FileType filetype)
         case FileType::W3X:
         case FileType::BLEND:
         case FileType::MAX: {
-            // const int filemode = Encode_Buffered_File_Mode(File::WRITE | File::CREATE | File::BINARY, 1024 * 32);
-            // FileRef file = g_theFileSystem->Open_File(filename, filemode);
             // TODO: W3X
             // success = Write_W3X_File(file, Get_Chunk_Infos(), m_options);
             GAMEMODELLOG_WARN("Saving for file type '%s' not yet implemented.", filetype);
@@ -324,12 +321,17 @@ void GameModelFile::Reset()
 
 GameModelFile::FileType GameModelFile::Get_File_Type(const char *filename, FileType filetype)
 {
-    // TODO Implement file type detection logic here based on filename extension.
     if (filetype == FileType::AUTO) {
         std::string fn(filename);
         if (fn.find(".w3d") != std::string::npos)
             return FileType::W3D;
         // Add checks for .w3x, .blend, .max here
+        if (fn.find(".w3x") != std::string::npos)
+            return FileType::W3X;
+        if (fn.find(".blend") != std::string::npos)
+            return FileType::BLEND;
+        if (fn.find(".max") != std::string::npos)
+            return FileType::MAX;
     }
     return filetype;
 }
@@ -396,7 +398,7 @@ bool GameModelFile::Read_W3D_Chunks(FileRef &file, ChunkInfos &parentChunks)
         // TODO rts::Read_Any(file.Get_File(), parentChunks);
         if (file.Read(chunk.data.data(), dataSize) != dataSize) {
             GAMEMODELLOG_ERROR("File '%s': Failed to read chunk data.\n", file.Get_File_Name().Str());
-            return false; // TODO return a specific W3D error code
+            return false; // TODO return a specific W3D error code ?
         }
 
         if (chunkSize & 0x80000000) {

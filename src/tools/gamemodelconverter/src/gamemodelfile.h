@@ -156,6 +156,7 @@ private:
 private:
     Options m_options;
     ChunkInfos m_chunkInfos;
+    // TODO chunks array/buffer
     static FILE *s_logfile;
 };
 
