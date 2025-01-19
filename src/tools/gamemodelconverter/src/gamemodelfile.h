@@ -112,84 +112,49 @@ private:
     struct LengthInfo
     {
         // TODO LengthInfo of chunks
-        size_t totalLength;
-        size_t chunkCount;
-
-        LengthInfo() : totalLength(0), chunkCount(0) {}
-
-        void AddChunk(size_t length) {
-            totalLength += length;
-            chunkCount++;
-        }
-
-        void Reset() {
-            totalLength = 0;
-            chunkCount = 0;
-        }
+        int max_chunk_len;
     };
 
-    // TODO chunk size
-    enum : size_t
-    {
-        CHUNK_SIZE = 1024
-    };
-
-    using ChunkInfosPtrArray = std::vector<std::shared_ptr<ChunkInfos>>;
-    using ConstChunkInfosPtrArray = rts::array<const ChunkInfos *, CHUNK_SIZE>;
-    using ChunkInfosArray = rts::array<ChunkInfos, CHUNK_SIZE>;
-    using Utf8Array = rts::array<char, CHUNK_SIZE>;
-    using Utf16Array = rts::array<unichar_t, CHUNK_SIZE>;
-    using Utf8View = rts::array_view<char>;
-    using Utf16View = rts::array_view<unichar_t>;
 
 private:
     bool Load(const char *filename, FileType filetype);
     bool Save(const char *filename, FileType filetype);
 
-    void Check_Buffer_Lengths();
-
-    ChunkInfos &Mutable_Chunk_Infos();
-
-    static ChunkInfosPtrArray Build_Chunk_Infos_Ptrs_Array(ChunkInfosArray &chunk_infos_array);
-    static ConstChunkInfosPtrArray Build_Const_Chunk_Infos_Ptrs_Array(
-        ChunkInfosArray &chunk_infos_array);
+//    void Check_Buffer_Lengths();
+//
+//    ChunkInfos &Mutable_Chunk_Infos();
+//
+//    static ChunkInfosPtrArray Build_Chunk_Infos_Ptrs_Array(ChunkInfosArray &chunk_infos_array);
+//    static ConstChunkInfosPtrArray Build_Const_Chunk_Infos_Ptrs_Array(
+//        ChunkInfosArray &chunk_infos_array);
 
     static size_t Get_Max_Size(const ConstChunkInfosPtrArray &chunk_infos_ptrs);
 
     static FileType Get_File_Type(const char *filename, FileType filetype);
 
-    static void Collect_Length_Info(LengthInfo &len_info, const ChunkInfos &chunks);
-    static void Log_Length_Info(const LengthInfo &len_info);
-    static void Assert_Length_Info(const LengthInfo &len_info);
+//    static void Collect_Length_Info(LengthInfo &len_info, const ChunkInfos &chunks);
+//    static void Log_Length_Info(const LengthInfo &len_info);
+//    static void Assert_Length_Info(const LengthInfo &len_info);
 
-	// TODO Get_Specific_Chunk
-    static ChunkInfos &Get_Specific_Chunk(ChunkInfo &chunk_info);
+    // TODO need a significant rewrite based on the chunk structure
+    static Utf8Array &Get_Chunk_Data(ChunkInfo &chunk_info);
 
     static bool Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Options options);
-    template<typename ChunkInfosType>
-    static void Read_W3D_File_T(FileRef &file, ChunkInfosType &chunk_infos, Options options);
-	// TODO Parse_W3D_Specific_Step
-    static ModelParseResult Parse_W3D_Specific_Step(Utf8Array &buf, ChunkInfo &chunk, Options options);
-    static bool Is_W3D_Pre_Specific(Utf8View buf);
-    static bool Is_W3D_Comment(const char *cchunk);
-    static bool Is_W3D_End(const char *cchunk);
-    static void Change_Step(ModelReadStep &step, ModelReadStep new_step, const char *&eol_chars);
 
-    // TODO read specific chunk
-    static bool Read_W3D_Header(FileRef &file, ChunkInfos &chunk_infos);
-    static bool Read_W3D_Entry(FileRef &file, ChunkInfo &chunk_info, Options options, Utf16Array &buf);
+    // TODO need substantial changes based on the chunk structure
+    // Recursive function to read/write chunks and subchunks
+    static bool Read_W3D_Chunks(FileRef &file, ChunkInfos& parentChunks);
+    static bool Write_W3D_Chunks(FileRef &file, const ChunkInfos& parentChunks);
+
+    //Helper function to write a single chunk to the file
+    static bool Write_W3D_Chunk(FileRef &file, const ChunkInfo& chunk);
 
     static bool Write_W3D_File(FileRef &file, const ChunkInfos &chunk_infos, Options options);
-    static bool Write_W3D_Entry(
-        FileRef &file, const ChunkInfo &chunk_info, Options options, Utf8Array &buf, ChunkInfo &str);
-    static bool Write_W3D_Chunk(FileRef &file, const ChunkInfo &chunk);
-    static bool Write_W3D_End(FileRef &file);
 
     static void Log_Line(const char *prefix, const char *format, ...);
 
 private:
     Options m_options;
-    ChunkInfosArray m_chunkInfosArray;
     ChunkInfos m_chunkInfos;
     static FILE *s_logfile;
 };

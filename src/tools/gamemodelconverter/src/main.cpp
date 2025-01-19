@@ -174,11 +174,6 @@ LocalFileSystem *Create_Local_File_System()
     return new Win32LocalFileSystem;
 }
 
-ArchiveFileSystem *Create_Archive_File_System()
-{
-    return new Win32BIGFileSystem;
-}
-
 struct CaptainsLogCreator
 {
     CaptainsLogCreator()
@@ -200,10 +195,6 @@ struct EngineSystemsCreator
         g_theFileSystem = new FileSystem;
         Init_Subsystem(g_theLocalFileSystem, "TheLocalFileSystem", Create_Local_File_System());
         g_theLocalFileSystem->Init();
-#if 0
-        Init_Subsystem(g_theArchiveFileSystem, "TheArchiveFileSystem", Create_Archive_File_System());
-        g_theArchiveFileSystem->Init();
-#endif
     }
     ~EngineSystemsCreator()
     {
@@ -220,7 +211,7 @@ struct EngineSystemsCreator
 
 int main(int argc, const char *argv[])
 {
-    Print_Line("W3D W3X Compiler v1.0 By The Assembly Armada");
+    Print_Line("Game Model Converter v1.0 By The Assembly Armada");
 
     if (argc < 2) {
         Print_Help();

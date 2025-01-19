@@ -20,7 +20,6 @@
 #include "utility/fileutil.h"
 #include "utility/stlutil.h"
 #include "utility/stringutil.h"
-#include "w3dfilesystem.h"
 
 #define GAMEMODELLOG_TRACE(fmt, ...) \
     captainslog_trace(fmt, ##__VA_ARGS__); \
@@ -32,7 +31,7 @@
 
 #define GAMEMODELLOG_INFO(fmt, ...) \
     captainslog_info(fmt, ##__VA_ARGS__); \
-    GameModelFile::Log_Line("", fmt, ##__VA_ARGS__)
+    GameModelFile::Log_Line("INFO : ", fmt, ##__VA_ARGS__)
 
 #define GAMEMODELLOG_WARN(fmt, ...) \
     captainslog_warn(fmt, ##__VA_ARGS__); \
@@ -87,7 +86,8 @@ bool Name_To_Game_Model_Option(const char *name, GameModelOption &option)
 
 FILE *GameModelFile::s_logfile = nullptr;
 GameModelFile::GameModelFile() : // Initialize with default options
-    m_options(GameModelOption::NONE), m_chunkInfosArray() {};
+                                 // TODO chunks array
+    m_options(GameModelOption::NONE), m_chunkInfos() {};
 
 bool GameModelFile::Is_Loaded() const
 {
@@ -124,7 +124,6 @@ bool GameModelFile::Load_MAX(const char *filename)
 bool GameModelFile::Save(const char *filename)
 {
     FileType filetype = Get_File_Type(filename, FileType::AUTO);
-
     return Save(filename, filetype);
 }
 
@@ -151,7 +150,7 @@ bool GameModelFile::Save_MAX(const char *filename)
 const ChunkInfos &GameModelFile::Get_Chunk_Infos() const
 {
     // TODO size/vector of chunks
-    return m_chunkInfosArray[size_t(CHUNK_SIZE)];
+    return m_chunkInfos;
 }
 
 void GameModelFile::Set_Options(Options options)
@@ -173,6 +172,8 @@ void GameModelFile::Set_Log_File(FILE *log)
 
 bool GameModelFile::Load(const char *filename, FileType filetype)
 {
+    Reset();
+
     captainslog_assert(filetype != FileType::AUTO);
 
     if (!filename || !filename[0]) {
@@ -180,10 +181,10 @@ bool GameModelFile::Load(const char *filename, FileType filetype)
         return false;
     }
 
-    const int filemode = Encode_Buffered_File_Mode(File::READ | File::BINARY, 1024 * 32);
-    // TODO: Check if this is the correct way to open a file, there is g_theW3DFileSystem
-    FileRef file = g_theFileSystem->Open_File(filename, filemode);
 
+    // TODO: Check if this is the correct way to open a file, there is g_theW3DFileSystem, but he use game path, not the file path
+    const int filemode = Encode_Buffered_File_Mode(File::READ | File::BINARY, 1024 * 32);
+    FileRef file = g_theFileSystem->Open_File(filename, filemode);
     if (!file.Is_Open()) {
         GAMEMODELLOG_ERROR("File '%s' cannot be opened for read", filename);
         return false;
@@ -191,23 +192,30 @@ bool GameModelFile::Load(const char *filename, FileType filetype)
 
     bool success = false;
 
-    ChunkInfosArray chunk_infos_array;
-    // TODO size of chunks
-    ChunkInfos &chunk_infos = chunk_infos_array[size_t(CHUNK_SIZE)];
+    // TODO size/len of chunks
+    // ChunkInfos chunk_infos;
+    // ChunkInfos &chunk_infos = chunk_infos_array[size_t(CHUNK_SIZE)];
 
     switch (filetype) {
 
         case FileType::W3D: {
-            success = Read_W3D_File(file, chunk_infos, m_options);
+            success = Read_W3D_File(file, m_chunkInfos, m_options);
             // TODO size of chunks
-            //            chunk_infos_array[size_t(CHUNK_SIZE)].swap(chunk_infos);
+            // chunk_infos_array[size_t(CHUNK_SIZE)].swap(chunk_infos);
             break;
         }
-        case FileType::W3X: {
+        case FileType::W3X:
             // TODO: W3X
-            //            success = Read_W3X_File(file, chunk_infos, m_options);
+            // success = Read_W3X_File(file, chunk_infos, m_options);
+        case FileType::BLEND:
+        case FileType::MAX: {
+            // TODO: Implement loading for other file types
+            GAMEMODELLOG_WARN("Loading for file type '%s' not yet implemented.", filetype);
             break;
         }
+        default:
+            GAMEMODELLOG_ERROR("Unknown file type: %d", filetype);
+            break;
     }
 
     if (success) {
@@ -236,7 +244,6 @@ bool GameModelFile::Save(const char *filename, FileType filetype)
 
     const int filemode = Encode_Buffered_File_Mode(File::WRITE | File::CREATE | File::BINARY, 1024 * 32);
     FileRef file = g_theFileSystem->Open_File(filename, filemode);
-
     if (!file.Is_Open()) {
         GAMEMODELLOG_ERROR("File '%s' cannot be opened for write", filename);
         return false;
@@ -250,16 +257,25 @@ bool GameModelFile::Save(const char *filename, FileType filetype)
             success = Write_W3D_File(file, Get_Chunk_Infos(), m_options);
             break;
         }
-        case FileType::W3X: {
+        case FileType::W3X:
+        case FileType::BLEND:
+        case FileType::MAX: {
+            // const int filemode = Encode_Buffered_File_Mode(File::WRITE | File::CREATE | File::BINARY, 1024 * 32);
+            // FileRef file = g_theFileSystem->Open_File(filename, filemode);
             // TODO: W3X
-            //            success = Write_W3X_File(file, Get_Chunk_Infos(), m_options);
+            // success = Write_W3X_File(file, Get_Chunk_Infos(), m_options);
+            GAMEMODELLOG_WARN("Saving for file type '%s' not yet implemented.", filetype);
+            success = false;
             break;
         }
+        default:
+            GAMEMODELLOG_ERROR("Unknown file type: %d", filetype);
+            success = false;
+            break;
     }
 
     if (success) {
         GAMEMODELLOG_INFO("File '%s' saved successfully", filename);
-
     } else {
         GAMEMODELLOG_ERROR("File '%s' failed to save", filename);
     }
@@ -269,150 +285,163 @@ bool GameModelFile::Save(const char *filename, FileType filetype)
 
 void GameModelFile::Reset()
 {
-    for (ChunkInfos &chunk_infos : m_chunkInfosArray) {
-        // TODO size/vector of chunks
-        rts::Free_Container(chunk_infos);
-    }
+    // TODO size/vector of chunks
+    //    for (ChunkInfos &chunk_infos : m_chunkInfosArray) {
+    //        rts::Free_Container(chunk_infos);
+    //    }
+    m_chunkInfos.clear();
     m_options = Options::Value::NONE;
 }
 
-void GameModelFile::Check_Buffer_Lengths()
+// void GameModelFile::Check_Buffer_Lengths()
+//{
+//     // TODO: Implement
+// }
+//
+// ChunkInfos &GameModelFile::Mutable_Chunk_Infos()
+//{
+//     // TODO size/vector of chunks
+//     return m_chunkInfosArray[size_t(CHUNK_SIZE)];
+// }
+//
+// ChunkInfosPtrArray GameModelFile::Build_Chunk_Infos_Ptrs_Array(ChunkInfosArray &chunk_infos_array)
+//{
+//     // TODO: Implement
+//     return {};
+// }
+//
+// ConstChunkInfosPtrArray GameModelFile::Build_Const_Chunk_Infos_Ptrs_Array(ChunkInfosArray &chunk_infos_array)
+//{
+//     // TODO: Implement
+//     return {};
+// }
+//
+// size_t GameModelFile::Get_Max_Size(const ConstChunkInfosPtrArray &chunk_infos_ptrs)
+//{
+//     // TODO size/vector of chunks
+//     return 0;
+// }
+
+GameModelFile::FileType GameModelFile::Get_File_Type(const char *filename, FileType filetype)
 {
-    // TODO: Implement
+    // TODO Implement file type detection logic here based on filename extension.
+    if (filetype == FileType::AUTO) {
+        std::string fn(filename);
+        if (fn.find(".w3d") != std::string::npos)
+            return FileType::W3D;
+        // Add checks for .w3x, .blend, .max here
+    }
+    return filetype;
 }
 
-ChunkInfos &GameModelFile::Mutable_Chunk_Infos()
+Utf8Array &GameModelFile::Get_Chunk_Data(ChunkInfo &chunk_info)
 {
-    // TODO size/vector of chunks
-    return m_chunkInfosArray[size_t(CHUNK_SIZE)];
-}
-
-ChunkInfosPtrArray GameModelFile::Build_Chunk_Infos_Ptrs_Array(ChunkInfosArray &chunk_infos_array)
-{
-    // TODO: Implement
-    return {};
-}
-
-ConstChunkInfosPtrArray GameModelFile::Build_Const_Chunk_Infos_Ptrs_Array(ChunkInfosArray &chunk_infos_array)
-{
-    // TODO: Implement
-    return {};
-}
-
-size_t GameModelFile::Get_Max_Size(const ConstChunkInfosPtrArray &chunk_infos_ptrs)
-{
-    // TODO: Implement
-    return 0;
-}
-
-FileType GameModelFile::Get_File_Type(const char *filename, FileType filetype)
-{
-    // TODO: Implement
-    return FileType::AUTO;
-}
-
-void GameModelFile::Collect_Length_Info(LengthInfo &len_info, const ChunkInfos &chunks)
-{
-    // TODO: Implement
-}
-
-void GameModelFile::Log_Length_Info(const LengthInfo &len_info)
-{
-    // TODO: Implement
-}
-
-void GameModelFile::Assert_Length_Info(const LengthInfo &len_info)
-{
-    // TODO: Implement
-}
-
-ChunkInfos &GameModelFile::Get_Specific_Chunk(ChunkInfo &chunk_info)
-{
-    // TODO: Implement
-    return m_chunkInfos;
+    return chunk_info.data;
 }
 
 bool GameModelFile::Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Options options)
 {
-    // TODO: Implement
-    return false;
-}
+    GAMEMODELLOG_INFO("Reading model file '%s' in W3D format", file.Get_File_Name().Str());
 
-template<typename ChunkInfosType>
-void GameModelFile::Read_W3D_File_T(FileRef &file, ChunkInfosType &chunk_infos, Options options)
-{
-    // TODO: Implement
-}
+    bool success = true;
+    if (!file.Is_Open()) {
+        GAMEMODELLOG_ERROR("Could not open file: %s\n", file.Get_File_Name().Str());
+        return false;
+    }
+    // TODO Utf8Array buf = {};
 
-ModelParseResult GameModelFile::Parse_W3D_Specific_Step(Utf8Array &buf, ChunkInfo &chunk, Options options)
-{
-    // TODO: Implement
-    return ModelParseResult::IS_NOTHING;
-}
-
-bool GameModelFile::Is_W3D_Pre_Specific(Utf8View buf)
-{
-    // TODO: Implement
-    return false;
-}
-
-bool GameModelFile::Is_W3D_Comment(const char *cchunk)
-{
-    // TODO: Implement
-    return false;
-}
-
-bool GameModelFile::Is_W3D_End(const char *cchunk)
-{
-    // TODO: Implement
-    return false;
-}
-
-void GameModelFile::Change_Step(ModelReadStep &step, ModelReadStep new_step, const char *&eol_chars)
-{
-    // TODO: Implement
-}
-
-bool GameModelFile::Read_W3D_Header(FileRef &file, ChunkInfos &chunk_infos)
-{
-    // TODO: Implement
-    return false;
-}
-
-bool GameModelFile::Read_W3D_Entry(FileRef &file, ChunkInfo &chunk_info, Options options, Utf16Array &buf)
-{
-    // TODO: Implement
-    return false;
+    if (!Read_W3D_Chunks(file, chunk_infos)) {
+        GAMEMODELLOG_ERROR("Failed to read W3D chunks from: %s\n", file.Get_File_Name().Str());
+        return false;
+    }
+    return true;
 }
 
 bool GameModelFile::Write_W3D_File(FileRef &file, const ChunkInfos &chunk_infos, Options options)
 {
-    // TODO: Implement
-    return false;
+    GAMEMODELLOG_INFO("Writing model file '%s' in W3D format", file.Get_File_Name().Str());
+
+    bool success = true;
+    if (!file.Is_Open()) { // Use FM_WRITE for saving
+        GAMEMODELLOG_ERROR("File '%s' cannot be opened for write", file.Get_File_Name().Str());
+        success = false;
+    }
+    if (!Write_W3D_Chunks(file, chunk_infos)) {
+        GAMEMODELLOG_ERROR("Failed to write W3D chunks to: %s\n", file.Get_File_Name().Str());
+        success = false;
+    }
+
+    return success;
 }
 
-bool GameModelFile::Write_W3D_Entry(
-    FileRef &file, const ChunkInfo &chunk_info, Options options, Utf8Array &buf, ChunkInfo &str)
+bool GameModelFile::Read_W3D_Chunks(FileRef &file, ChunkInfos &parentChunks)
 {
-    // TODO: Implement
-    return false;
+    // Implementation largely the same as before, but using FileRef instead of FileRef
+    //  and adding error checking with W3D error codes.
+    while (true) {
+        ChunkInfo chunk;
+        uint32_t chunkType;
+        uint32_t chunkSize;
+
+        if (file.Read(&chunkType, sizeof(uint32_t)) != sizeof(uint32_t))
+            break;
+        if (file.Read(&chunkSize, sizeof(uint32_t)) != sizeof(uint32_t))
+            break;
+
+        chunk.chunkType = chunkType;
+        chunk.chunkSize = chunkSize;
+        size_t dataSize = chunkSize & 0x7FFFFFFF; // Mask out MSB
+
+        chunk.data.resize(dataSize);
+        // TODO rts::Read_Any(file.Get_File(), parentChunks);
+        if (file.Read(chunk.data.data(), dataSize) != dataSize) {
+            GAMEMODELLOG_ERROR("File '%s': Failed to read chunk data.\n", file.Get_File_Name().Str());
+            return false; // TODO return a specific W3D error code
+        }
+
+        if (chunkSize & 0x80000000) {
+            if (!Read_W3D_Chunks(file, chunk.subChunks))
+                return false;
+        }
+        parentChunks.push_back(chunk);
+    }
+    return true;
 }
 
-bool GameModelFile::Write_W3D_Chunk(FileRef &file, const ChunkInfo &chunk)
+bool GameModelFile::Write_W3D_Chunks(FileRef &file, const ChunkInfos &parentChunks)
 {
-    // TODO: Implement
-    return false;
-}
+    for (const auto &chunk : parentChunks) {
+        uint32_t chunkSize = (uint32_t)chunk.data.size();
+        if (!chunk.subChunks.empty())
+            chunkSize |= 0x80000000;
 
-bool GameModelFile::Write_W3D_End(FileRef &file)
-{
-    // TODO: Implement
-    return false;
+        if (file.Write(&chunk.chunkType, sizeof(chunk.chunkType)) != sizeof(chunk.chunkType)
+            || file.Write(&chunkSize, sizeof(chunkSize)) != sizeof(chunkSize)
+            || file.Write(chunk.data.data(), chunk.data.size()) != chunk.data.size()) {
+            GAMEMODELLOG_ERROR("File '%s': Failed to wrtie chunk data.\n", file.Get_File_Name().Str());
+            return false;
+        }
+        if (!chunk.subChunks.empty()) {
+            if (!Write_W3D_Chunks(file, chunk.subChunks))
+                return false;
+        }
+    }
+    return true;
 }
 
 void GameModelFile::Log_Line(const char *prefix, const char *format, ...)
 {
-    // TODO: Implement
+    FILE *file = s_logfile;
+
+    if (file != nullptr) {
+        va_list args;
+        va_start(args, format);
+        fputs(prefix, file);
+        vfprintf(file, format, args);
+        fputs("\n", file);
+        va_end(args);
+        fflush(file);
+    }
 }
 
 } // namespace Thyme
