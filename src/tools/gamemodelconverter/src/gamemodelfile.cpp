@@ -20,6 +20,9 @@
 #include "utility/fileutil.h"
 #include "utility/stlutil.h"
 #include "utility/stringutil.h"
+#include "gamemodelcommon.h"
+#include "w3d_file.h"
+
 
 #define GAMEMODELLOG_TRACE(fmt, ...) \
     captainslog_trace(fmt, ##__VA_ARGS__); \
@@ -345,7 +348,6 @@ bool GameModelFile::Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Option
 {
     GAMEMODELLOG_INFO("Reading model file '%s' in W3D format", file.Get_File_Name().Str());
 
-    bool success = true;
     if (!file.Is_Open()) {
         GAMEMODELLOG_ERROR("Could not open file: %s\n", file.Get_File_Name().Str());
         return false;
@@ -356,6 +358,9 @@ bool GameModelFile::Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Option
         GAMEMODELLOG_ERROR("Failed to read W3D chunks from: %s\n", file.Get_File_Name().Str());
         return false;
     }
+
+    //Parse the loaded chunks here (example for mesh data)
+    Parse_W3D_Data(chunk_infos);
     return true;
 }
 
@@ -378,34 +383,60 @@ bool GameModelFile::Write_W3D_File(FileRef &file, const ChunkInfos &chunk_infos,
 
 bool GameModelFile::Read_W3D_Chunks(FileRef &file, ChunkInfos &parentChunks)
 {
-    // Implementation largely the same as before, but using FileRef instead of FileRef
-    //  and adding error checking with W3D error codes.
     while (true) {
-        ChunkInfo chunk;
         uint32_t chunkType;
-        uint32_t chunkSize;
+        uint32_t chunkSizeRaw;
 
-        if (file.Read(&chunkType, sizeof(uint32_t)) != sizeof(uint32_t))
-            break;
-        if (file.Read(&chunkSize, sizeof(uint32_t)) != sizeof(uint32_t))
-            break;
+        if (file.Read(&chunkType, sizeof(chunkType)) != sizeof(chunkType)) break;
+        if (file.Read(&chunkSizeRaw, sizeof(chunkSizeRaw)) != sizeof(chunkSizeRaw)) break;
 
+        ChunkInfo chunk;
         chunk.chunkType = chunkType;
-        chunk.chunkSize = chunkSize;
-        size_t dataSize = chunkSize & 0x7FFFFFFF; // Mask out MSB
+        chunk.chunkSize = chunkSizeRaw;
+        size_t dataSize = chunkSizeRaw & 0x7FFFFFFF; // Mask out MSB for subChunk flag
 
         chunk.data.resize(dataSize);
         // TODO rts::Read_Any(file.Get_File(), parentChunks);
         if (file.Read(chunk.data.data(), dataSize) != dataSize) {
             GAMEMODELLOG_ERROR("File '%s': Failed to read chunk data.\n", file.Get_File_Name().Str());
+            // TODO             GAMEMODELLOG_ERROR("File '%s': Failed to read chunk data (type: 0x%X).\n", file.Get_File_Name().Str(), chunkType);
             return false; // TODO return a specific W3D error code ?
         }
 
-        if (chunkSize & 0x80000000) {
-            if (!Read_W3D_Chunks(file, chunk.subChunks))
+        // Recursive call for subchunks
+        // Check for subchunks AFTER reading the main chunk data
+        bool hasSubchunks = (chunkSizeRaw >> 31) & 1; //Check MSB for subchunks (chunkSizeRaw & 0x80000000)
+        if (hasSubchunks) {
+            if (!Read_W3D_Chunks(file, chunk.subChunks)) {
+                GAMEMODELLOG_ERROR("File '%s': Failed to read subchunks of chunk type 0x%X\n", file.Get_File_Name().Str(), chunkType);
                 return false;
+            }
         }
         parentChunks.push_back(chunk);
+
+
+        // Example of handling specific chunk types (Expand this significantly)
+        switch (chunkType) {
+            case W3D_CHUNK_MESH:
+                // Parse W3dMeshStruct from chunk.data
+                GAMEMODELLOG_DEBUG("Found W3D_CHUNK_MESH");
+                break;
+            case W3D_CHUNK_MESH_HEADER3:
+                // Parse W3dMeshHeader3Struct from chunk.data
+                GAMEMODELLOG_DEBUG("Found W3D_CHUNK_MESH_HEADER3");
+                break;
+            case W3D_CHUNK_VERTICES:
+                //Parse W3dVectorStruct array from chunk.data
+                GAMEMODELLOG_DEBUG("Found W3D_CHUNK_VERTICES");
+                break;
+            case W3D_CHUNK_TRIANGLES:
+                GAMEMODELLOG_DEBUG("Found W3D_CHUNK_TRIANGLES");
+                break;
+            // Add cases for other chunk types as needed...
+            default:
+                GAMEMODELLOG_DEBUG("Unknown chunk type: 0x%X", chunkType);
+                break;
+        }
     }
     return true;
 }
@@ -417,10 +448,11 @@ bool GameModelFile::Write_W3D_Chunks(FileRef &file, const ChunkInfos &parentChun
         if (!chunk.subChunks.empty())
             chunkSize |= 0x80000000;
 
-        if (file.Write(&chunk.chunkType, sizeof(chunk.chunkType)) != sizeof(chunk.chunkType)
-            || file.Write(&chunkSize, sizeof(chunkSize)) != sizeof(chunkSize)
-            || file.Write(chunk.data.data(), chunk.data.size()) != chunk.data.size()) {
-            GAMEMODELLOG_ERROR("File '%s': Failed to wrtie chunk data.\n", file.Get_File_Name().Str());
+        if (file.Write(&chunk.chunkType, sizeof(chunk.chunkType)) != sizeof(chunk.chunkType) ||
+            file.Write(&chunkSize, sizeof(chunkSize)) != sizeof(chunkSize) ||
+            file.Write(chunk.data.data(), chunk.data.size()) != chunk.data.size()) {
+            GAMEMODELLOG_ERROR("File '%s': Failed to write chunk data.\n", file.Get_File_Name().Str());
+            // TODO             GAMEMODELLOG_ERROR("File '%s': Failed to write chunk data (type: 0x%X).\n", file.Get_File_Name().Str(), chunk.chunkType);
             return false;
         }
         if (!chunk.subChunks.empty()) {
@@ -430,6 +462,79 @@ bool GameModelFile::Write_W3D_Chunks(FileRef &file, const ChunkInfos &parentChun
     }
     return true;
 }
+
+void GameModelFile::Parse_W3D_Data(const ChunkInfos& chunks) {
+    for (const auto& chunk : chunks) {
+        switch (chunk.chunkType) {
+            case W3D_CHUNK_MESH:
+                Parse_Mesh_Chunk(chunk);
+                break;
+            case W3D_CHUNK_EMITTER:
+                Parse_Emitter_Chunk(chunk);
+                break;
+            // Add cases for other top-level chunk types...
+            default:
+                GAMEMODELLOG_DEBUG("Ignoring unknown top-level chunk type: 0x%X", chunk.chunkType);
+                break;
+        }
+    }
+}
+
+void GameModelFile::Parse_Mesh_Chunk(const ChunkInfo& meshChunk) {
+    // Example: Parse Mesh Header
+    for (const auto& subChunk : meshChunk.subChunks) {
+        if (subChunk.chunkType == W3D_CHUNK_MESH_HEADER3) {
+            //Use the helper functions from gamemodelcommon.h
+            m_meshData.header = ReadFromChunk<W3dMeshHeader3Struct>(subChunk, 0);
+            break;
+        }
+    }
+    // Parse other mesh subchunks (vertices, normals, triangles, etc.) using similar logic,
+    //   referencing the struct definitions in w3d_file.h and using the helper functions from gamemodelcommon.h
+
+    for (const auto& subChunk : meshChunk.subChunks) {
+        switch (subChunk.chunkType) {
+            case W3D_CHUNK_VERTICES:
+                m_meshData.vertices = Thyme::ReadArrayFromChunk<W3dVectorStruct>(subChunk);
+                break;
+            case W3D_CHUNK_VERTEX_NORMALS:
+                m_meshData.normals = Thyme::ReadArrayFromChunk<W3dVectorStruct>(subChunk);
+                break;
+            case W3D_CHUNK_TRIANGLES:
+                m_meshData.triangles = Thyme::ReadArrayFromChunk<W3dTriStruct>(subChunk);
+                break;
+            case W3D_CHUNK_MESH_HEADER3:
+//                m_meshData.header = Thyme::ReadFromChunk<W3dMeshHeader3>(subChunk,0);
+                break;
+            // ... parse other mesh subchunks ...
+            default:
+                break;
+        }
+    }
+}
+
+void GameModelFile::Parse_Emitter_Chunk(const ChunkInfo& emitterChunk) {
+    //Similar logic as ParseMeshChunk, but for emitter chunks and subchunks
+    for (const auto& subChunk : emitterChunk.subChunks) {
+        if (subChunk.chunkType == W3D_CHUNK_EMITTER_HEADER) {
+            m_emitterData.header = ReadFromChunk<W3dEmitterHeaderStruct>(subChunk, 0);
+        } else if (subChunk.chunkType == W3D_CHUNK_EMITTER_INFO) {
+            m_emitterData.info = ReadFromChunk<W3dEmitterInfoStruct>(subChunk, 0);
+        } else if (subChunk.chunkType == W3D_CHUNK_EMITTER_INFOV2){
+            m_emitterData.infoV2 = ReadFromChunk<W3dEmitterInfoStructV2>(subChunk, 0);
+        }
+        // ... parse other emitter subchunks ...
+    }
+}
+
+const ParsedMeshData& GameModelFile::GetMeshData() const {
+    return m_meshData;
+}
+
+const ParsedEmitterData& GameModelFile::GetEmitterData() const {
+    return m_emitterData;
+}
+
 
 void GameModelFile::Log_Line(const char *prefix, const char *format, ...)
 {

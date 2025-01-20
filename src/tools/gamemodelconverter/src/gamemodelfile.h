@@ -139,17 +139,23 @@ private:
     // TODO need a significant rewrite based on the chunk structure
     static Utf8Array &Get_Chunk_Data(ChunkInfo &chunk_info);
 
-    static bool Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Options options);
+    bool Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Options options);
 
     // TODO need substantial changes based on the chunk structure
     // Recursive function to read/write chunks and subchunks
-    static bool Read_W3D_Chunks(FileRef &file, ChunkInfos& parentChunks);
-    static bool Write_W3D_Chunks(FileRef &file, const ChunkInfos& parentChunks);
+    bool Read_W3D_Chunks(FileRef &file, ChunkInfos& parentChunks);
+    bool Write_W3D_Chunks(FileRef &file, const ChunkInfos& parentChunks);
 
     //Helper function to write a single chunk to the file
-    static bool Write_W3D_Chunk(FileRef &file, const ChunkInfo& chunk);
+    bool Write_W3D_Chunk(FileRef &file, const ChunkInfo& chunk);
 
-    static bool Write_W3D_File(FileRef &file, const ChunkInfos &chunk_infos, Options options);
+    bool Write_W3D_File(FileRef &file, const ChunkInfos &chunk_infos, Options options);
+
+    void Parse_W3D_Data(const ChunkInfos& chunks);
+    void Parse_Mesh_Chunk(const ChunkInfo& meshChunk);
+    void Parse_Emitter_Chunk(const ChunkInfo& emitterChunk);
+    const ParsedMeshData &GetMeshData() const;
+    const ParsedEmitterData &GetEmitterData() const;
 
     static void Log_Line(const char *prefix, const char *format, ...);
 
@@ -158,6 +164,9 @@ private:
     ChunkInfos m_chunkInfos;
     // TODO chunks array/buffer
     static FILE *s_logfile;
+    ParsedMeshData m_meshData;
+    ParsedEmitterData m_emitterData;
+
 };
 
 } // namespace Thyme
