@@ -387,33 +387,47 @@ bool GameModelFile::Read_W3D_Chunks(FileRef &file, ChunkInfos &parentChunks)
         uint32_t chunkType;
         uint32_t chunkSizeRaw;
 
+        // Read chunk type and size
         if (file.Read(&chunkType, sizeof(chunkType)) != sizeof(chunkType)) break;
         if (file.Read(&chunkSizeRaw, sizeof(chunkSizeRaw)) != sizeof(chunkSizeRaw)) break;
 
         ChunkInfo chunk;
         chunk.chunkType = chunkType;
         chunk.chunkSize = chunkSizeRaw;
+
         size_t dataSize = chunkSizeRaw & 0x7FFFFFFF; // Mask out MSB for subChunk flag
+        bool hasSubchunks = (chunkSizeRaw >> 31) & 1; // Check MSB for subchunks (chunkSizeRaw & 0x80000000)
 
-        chunk.data.resize(dataSize);
-        // TODO rts::Read_Any(file.Get_File(), parentChunks);
-        if (file.Read(chunk.data.data(), dataSize) != dataSize) {
-            GAMEMODELLOG_ERROR("File '%s': Failed to read chunk data.\n", file.Get_File_Name().Str());
-            // TODO             GAMEMODELLOG_ERROR("File '%s': Failed to read chunk data (type: 0x%X).\n", file.Get_File_Name().Str(), chunkType);
-            return false; // TODO return a specific W3D error code ?
-        }
+        int currentPosition = file.Position(); // Save current file position
 
-        // Recursive call for subchunks
-        // Check for subchunks AFTER reading the main chunk data
-        bool hasSubchunks = (chunkSizeRaw >> 31) & 1; //Check MSB for subchunks (chunkSizeRaw & 0x80000000)
         if (hasSubchunks) {
-            if (!Read_W3D_Chunks(file, chunk.subChunks)) {
-                GAMEMODELLOG_ERROR("File '%s': Failed to read subchunks of chunk type 0x%X\n", file.Get_File_Name().Str(), chunkType);
+            // Read subchunks recursively
+            while (file.Position() < currentPosition + dataSize) {
+                if (!Read_W3D_Chunks(file, chunk.subChunks)) {
+                    GAMEMODELLOG_ERROR("Failed to read subchunks for chunk type 0x%X\n", chunkType);
+                    return false;
+                }
+            }
+        } else {
+            // Read the current chunk data
+            chunk.data.resize(dataSize);
+            if (file.Read(chunk.data.data(), dataSize) != dataSize) {
+                GAMEMODELLOG_ERROR("File '%s': Failed to read chunk data (type: 0x%X).\n", file.Get_File_Name().Str(), chunkType);
                 return false;
             }
         }
+
+        // Move the file pointer if necessary to ensure alignment
+        int endPosition = currentPosition + chunkSizeRaw;
+        int offset = endPosition - file.Position();
+        if (file.Position() < endPosition) {
+            file.Seek(offset, File::SeekMode::CURRENT);
+        }
+
+        // Add chunk to the parent chunk list
         parentChunks.push_back(chunk);
 
+        GAMEMODELLOG_DEBUG("Read chunk: type=0x%X, size=%zu, subchunks=%s", chunkType, dataSize, hasSubchunks ? "yes" : "no");
 
         // Example of handling specific chunk types (Expand this significantly)
         switch (chunkType) {
@@ -437,6 +451,9 @@ bool GameModelFile::Read_W3D_Chunks(FileRef &file, ChunkInfos &parentChunks)
                 GAMEMODELLOG_DEBUG("Unknown chunk type: 0x%X", chunkType);
                 break;
         }
+
+        // If we've read the entire chunk, exit loop (we are done with the current chunk)
+        if (file.Position() == currentPosition + chunkSizeRaw) break; // endPosition == dataSize
     }
     return true;
 }
