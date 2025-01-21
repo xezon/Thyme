@@ -89,7 +89,6 @@ bool Name_To_Game_Model_Option(const char *name, GameModelOption &option)
 
 FILE *GameModelFile::s_logfile = nullptr;
 GameModelFile::GameModelFile() : // Initialize with default options
-                                 // TODO chunks array/buffer
     m_options(GameModelOption::NONE), m_chunkInfos() {};
 
 bool GameModelFile::Is_Loaded() const
@@ -152,7 +151,6 @@ bool GameModelFile::Save_MAX(const char *filename)
 
 const ChunkInfos &GameModelFile::Get_Chunk_Infos() const
 {
-    // TODO size/vector of chunks
     return m_chunkInfos;
 }
 
@@ -195,20 +193,13 @@ bool GameModelFile::Load(const char *filename, FileType filetype)
 
     bool success = false;
 
-    // TODO size/len of chunks
-    // ChunkInfos chunk_infos;
-    // ChunkInfos &chunk_infos = chunk_infos_array[size_t(CHUNK_SIZE)];
-
     switch (filetype) {
 
         case FileType::W3D: {
             success = Read_W3D_File(file, m_chunkInfos, m_options);
-            // TODO size of chunks
-            // chunk_infos_array[size_t(CHUNK_SIZE)].swap(chunk_infos);
             break;
         }
         case FileType::W3X:
-            // TODO: W3X
             // success = Read_W3X_File(file, chunk_infos, m_options);
         case FileType::BLEND:
         case FileType::MAX: {
@@ -262,7 +253,6 @@ bool GameModelFile::Save(const char *filename, FileType filetype)
         case FileType::W3X:
         case FileType::BLEND:
         case FileType::MAX: {
-            // TODO: W3X
             // success = Write_W3X_File(file, Get_Chunk_Infos(), m_options);
             GAMEMODELLOG_WARN("Saving for file type '%s' not yet implemented.", filetype);
             success = false;
@@ -295,7 +285,7 @@ void GameModelFile::Reset()
 
 // void GameModelFile::Check_Buffer_Lengths()
 //{
-//     // TODO: Implement
+//     // TODO: Implement buffer management
 // }
 //
 // ChunkInfos &GameModelFile::Mutable_Chunk_Infos()
@@ -339,11 +329,6 @@ GameModelFile::FileType GameModelFile::Get_File_Type(const char *filename, FileT
     return filetype;
 }
 
-Utf8Array &GameModelFile::Get_Chunk_Data(ChunkInfo &chunk_info)
-{
-    return chunk_info.data;
-}
-
 bool GameModelFile::Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Options options)
 {
     GAMEMODELLOG_INFO("Reading model file '%s' in W3D format", file.Get_File_Name().Str());
@@ -352,7 +337,6 @@ bool GameModelFile::Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Option
         GAMEMODELLOG_ERROR("Could not open file: %s\n", file.Get_File_Name().Str());
         return false;
     }
-    // TODO Utf8Array buf = {};
 
     if (!Read_W3D_Chunks(file, chunk_infos)) {
         GAMEMODELLOG_ERROR("Failed to read W3D chunks from: %s\n", file.Get_File_Name().Str());
@@ -360,7 +344,7 @@ bool GameModelFile::Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Option
     }
 
     //Parse the loaded chunks here (example for mesh data)
-    Parse_W3D_Data(chunk_infos);
+    Parse_Model_Data(chunk_infos);
     return true;
 }
 
@@ -387,15 +371,17 @@ bool GameModelFile::Read_W3D_Chunks(FileRef &file, ChunkInfos &parentChunks)
         uint32_t chunkType;
         uint32_t chunkSizeRaw;
 
-        // Read chunk type and size
-        if (file.Read(&chunkType, sizeof(chunkType)) != sizeof(chunkType)) break;
-        if (file.Read(&chunkSizeRaw, sizeof(chunkSizeRaw)) != sizeof(chunkSizeRaw)) break;
+        // Read chunk header (type + size) together
+        if (file.Read(&chunkType, sizeof(chunkType)) != sizeof(chunkType) ||
+            file.Read(&chunkSizeRaw, sizeof(chunkSizeRaw)) != sizeof(chunkSizeRaw)) {
+            break; // End of file or error
+        }
 
+        // Prepare the chunk information
         ChunkInfo chunk;
         chunk.chunkType = chunkType;
-        chunk.chunkSize = chunkSizeRaw;
-
         size_t dataSize = chunkSizeRaw & 0x7FFFFFFF; // Mask out MSB for subChunk flag
+        chunk.chunkSize = dataSize;
         bool hasSubchunks = (chunkSizeRaw >> 31) & 1; // Check MSB for subchunks (chunkSizeRaw & 0x80000000)
 
         int currentPosition = file.Position(); // Save current file position
@@ -417,43 +403,23 @@ bool GameModelFile::Read_W3D_Chunks(FileRef &file, ChunkInfos &parentChunks)
             }
         }
 
-        // Move the file pointer if necessary to ensure alignment
-        int endPosition = currentPosition + chunkSizeRaw;
-        int offset = endPosition - file.Position();
-        if (file.Position() < endPosition) {
-            file.Seek(offset, File::SeekMode::CURRENT);
+        // Check if we are at the correct position after reading chunk data
+        if (file.Position() != currentPosition + dataSize) {
+            GAMEMODELLOG_ERROR("Incorrect position after reading chunk data (type: 0x%X).\n", chunkType);
         }
 
         // Add chunk to the parent chunk list
         parentChunks.push_back(chunk);
 
-        GAMEMODELLOG_DEBUG("Read chunk: type=0x%X, size=%zu, subchunks=%s", chunkType, dataSize, hasSubchunks ? "yes" : "no");
+        GAMEMODELLOG_DEBUG("Read chunk: type=0x%X, size=%zu, subchunks=%d", chunkType, dataSize, hasSubchunks);
 
-        // Example of handling specific chunk types (Expand this significantly)
-        switch (chunkType) {
-            case W3D_CHUNK_MESH:
-                // Parse W3dMeshStruct from chunk.data
-                GAMEMODELLOG_DEBUG("Found W3D_CHUNK_MESH");
-                break;
-            case W3D_CHUNK_MESH_HEADER3:
-                // Parse W3dMeshHeader3Struct from chunk.data
-                GAMEMODELLOG_DEBUG("Found W3D_CHUNK_MESH_HEADER3");
-                break;
-            case W3D_CHUNK_VERTICES:
-                //Parse W3dVectorStruct array from chunk.data
-                GAMEMODELLOG_DEBUG("Found W3D_CHUNK_VERTICES");
-                break;
-            case W3D_CHUNK_TRIANGLES:
-                GAMEMODELLOG_DEBUG("Found W3D_CHUNK_TRIANGLES");
-                break;
-            // Add cases for other chunk types as needed...
-            default:
-                GAMEMODELLOG_DEBUG("Unknown chunk type: 0x%X", chunkType);
-                break;
+        if (file.Position() == dataSize + sizeof(chunkType) + sizeof(chunkSizeRaw)) {
+            GAMEMODELLOG_DEBUG("File '%s': Read past end of chunk data (type: 0x%X).", file.Get_File_Name().Str(), chunkType);
+            return true;
         }
 
         // If we've read the entire chunk, exit loop (we are done with the current chunk)
-        if (file.Position() == currentPosition + chunkSizeRaw) break; // endPosition == dataSize
+        if (file.Position() == currentPosition + dataSize) break; // endPosition == dataSize
     }
     return true;
 }
@@ -461,26 +427,41 @@ bool GameModelFile::Read_W3D_Chunks(FileRef &file, ChunkInfos &parentChunks)
 bool GameModelFile::Write_W3D_Chunks(FileRef &file, const ChunkInfos &parentChunks)
 {
     for (const auto &chunk : parentChunks) {
-        uint32_t chunkSize = (uint32_t)chunk.data.size();
-        if (!chunk.subChunks.empty())
-            chunkSize |= 0x80000000;
+        uint32_t chunkSize = (uint32_t)chunk.chunkSize;
+        bool hasSubchunks = !chunk.subChunks.empty();
 
+        if (hasSubchunks) {
+            chunkSize |= 0x80000000;  // Set MSB to indicate subChunks
+        }
+
+        // Write ChunkType and ChunkSize
         if (file.Write(&chunk.chunkType, sizeof(chunk.chunkType)) != sizeof(chunk.chunkType) ||
-            file.Write(&chunkSize, sizeof(chunkSize)) != sizeof(chunkSize) ||
-            file.Write(chunk.data.data(), chunk.data.size()) != chunk.data.size()) {
-            GAMEMODELLOG_ERROR("File '%s': Failed to write chunk data.\n", file.Get_File_Name().Str());
-            // TODO             GAMEMODELLOG_ERROR("File '%s': Failed to write chunk data (type: 0x%X).\n", file.Get_File_Name().Str(), chunk.chunkType);
+            file.Write(&chunkSize, sizeof(chunkSize)) != sizeof(chunkSize)) {
+            GAMEMODELLOG_ERROR("File '%s': Failed to write chunk header (type: 0x%X).\n", file.Get_File_Name().Str(), chunk.chunkType);
             return false;
         }
-        if (!chunk.subChunks.empty()) {
-            if (!Write_W3D_Chunks(file, chunk.subChunks))
+
+        // Write chunk data (only if there's data to write)
+        if (chunk.data.size() > 0) {
+            if (file.Write(chunk.data.data(), chunk.data.size()) != chunk.data.size()) {
+                GAMEMODELLOG_ERROR("File '%s': Failed to write chunk data (type: 0x%X).\n", file.Get_File_Name().Str(), chunk.chunkType);
                 return false;
+            }
+        }
+
+        // If there are subChunks, write them recursively
+        if (hasSubchunks) {
+            if (!Write_W3D_Chunks(file, chunk.subChunks)) {
+                return false;
+            }
         }
     }
+
     return true;
 }
 
-void GameModelFile::Parse_W3D_Data(const ChunkInfos& chunks) {
+
+void GameModelFile::Parse_Model_Data(const ChunkInfos& chunks) {
     for (const auto& chunk : chunks) {
         switch (chunk.chunkType) {
             case W3D_CHUNK_MESH:
@@ -489,7 +470,7 @@ void GameModelFile::Parse_W3D_Data(const ChunkInfos& chunks) {
             case W3D_CHUNK_EMITTER:
                 Parse_Emitter_Chunk(chunk);
                 break;
-            // Add cases for other top-level chunk types...
+            // Add additional cases for other chunk types
             default:
                 GAMEMODELLOG_DEBUG("Ignoring unknown top-level chunk type: 0x%X", chunk.chunkType);
                 break;

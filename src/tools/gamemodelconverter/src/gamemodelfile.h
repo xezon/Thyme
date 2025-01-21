@@ -121,9 +121,7 @@ private:
     bool Save(const char *filename, FileType filetype);
 
 //    void Check_Buffer_Lengths();
-//
 //    ChunkInfos &Mutable_Chunk_Infos();
-//
 //    static ChunkInfosPtrArray Build_Chunk_Infos_Ptrs_Array(ChunkInfosArray &chunk_infos_array);
 //    static ConstChunkInfosPtrArray Build_Const_Chunk_Infos_Ptrs_Array(
 //        ChunkInfosArray &chunk_infos_array);
@@ -136,22 +134,12 @@ private:
 //    static void Log_Length_Info(const LengthInfo &len_info);
 //    static void Assert_Length_Info(const LengthInfo &len_info);
 
-    // TODO need a significant rewrite based on the chunk structure
-    static Utf8Array &Get_Chunk_Data(ChunkInfo &chunk_info);
-
     bool Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Options options);
-
-    // TODO need substantial changes based on the chunk structure
-    // Recursive function to read/write chunks and subchunks
     bool Read_W3D_Chunks(FileRef &file, ChunkInfos& parentChunks);
     bool Write_W3D_Chunks(FileRef &file, const ChunkInfos& parentChunks);
-
-    //Helper function to write a single chunk to the file
-    bool Write_W3D_Chunk(FileRef &file, const ChunkInfo& chunk);
-
     bool Write_W3D_File(FileRef &file, const ChunkInfos &chunk_infos, Options options);
 
-    void Parse_W3D_Data(const ChunkInfos& chunks);
+    void Parse_Model_Data(const ChunkInfos& chunks);
     void Parse_Mesh_Chunk(const ChunkInfo& meshChunk);
     void Parse_Emitter_Chunk(const ChunkInfo& emitterChunk);
     const ParsedMeshData &GetMeshData() const;
@@ -162,7 +150,6 @@ private:
 private:
     Options m_options;
     ChunkInfos m_chunkInfos;
-    // TODO chunks array/buffer
     static FILE *s_logfile;
     ParsedMeshData m_meshData;
     ParsedEmitterData m_emitterData;

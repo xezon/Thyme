@@ -108,19 +108,4 @@ std::vector<T> ReadArrayFromChunk(const Thyme::ChunkInfo& chunk) {
     return array;
 }
 
-std::string ReadStringFromChunk(const Thyme::ChunkInfo& chunk); //Defined below
-
-
 } // namespace Thyme
-
-inline std::string Thyme::ReadStringFromChunk(const Thyme::ChunkInfo& chunk) {
-    if (chunk.data.empty()) return "";
-    size_t nullTerminatorPos = chunk.data.size();
-    for (size_t i = 0; i < chunk.data.size(); i++) {
-        if (chunk.data[i] == 0) {
-            nullTerminatorPos = i;
-            break;
-        }
-    }
-    return std::string((char*)chunk.data.data(), nullTerminatorPos);
-}
