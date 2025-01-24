@@ -14,13 +14,11 @@
  */
 #pragma once
 
-#include "fileref.h"
-#include "gamemodelcommon.h"
-#include "utility/array.h"
-#include "utility/arrayview.h"
 #include "utility/ebitflags.h"
-#include "utility/enumerator.h"
-#include "utility/enumflags.h"
+#include "chunksmanager.h"
+#include "filesystem.h"
+#include <string>
+
 
 namespace Thyme
 {
@@ -48,8 +46,11 @@ public:
 
 public:
     GameModelFile();
+    ~GameModelFile(){
+        Reset();
+    }
 
-    // Checks whether model is loaded.
+    // TODO Checks whether chunks is loaded.
     bool Is_Loaded() const;
 
     // Loads models file from disk. Does not unload previous data on failure.
@@ -68,9 +69,6 @@ public:
 
     // Unloads all data and resets all settings.
     void Reset();
-
-    // Retrieves all Chunk data.
-    const ChunkInfos &Get_Chunk_Infos() const;
 
     // Sets options for loading and saving files.
     void Set_Options(Options options);
@@ -91,69 +89,24 @@ private:
         COUNT,
     };
 
-    enum class ModelReadStep
-    {
-        // TODO ModelReadStep
-        INITIAL,
-        HEADER,
-        CHUNK,
-        COMPLETE,
-    };
-
-    enum class ModelParseResult
-    {
-        // TODO ModelParseResult
-        IS_HEADER,
-        IS_CHUNK,
-        IS_NOTHING,
-        IS_END,
-    };
-
-    struct LengthInfo
-    {
-        // TODO LengthInfo of chunks
-        int max_chunk_len;
-    };
-
 
 private:
     bool Load(const char *filename, FileType filetype);
     bool Save(const char *filename, FileType filetype);
 
-//    void Check_Buffer_Lengths();
-//    ChunkInfos &Mutable_Chunk_Infos();
-//    static ChunkInfosPtrArray Build_Chunk_Infos_Ptrs_Array(ChunkInfosArray &chunk_infos_array);
-//    static ConstChunkInfosPtrArray Build_Const_Chunk_Infos_Ptrs_Array(
-//        ChunkInfosArray &chunk_infos_array);
-
-    static size_t Get_Max_Size(const ConstChunkInfosPtrArray &chunk_infos_ptrs);
-
     static FileType Get_File_Type(const char *filename, FileType filetype);
 
-//    static void Collect_Length_Info(LengthInfo &len_info, const ChunkInfos &chunks);
-//    static void Log_Length_Info(const LengthInfo &len_info);
-//    static void Assert_Length_Info(const LengthInfo &len_info);
-
-    bool Read_W3D_File(FileRef &file, ChunkInfos &chunk_infos, Options options);
-    bool Read_W3D_Chunks(FileRef &file, ChunkInfos& parentChunks);
-    bool Write_W3D_Chunks(FileRef &file, const ChunkInfos& parentChunks);
-    bool Write_W3D_File(FileRef &file, const ChunkInfos &chunk_infos, Options options);
-
-    void Parse_Model_Data(const ChunkInfos& chunks);
-    void Parse_Mesh_Chunk(const ChunkInfo& meshChunk);
-    void Parse_Emitter_Chunk(const ChunkInfo& emitterChunk);
-    const ParsedMeshData &GetMeshData() const;
-    const ParsedEmitterData &GetEmitterData() const;
+    bool Read_W3D_File(const char *filename, const Options& options);
+    bool Write_W3D_File(const char *filename, const Options& options);
 
     static void Log_Line(const char *prefix, const char *format, ...);
 
 private:
     Options m_options;
-    ChunkInfos m_chunkInfos;
     static FILE *s_logfile;
-    ParsedMeshData m_meshData;
-    ParsedEmitterData m_emitterData;
-
+    ChunkTreePtr m_rootChunk;
+    ChunkManager * m_chunkManager;
+    ChunkLoadClass m_chunkLoader;
 };
 
 } // namespace Thyme

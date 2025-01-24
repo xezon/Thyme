@@ -1,6 +1,8 @@
 set(CMAKE_CXX_STANDARD 17)
 
 set(GAMEMODELCONVERTER_SOURCES
+        src/chunksmanager.cpp
+        src/chunksmanager.h
         src/gamemodelcommon.h
         src/gamemodelfile.cpp
         src/gamemodelfile.h
@@ -14,7 +16,6 @@ set(GAMEMODELCONVERTER_SOURCES
 )
 
 set(GAMEMODELCONVERTER_INCLUDES src)
-
 add_executable(GameModelConverter ${GAMEMODELCONVERTER_SOURCES})
 target_include_directories(GameModelConverter PRIVATE ${GAMEMODELCONVERTER_INCLUDES})
 target_link_libraries(GameModelConverter PRIVATE thyme_lib)
