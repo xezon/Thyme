@@ -2,6 +2,8 @@
 
 #include "chunkio.h"
 #include "ffactory.h"
+#include "vector2.h"
+#include "vector3.h"
 #include "vector3i.h"
 #include "w3d_file.h"
 #include "w3d_obsolete.h"
@@ -36,8 +38,7 @@ using ChunkList = std::vector<ChunkPtr>;
 struct ChunkTree
 {
     ChunkPtr data;
-    ChunkList subchunks;
-    ~ChunkTree() = default;
+    std::vector<std::unique_ptr<ChunkTree>> subchunks;
 };
 
 using ChunkTreePtr = std::unique_ptr<ChunkTree>;
@@ -45,9 +46,11 @@ using ChunkTreePtr = std::unique_ptr<ChunkTree>;
 struct ChunkIOFuncs
 {
     const char *name;
-    void (*ReadFunc)(ChunkLoadClass &chunkLoader, ChunkInfoPtr &data);
-    void (*WriteFunc)(ChunkSaveClass &chunkSaver, ChunkInfoPtr &data);
+    void (*ReadFunc)(ChunkLoadClass &chunkLoader, ChunkTreePtr &data);
+    void (*WriteFunc)(ChunkSaveClass &chunkSaver, ChunkTreePtr &data);
 };
+
+extern std::map<int, ChunkIOFuncs> chunkFuncMap;
 
 class ChunkManager
 {
@@ -62,7 +65,9 @@ public:
     ChunkManager(const char *filePath, int flag);
     ~ChunkManager();
 
+
     // Utility functions
+    void InitiateChunkFuncMap();
     static ChunkInfoPtr createChunkInfo(
         const char *name = "Unknown",
         const StringClass &type = "Unknown",
@@ -71,38 +76,16 @@ public:
     {
         return std::make_unique<ChunkInfo>(name, type, data, value);
     }
-    static void AddData(
-        ChunkInfoPtr &chunk, const char *name, const StringClass &type, const StringClass &formattedValue, void *value);
-
 
     static void ParseSubchunks(ChunkLoadClass &chunkLoader, ChunkTreePtr &parentChunk);
-    static void ReadChunkInfo(ChunkLoadClass &chunkLoader, ChunkPtr &chunk);
-    void WriteSubchunks(ChunkSaveClass &chunkSaver, const ChunkTreePtr &parentChunk);
-    void WriteChunkInfo(ChunkSaveClass &chunkSaver, const ChunkPtr &chunk);
+    static void ReadChunkInfo(ChunkLoadClass &chunkLoader, ChunkTreePtr &chunk);
+    void WriteSubchunks(ChunkSaveClass &chunkSaver, ChunkTreePtr &parentChunk);
+    void WriteChunkInfo(ChunkSaveClass &chunkSaver, ChunkTreePtr &chunk);
 
     ChunkTreePtr & GetRootChunk() { return m_rootChunk; }
+    void SetRootChunk(ChunkTreePtr root) { m_rootChunk = std::move(root); }
 
 private:
-    static void AddString(ChunkInfoPtr &chunk, const char *name, const StringClass &value, const StringClass &type);
-    static void AddVersion(ChunkInfoPtr &chunk, uint32_t value);
-    static void AddInt32(ChunkInfoPtr &chunk, const char *name, uint32_t value);
-    static void AddInt16(ChunkInfoPtr &chunk, const char *name, uint16_t value);
-    static void AddInt8(ChunkInfoPtr &chunk, const char *name, uint8_t value);
-    static void AddInt8Array(ChunkInfoPtr &chunk, const char *name, const uint8_t *values, int count);
-    static void AddFloat(ChunkInfoPtr &chunk, const char *name, float value);
-    static void AddInt32Array(ChunkInfoPtr &chunk, const char *name, const uint32_t *values, int count);
-    static void AddFloatArray(ChunkInfoPtr &chunk, const char *name, const float *values, int count);
-    static void AddVector(ChunkInfoPtr &chunk, const char *name, const W3dVectorStruct *value);
-    static void AddQuaternion(ChunkInfoPtr &chunk, const char *name, const W3dQuaternionStruct *value);
-    static void AddRGB(ChunkInfoPtr &chunk, const char *name, const W3dRGBStruct *value);
-    static void AddRGBArray(ChunkInfoPtr &chunk, const char *name, const W3dRGBStruct *values, int count);
-    static void AddRGBA(ChunkInfoPtr &chunk, const char *name, const W3dRGBAStruct *value);
-    static void AddTexCoord(ChunkInfoPtr &chunk, const char *name, const W3dTexCoordStruct *value);
-    static void AddTexCoordArray(ChunkInfoPtr &chunk, const char *name, const W3dTexCoordStruct *values, int count);
-    static void AddShader(ChunkInfoPtr &chunk, const char *name, const W3dShaderStruct *value);
-    static void AddPS2Shader(ChunkInfoPtr &chunk, const char *name, const W3dPS2ShaderStruct *value);
-    static void AddIJK(ChunkInfoPtr &chunk, const char *name, const Vector3i *value);
-    static void AddIJK16(ChunkInfoPtr &chunk, const char *name, const Vector3i16 *value);
 
     ChunkTreePtr m_rootChunk;
     FileClass *m_file;

@@ -3,6 +3,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(GAMEMODELCONVERTER_SOURCES
         src/chunksmanager.cpp
         src/chunksmanager.h
+        src/chunkfactory.cpp
         src/gamemodelcommon.h
         src/gamemodelfile.cpp
         src/gamemodelfile.h
