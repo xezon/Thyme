@@ -77,10 +77,10 @@ public:
         return std::make_unique<ChunkInfo>(name, type, data, value);
     }
 
-    static void ParseSubchunks(ChunkLoadClass &chunkLoader, ChunkTreePtr &parentChunk);
+    static void DumpSubChunks(ChunkLoadClass &chunkLoader, ChunkTreePtr &parentChunk);
     static void ReadChunkInfo(ChunkLoadClass &chunkLoader, ChunkTreePtr &chunk);
-    void WriteSubchunks(ChunkSaveClass &chunkSaver, ChunkTreePtr &parentChunk);
-    void WriteChunkInfo(ChunkSaveClass &chunkSaver, ChunkTreePtr &chunk);
+    static void SerializeSubChunks(ChunkSaveClass &chunkSaver, ChunkTreePtr &parentChunk);
+    static void WriteChunkInfo(ChunkSaveClass &chunkSaver, ChunkTreePtr &chunk);
 
     ChunkTreePtr & GetRootChunk() { return m_rootChunk; }
     void SetRootChunk(ChunkTreePtr root) { m_rootChunk = std::move(root); }
