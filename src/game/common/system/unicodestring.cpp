@@ -334,11 +334,59 @@ void Utf16String::Trim()
     }
 }
 
-/**
- * Reverse string for RTL languages
- */
-void Utf16String::ReverseString()
+// Helper function to check if a character is considered "ignored"
+bool is_ignored(unichar_t ch)
 {
+    bool result = ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || // English letters
+        (ch >= '0' && ch <= '9') || // Digits
+        (ch == '%') || // Percentage
+        (ch == '&')); // Special number format
+    return result;
+}
+
+bool is_special_char(unichar_t ch)
+{
+    // Check if character is a special character (comma, period, colon)
+    bool result = (ch == ',' || ch == '.' || ch == ':' || ch == '\'' || ch == '\"' || ch == '(' || ch == ')' || ch == '['
+        || ch == ']' || ch == '{' || ch == '}' || ch == '<' || ch == '>' || ch == '?' || ch == '!' || ch == ';' || ch == '/'
+        || ch == '+' || ch == '|' || ch == '@' || ch == '#' || ch == '$' || ch == '=' || ch == '*' || ch == '~' || ch == '`'
+        || ch == '_'
+        || ch == 0x00A9 /*©*/ || ch == 0x201D /*”*/ || ch == 0x2019 /*’*/ || ch == 0x201C /*“*/ || ch == 0x2018 /*‘*/);
+    return result;
+}
+
+// Helper function to check if a character is "ignored" or a special character
+bool is_ignored_or_special(unichar_t ch)
+{
+    return is_ignored(ch) || is_special_char(ch);
+}
+
+void Utf16String::Reverse()
+{
+    // This function reverses the string for RTL languages while ensuring certain characters
+    // are not reversed. The skipping logic is as follows:
+    //
+    // 1. Characters considered "ignored" (e.g., English letters, digits, and %)
+    //    will not be reversed. These characters will remain in their original order within the string.
+    //
+    // 2. If a special char like comma, period, space or colon appears between two "ignored" characters (e.g., in numbers
+    //    like 1,000 | 25.14 | %.0f%% | 'New York' | %d.%02d.%d), the punctuation will be treated as part of the "ignored"
+    //    sequence and will not be reversed.
+    //
+    // 2.1. If a special char appears at the start or end of the sequence,
+    //    it will be treated as part of the "non-ignored" sequence (e.g., "Level : 1" -> "1 : leveL" when 'Level' is
+    //    non-English word).
+    //
+    // 2.2. If a space appears after a special/ignored char, it will check the next word/char for "ignored" status.
+    //
+    // 3. If a special char appears next to an "ignored" character but is followed by a non-ignored character
+    //    (e.g., a space or a letter), the special will be reversed along with the surrounding text.
+    //
+    // 4. Empty lines and `\n` character are skipped and not affected by the reversal.
+    //
+    // The function loops through the string, reverses it, and ensures the proper skipping and
+    // handling of "ignored" characters and special based on the above rules.
+
     if (m_data == nullptr) {
         return;
     }
@@ -348,18 +396,50 @@ void Utf16String::ReverseString()
         return;
     }
 
-    unichar_t* buffer = Get_Buffer_For_Read(len);
+    unichar_t *buffer = Get_Buffer_For_Read(len);
 
     size_t start = 0;
     size_t end = len - 1;
 
-    while (start < end) {
-        unichar_t temp = buffer[start];
-        buffer[start] = buffer[end];
-        buffer[end] = temp;
+    while (start <= end) {
+        // Skip "ignored" sequences and their associated special characters
+        if (is_ignored(buffer[start])) {
+            while (start <= end && is_ignored_or_special(buffer[start])) {
+                start++;
+            }
+            // Move back to the last valid "ignored" character
+            start--;
+            // Skip any trailing special characters that are part of the "ignored" sequence
+            while (start + 1 <= end && is_special_char(buffer[start + 1]) && is_ignored(buffer[start + 2])) {
+                start++;
+            }
+            // Skip any spaces that are part of the "ignored" sequence
+            while (start + 1 <= end && buffer[start + 1] == ' ' && is_ignored(buffer[start + 2])) {
+                start++;
+            }
+            // Skip any trailing special characters after spaces
+            while (start + 1 <= end && is_special_char(buffer[start + 1]) && is_ignored(buffer[start + 2])) {
+                start++;
+            }
+            // Move to the next character after the "ignored" sequence
+            start++;
+            continue;
+        }
 
-        start++;
-        end--;
+        // Reverse non-"ignored" sequences
+        size_t reverse_start = start;
+        while (start <= end && buffer[start] != '\n' && !is_ignored_or_special(buffer[start])) {
+            start++;
+        }
+        size_t reverse_end = start - 1;
+        std::reverse(buffer + reverse_start, buffer + reverse_end + 1);
+
+        if (start <= end && !is_ignored(buffer[start])) {
+            start++;
+        }
+        if (start <= end && buffer[start] == ' ') {
+            start++;
+        }
     }
 }
 

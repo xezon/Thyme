@@ -155,7 +155,7 @@ Example 3: Load a specific language from a multi-language file and save to a CSF
   > gametextcompiler.exe -load_str_languages English -load_str D:\generals.str -save_csf D:\generals.csf
 
 Example 4: Convert a CSF file to STR format with RTL reversing
-  > -load_csf D:\generals.csf -save_str D:\generals.str -options RTL_REVERSE
+  > gametextcompiler.exe -load_csf D:\generals.csf -save_str D:\generals.str -options RTL_REVERSE
 )#");
 }
 // clang-format on

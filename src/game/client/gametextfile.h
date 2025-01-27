@@ -219,18 +219,18 @@ private:
     static bool Write_Multi_STR_File(
         FileRef &file, const ConstStringInfosPtrArray &string_infos_ptrs, Languages languages, Options options);
     static bool Write_Multi_STR_Entry(FileRef &file,
-        MultiStringInfo &string_info,
+        const MultiStringInfo &string_info,
         Languages languages,
         Options options,
         Utf8Array &buf,
         Utf8String &str);
     static bool Write_STR_Language(FileRef &file, LanguageID language);
 
-    static bool Write_STR_File(FileRef &file, StringInfos &string_infos, Options options);
+    static bool Write_STR_File(FileRef &file, const StringInfos &string_infos, Options options);
     static bool Write_STR_Entry(
-        FileRef &file, StringInfo &string_info, Options options, Utf8Array &buf, Utf8String &str);
+        FileRef &file, const StringInfo &string_info, Options options, Utf8Array &buf, Utf8String &str);
     static bool Write_STR_Label(FileRef &file, const Utf8String &label);
-    static bool Write_STR_Text(FileRef &file, Utf16String &text, Options options, Utf8Array &buf, Utf8String &str);
+    static bool Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8Array &buf, Utf8String &str);
     static bool Write_STR_Speech(FileRef &file, const Utf8String &speech);
     static bool Write_STR_End(FileRef &file);
 
