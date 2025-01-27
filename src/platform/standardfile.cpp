@@ -152,6 +152,11 @@ int StandardFile::Seek(int offset, File::SeekMode mode)
     return fseek(m_file, (long)offset, fmode);
 }
 
+int StandardFile::Position()
+{
+    return ftell(m_file);
+}
+
 void StandardFile::Next_Line(char *dst, int bytes)
 {
     captainslog_trace("Seeking getting next line from StandardFile %s.", m_name.Str());

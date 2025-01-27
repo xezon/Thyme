@@ -12,3 +12,4 @@ if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 
 add_subdirectory(gametextcompiler)
+add_subdirectory(gamemodelconverter)
