@@ -33,6 +33,7 @@ enum class GameTextOption : uint32_t
     CHECK_BUFFER_LENGTH_ON_SAVE = (1 << 2),
     KEEP_OBSOLETE_SPACES_ON_LOAD = (1 << 3),
     WRITE_EXTRA_LF_ON_STR_SAVE = (1 << 4),
+    RTL_REVERSE = (1 << 5),
 };
 
 bool Name_To_Game_Text_Option(const char *name, GameTextOption &option);

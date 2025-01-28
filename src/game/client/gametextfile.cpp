@@ -69,6 +69,7 @@ constexpr const char *const s_option_2 = "Check_Buffer_Length_On_Load";
 constexpr const char *const s_option_3 = "Check_Buffer_Length_On_Save";
 constexpr const char *const s_option_4 = "Keep_Obsolete_Spaces_On_Load";
 constexpr const char *const s_option_5 = "Write_Extra_LF_On_STR_Save";
+constexpr const char *const s_option_6 = "RTL_Reverse";
 
 constexpr const char *const s_options[] = {
     s_option_0,
@@ -77,6 +78,7 @@ constexpr const char *const s_options[] = {
     s_option_3,
     s_option_4,
     s_option_5,
+    s_option_6,
 };
 
 static_assert(s_option_0 == s_options[size_t(GameTextOption::NONE)]);
@@ -85,6 +87,7 @@ static_assert(s_option_2 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUF
 static_assert(s_option_3 == s_options[1 + Bit_To_Index(GameTextOption::CHECK_BUFFER_LENGTH_ON_SAVE)]);
 static_assert(s_option_4 == s_options[1 + Bit_To_Index(GameTextOption::KEEP_OBSOLETE_SPACES_ON_LOAD)]);
 static_assert(s_option_5 == s_options[1 + Bit_To_Index(GameTextOption::WRITE_EXTRA_LF_ON_STR_SAVE)]);
+static_assert(s_option_6 == s_options[1 + Bit_To_Index(GameTextOption::RTL_REVERSE)]);
 } // namespace
 
 bool Name_To_Game_Text_Option(const char *name, GameTextOption &option)
@@ -919,6 +922,10 @@ void GameTextFile::Parse_STR_Text(Utf8Array &buf, Utf16String &text, Options opt
 
     // Translate final UTF16 string.
     text.Translate(buf.data());
+    if (options.has(Options::Value::RTL_REVERSE)) {
+        text.Reverse();
+    }
+
 }
 
 void GameTextFile::Parse_STR_Speech(Utf8View &buf, Utf8String &speech)
@@ -1218,7 +1225,15 @@ bool GameTextFile::Write_STR_Label(FileRef &file, const Utf8String &label)
 bool GameTextFile::Write_STR_Text(FileRef &file, const Utf16String &text, Options options, Utf8Array &buf, Utf8String &str)
 {
     // Convert utf16 to utf8.
-    str.Translate(text.Str());
+    if (options.has(Options::Value::RTL_REVERSE)) {
+        Utf16String reversed;
+        reversed.Set(text.Str()); // Copy the string to avoid modifying the original.
+        reversed.Reverse();
+        str.Translate(reversed.Str());
+    }
+    else {
+        str.Translate(text.Str());
+    }
 
     // STR does support escaped characters for special control characters. Write them out as escaped characters so they
     // are easily modifiable in text editor.

@@ -18,6 +18,8 @@
 #include "critsection.h"
 #include <cstdarg>
 #include <cstddef>
+#include <algorithm>
+#include <cctype>
 
 #ifdef BUILD_WITH_ICU
 #include <unicode/ustdio.h>
@@ -132,6 +134,7 @@ public:
     void Concat(unichar_t c);
     void Concat(const unichar_t *s);
     void Concat(Utf16String const &string) { Concat(string.Str()); }
+    void Reverse(); // Thyme specific
 
     void Trim();
     void To_Lower();
