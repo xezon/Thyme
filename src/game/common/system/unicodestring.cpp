@@ -335,30 +335,170 @@ void Utf16String::Trim()
 }
 
 // Helper function to check if a character is considered "ignored"
-bool is_ignored(unichar_t ch)
+bool is_ignore(unichar_t ch)
 {
     bool result = ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || // English letters
+        (ch >= 0x00C0 && ch <= 0x00FF) || // Latin characters
         (ch >= '0' && ch <= '9') || // Digits
-        (ch == '%') || // Percentage
+        (ch == '%') || // Percentage or format specifier
         (ch == '&')); // Special number format
     return result;
 }
 
-bool is_special_char(unichar_t ch)
+bool is_special(unichar_t ch)
 {
-    // Check if character is a special character (comma, period, colon)
+    // Check if character is a special character (comma, period, colon etc.)
     bool result = (ch == ',' || ch == '.' || ch == ':' || ch == '\'' || ch == '\"' || ch == '(' || ch == ')' || ch == '['
         || ch == ']' || ch == '{' || ch == '}' || ch == '<' || ch == '>' || ch == '?' || ch == '!' || ch == ';' || ch == '/'
         || ch == '+' || ch == '|' || ch == '@' || ch == '#' || ch == '$' || ch == '=' || ch == '*' || ch == '~' || ch == '`'
-        || ch == '_'
+        || ch == '_' || ch == '-'
         || ch == 0x00A9 /*©*/ || ch == 0x201D /*”*/ || ch == 0x2019 /*’*/ || ch == 0x201C /*“*/ || ch == 0x2018 /*‘*/);
+
     return result;
 }
 
 // Helper function to check if a character is "ignored" or a special character
 bool is_ignored_or_special(unichar_t ch)
 {
-    return is_ignored(ch) || is_special_char(ch);
+    return is_ignore(ch) || is_special(ch);
+}
+
+Utf16String ignore_sequence(unichar_t *buffer, size_t *start, size_t end)
+{
+    Utf16String ignore_part;
+    size_t i = (*start);
+    while (i <= end) {
+        // Skip ignored sequences and their associated special characters
+        if (is_ignore(buffer[i]) || i + 1 <= end && is_special(buffer[i]) && is_ignore(buffer[i + 1])) {
+            // Skip any leading special characters that are part of the ignored sequence (e.g., "[Game]", "[+12]")
+            while (i <= end && is_ignore(buffer[i])
+                || i + 1 <= end && is_special(buffer[i]) && is_ignore(buffer[i + 1])) {
+                ignore_part += buffer[i];
+                i++;
+            }
+            // Move back to the last valid "ignored" character
+            i--;
+            // Skip any trailing special characters that are *between* of the ignored sequence  (e.g., "24[:]00")
+            if (i + 2 <= end && is_special(buffer[i + 1]) && is_ignore(buffer[i + 2])) {
+                i++;
+                ignore_part += buffer[i];
+            }
+            // Skip any spaces that are *between of the "ignored" sequence (e.g., "Game[ ]Over")
+            else if (i + 2 <= end && buffer[i + 1] == ' ' && is_ignore(buffer[i + 2])) {
+                i++;
+                ignore_part += buffer[i];
+            }
+            // Skip any spaces and punctuation that are part of the ignored sequence (e.g., "Game["][ ]Over", "Game[ ]["]Over")
+            else if (i + 3 <= end && ((is_special(buffer[i + 1]) && buffer[i + 2] == ' ' && is_ignore(buffer[i + 3])) ||
+                (buffer[i + 1] == ' ' && is_special(buffer[i + 2]) && is_ignore(buffer[i + 3])))) {
+                i++;
+                ignore_part += buffer[i];
+                i++;
+                ignore_part += buffer[i];
+            }
+            // Skip any spaces that are part of the ignored sequence with special characters (e.g., "12[ ][+][ ]34")
+            else if (i + 4 <= end && buffer[i + 1] == ' ' && is_special(buffer[i + 2])
+                && buffer[i + 3] == ' ' && is_ignore(buffer[i + 4])) {
+                i++;
+                ignore_part += buffer[i];
+                i++;
+                ignore_part += buffer[i];
+                i++;
+                ignore_part += buffer[i];
+            }
+            // TODO: Ensure if the below condition is needed and correct
+            // Skip punctuation that is in end of line (e.g., "Game[:]")
+            else if (i + 1 == end && is_special(buffer[i + 1])) {
+                i++;
+                ignore_part += buffer[i];
+            }
+            // Skip sequence of special characters header and numbers (e.g., "Level[ ][1][:][ ]12"). (The condition "Level 1[:][ ]12" is not enough to skip
+            else if (i + 5 <= end && buffer[i + 1] == ' ' && is_ignore(buffer[i + 2]) && is_special(buffer[i + 3])
+                && buffer[i + 4] == ' ' && is_ignore(buffer[i + 5])){
+                i++;
+                ignore_part += buffer[i];
+                i++;
+                ignore_part += buffer[i];
+                i++;
+                ignore_part += buffer[i];
+                i++;
+                ignore_part += buffer[i];
+            }
+            i++;
+        }
+        else {
+            break;
+        }
+    }
+    (*start) = i;
+    return ignore_part;
+}
+
+Utf16String reverse_non_ignored(unichar_t *buffer, size_t *start, size_t end)
+{
+    // Reverse non-ignored sequences
+    size_t reverse_start = (*start);
+    while (reverse_start <= end) {
+        if (buffer[reverse_start] == ' ' && reverse_start + 1 <= end && is_ignore(buffer[reverse_start + 1])
+            || is_special(buffer[reverse_start]) && reverse_start + 1 <= end && is_ignore(buffer[reverse_start + 1])) {
+            break; // space or special followed by ignored char (e.g., "[+]34", "[ ]Over")
+        }
+        reverse_start++;
+    }
+    size_t reverse_end = reverse_start - 1;
+    reverse_start = (*start);
+    Utf16String to_reverse;
+    if (reverse_start < reverse_end) { // 2 or more characters to reverse
+        for (size_t i = reverse_start; i <= reverse_end; ++i) {
+            to_reverse += buffer[i];
+        }
+
+        unichar_t *word_start = const_cast<unichar_t *>(to_reverse.Str());
+        unichar_t *word_end = word_start + to_reverse.Get_Length() - 1;
+
+        while (word_start < word_end) {
+            std::swap(*word_start, *word_end);
+            ++word_start;
+            --word_end;
+        }
+    } else
+    {
+        if (reverse_start == reverse_end) { // 1 character to reverse
+            to_reverse += buffer[reverse_start];
+        }
+    }
+    (*start) = reverse_end + 1;
+    return to_reverse;
+}
+
+Utf16String reverse_line(unichar_t *buffer, size_t *start, size_t end)
+{
+    Utf16String reversed;
+    while ((*start) <= end) {
+
+        Utf16String was_space;
+        while ((*start) <= end && buffer[(*start)] == ' ') {
+            was_space += U_CHAR(' ');
+            (*start)++;
+        }
+
+        Utf16String ignore_part = ignore_sequence(buffer, start, end);
+        ignore_part += reversed; // Add in the front
+        reversed = ignore_part;
+
+        Utf16String reverse_part = reverse_non_ignored(buffer, start, end);
+        was_space += reversed;
+        reverse_part += was_space;
+        reversed = reverse_part;
+
+        while ((*start) <= end && buffer[(*start)] == ' ') {
+            Utf16String temp = U_CHAR(" ");
+            temp += reversed;
+            reversed = temp;
+            (*start)++;
+        }
+    }
+    return reversed;
 }
 
 void Utf16String::Reverse()
@@ -370,8 +510,8 @@ void Utf16String::Reverse()
     //    will not be reversed. These characters will remain in their original order within the string.
     //
     // 2. If a special char like comma, period, space or colon appears between two "ignored" characters (e.g., in numbers
-    //    like 1,000 | 25.14 | %.0f%% | 'New York' | %d.%02d.%d), the punctuation will be treated as part of the "ignored"
-    //    sequence and will not be reversed.
+    //    like 1,000 | 25.14 | %.0f%% | 'New York' | %d.%02d.%d), the punctuation will be treated as part of the
+    //    "ignored" sequence and will not be reversed.
     //
     // 2.1. If a special char appears at the start or end of the sequence,
     //    it will be treated as part of the "non-ignored" sequence (e.g., "Level : 1" -> "1 : leveL" when 'Level' is
@@ -398,51 +538,41 @@ void Utf16String::Reverse()
 
     unichar_t *buffer = Get_Buffer_For_Read(len);
 
-    size_t start = 0;
+    size_t *start = new size_t;
+    *start = 0;
     size_t end = len - 1;
 
-    while (start <= end) {
-        // Skip "ignored" sequences and their associated special characters
-        if (is_ignored(buffer[start])) {
-            while (start <= end && is_ignored_or_special(buffer[start])) {
-                start++;
-            }
-            // Move back to the last valid "ignored" character
-            start--;
-            // Skip any trailing special characters that are part of the "ignored" sequence
-            while (start + 1 <= end && is_special_char(buffer[start + 1]) && is_ignored(buffer[start + 2])) {
-                start++;
-            }
-            // Skip any spaces that are part of the "ignored" sequence
-            while (start + 1 <= end && buffer[start + 1] == ' ' && is_ignored(buffer[start + 2])) {
-                start++;
-            }
-            // Skip any trailing special characters after spaces
-            while (start + 1 <= end && is_special_char(buffer[start + 1]) && is_ignored(buffer[start + 2])) {
-                start++;
-            }
-            // Move to the next character after the "ignored" sequence
-            start++;
-            continue;
+    // Buffer to hold the reversed parts of the string
+    Utf16String to_reversed;
+    Utf16String ignore_part;
+    while ((*start) <= end) {
+        // Skip breaks and new lines
+        Utf16String break_char;
+        while (buffer[(*start)] == '\n') {
+            break_char += U_CHAR("\n");
+            (*start)++;
         }
 
-        // Reverse non-"ignored" sequences
-        size_t reverse_start = start;
-        while (start <= end && buffer[start] != '\n' && !is_ignored_or_special(buffer[start])) {
-            start++;
+        size_t end_line = (*start);
+        while (end_line <= end && buffer[end_line] != '\n') {
+            end_line++;
         }
-        size_t reverse_end = start - 1;
-        std::reverse(buffer + reverse_start, buffer + reverse_end + 1);
-
-        if (start <= end && !is_ignored(buffer[start])) {
-            start++;
-        }
-        if (start <= end && buffer[start] == ' ') {
-            start++;
-        }
+        // sent the line to function to reverse it
+        Utf16String reversed = reverse_line(buffer, start, end_line - 1);
+        to_reversed += break_char;
+        to_reversed += reversed;
     }
-}
 
+    // Update the buffer with the final result
+    if (ignore_part.Get_Length() > 0 && to_reversed.Is_Empty()) {
+        Set(ignore_part);
+    } else {
+        ignore_part += to_reversed;
+        to_reversed = ignore_part;
+        Set(to_reversed);
+    }
+    delete start;
+}
 
 void Utf16String::To_Lower()
 {
