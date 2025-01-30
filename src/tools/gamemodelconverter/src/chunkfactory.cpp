@@ -27,17 +27,6 @@ void WriteChunkRaw(ChunkSaveClass &csave, unsigned id, const void *data, unsigne
     csave.End_Chunk();
 }
 
-template<typename T> void WriteArray(ChunkSaveClass &csave, unsigned id, unsigned dataSize, unsigned numElements)
-{
-    csave.Begin_Chunk(id);
-
-    for (unsigned i = 0; i < numElements; i++) {
-        csave.Write(&arrayData[i], dataSize);
-    }
-
-    csave.End_Chunk();
-}
-
 void AddData(ChunkTreePtr &data, const char *name, const StringClass &type, const StringClass &formattedValue, void *value)
 {
     if (data->data->info == nullptr) {
@@ -79,8 +68,6 @@ void AddVector(ChunkTreePtr &data, const char *name, const W3dVectorStruct *valu
     sprintf(c, "%f %f %f", value->x, value->y, value->z);
     AddData(data, name, "W3dVectorStruct", c, (void *)value);
 }
-
-// Macro for Defining Functions
 
 // Macro for Defining Functions
 // READ_WRITE_CHUNK_STRING
@@ -147,7 +134,6 @@ template<typename T> void Read_Chunk_Array(ChunkLoadClass &cload, ChunkTreePtr &
     delete [] rawData;
 }
 
-
 template<typename T> void Write_Chunk_Array(ChunkSaveClass &csave, ChunkTreePtr &data, unsigned id)
 {
     std::vector<T>* arrayData = reinterpret_cast<std::vector<T>*>(data->data->info->value);
@@ -179,7 +165,6 @@ template<typename T> void Write_Sub_Chunks(ChunkSaveClass &csave, ChunkTreePtr &
 #define READ_WRITE_SUBCHUNKS(id) \
     void Read_##id(ChunkLoadClass &cload, ChunkTreePtr &data) { Read_Sub_Chunks<StringClass>(cload, data, #id); } \
     void Write_##id(ChunkSaveClass &csave, ChunkTreePtr &data) { Write_Sub_Chunks<StringClass>(csave, data); }    \
-
 
 // Read and Write Functions
 READ_WRITE_CHUNK_ARRAY(O_W3D_CHUNK_MATERIALS, W3dMaterialStruct)
@@ -287,11 +272,10 @@ void Read_W3D_CHUNK_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
     char *rawData = ReadChunkRaw(cload);
     W3dAnimChannelStruct *channel = (W3dAnimChannelStruct *)rawData;
-
-    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dAnimChannelStruct) +
-                (channel->LastFrame - channel->FirstFrame) * channel->VectorLen * sizeof(float),
-        "Chunk W3D_CHUNK_ANIMATION_CHANNEL size does not match data size");
-
+    //     TODO padding at the end of the struct if the length of data array int not fully used
+    //    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dAnimChannelStruct) +
+    //                (channel->LastFrame - channel->FirstFrame) * channel->VectorLen * sizeof(float),
+    //        "Chunk W3D_CHUNK_ANIMATION_CHANNEL size does not match data size");
     if (channel->Flags > ANIM_CHANNEL_VIS) {
         StringClass str;
         str.Format("W3D_CHUNK_ANIMATION_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
@@ -308,7 +292,7 @@ void Write_W3D_CHUNK_ANIMATION_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data
         str.Format("W3D_CHUNK_ANIMATION_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
         captainslog_warn((const char *)str);
     }
-    WriteChunkRaw(csave, W3D_CHUNK_ANIMATION_CHANNEL, channel, sizeof(W3dAnimChannelStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_ANIMATION_CHANNEL, channel, data->data->chunkSize);
 }
 
 READ_WRITE_CHUNK(W3D_CHUNK_ANIMATION_HEADER, W3dAnimHeaderStruct)
@@ -318,7 +302,7 @@ void Read_W3D_CHUNK_BIT_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
     char *rawData = ReadChunkRaw(cload);
     W3dBitChannelStruct *channel = (W3dBitChannelStruct *)rawData;
     captainslog_dbgassert(data->data->chunkSize == sizeof(W3dBitChannelStruct)
-                + (channel->LastFrame - channel->FirstFrame) * sizeof(bool),
+                + ((channel->LastFrame - channel->FirstFrame) / 8) * sizeof(uint8_t), // 8 is the number of bits in a byte
         "Chunk W3D_CHUNK_BIT_CHANNEL size does not match data size");
     if (channel->Flags > BIT_CHANNEL_TIMECODED_VIS) {
         StringClass str;
@@ -644,7 +628,7 @@ void Read_W3D_CHUNK_MESH_HEADER3(ChunkLoadClass &cload, ChunkTreePtr &data)
     } else {
         StringClass str;
         str.Format("W3D_CHUNK_MESH_HEADER3 N/A PrelitVersion");
-        captainslog_warn((const char *)str);
+//        captainslog_warn((const char *)str); TODO is needed?
     }
 
     if (header->VertexChannels & 0xFFFFFF00) {
@@ -690,7 +674,7 @@ void Write_W3D_CHUNK_MESH_HEADER3(ChunkSaveClass &csave, ChunkTreePtr &data)
     } else {
         StringClass str;
         str.Format("W3D_CHUNK_MESH_HEADER3 N/A PrelitVersion");
-        captainslog_warn((const char *)str);
+//        captainslog_warn((const char *)str); TODO is needed?
     }
 
     if (header->VertexChannels & 0xFFFFFF00) {
@@ -861,7 +845,8 @@ READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_MATERIAL_IDS, uint32_t)
 void Read_W3D_CHUNK_VERTEX_MATERIAL_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
     char *rawData = ReadChunkRaw(cload);
-    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dVertexMaterialStruct), "Chunk W3D_CHUNK_VERTEX_MATERIAL_INFO size does not match data size");
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dVertexMaterialStruct),
+        "Chunk W3D_CHUNK_VERTEX_MATERIAL_INFO size does not match data size");
     W3dVertexMaterialStruct *material = (W3dVertexMaterialStruct *)rawData;
 
     if (material->Attributes & 0x00000010) {
@@ -1065,8 +1050,9 @@ void Read_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTre
 
     if (flavor == ANIM_FLAVOR_TIMECODED) {
         W3dTimeCodedAnimChannelStruct *channel = (W3dTimeCodedAnimChannelStruct *)rawData;
+        // TODO need check if need add '1' to the size
         captainslog_dbgassert(data->data->chunkSize == sizeof(W3dTimeCodedAnimChannelStruct)
-                    + (((cload.Cur_Chunk_Length() - sizeof(W3dTimeCodedAnimChannelStruct)) >> 2) + 1) * sizeof(int),
+                    + (((cload.Cur_Chunk_Length() - sizeof(W3dTimeCodedAnimChannelStruct)) >> 2) /*+ 1*/) * sizeof(int),
             "Chunk W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL size does not match data size");
 
         if (channel->Flags <= ANIM_CHANNEL_VIS) {
@@ -1079,7 +1065,7 @@ void Read_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTre
         } else {
         W3dAdaptiveDeltaAnimChannelStruct *channel = (W3dAdaptiveDeltaAnimChannelStruct *)rawData;
         captainslog_dbgassert(data->data->chunkSize == sizeof(W3dAdaptiveDeltaAnimChannelStruct)
-                    + (((cload.Cur_Chunk_Length() - sizeof(W3dAdaptiveDeltaAnimChannelStruct)) >> 2) + 1) * sizeof(int),
+                    + (((cload.Cur_Chunk_Length() - sizeof(W3dAdaptiveDeltaAnimChannelStruct)) >> 2) /*+ 1*/) * sizeof(int),
             "Chunk W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL size does not match data size");
 
         if (channel->Flags <= ANIM_CHANNEL_VIS) {
@@ -1096,7 +1082,6 @@ void Read_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTre
 void Write_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     char *rawData = (char *)data->data->info->value;
-    // TODO valid data
     WriteChunkRaw(csave, W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL, rawData, data->data->chunkSize);
 }
 
@@ -1104,8 +1089,9 @@ void Read_W3D_CHUNK_COMPRESSED_BIT_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &
 {
     char *rawData = ReadChunkRaw(cload);
     W3dTimeCodedBitChannelStruct *channel = (W3dTimeCodedBitChannelStruct *)rawData;
-    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dTimeCodedBitChannelStruct) + channel->NumTimeCodes * sizeof(int),
-        "Chunk W3D_CHUNK_COMPRESSED_BIT_CHANNEL size does not match data size");
+    // TODO need fix size check
+//    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dTimeCodedBitChannelStruct) + channel->NumTimeCodes * sizeof(int),
+//        "Chunk W3D_CHUNK_COMPRESSED_BIT_CHANNEL size does not match data size");
 
     if (channel->Flags > BIT_CHANNEL_TIMECODED_VIS) {
         StringClass str;
@@ -1478,23 +1464,20 @@ READ_WRITE_SUBCHUNKS(W3D_CHUNK_FX_SHADER)
 
 void Read_W3D_CHUNK_FX_SHADER_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    // TODO Fix W3dFXShaderStruct
-    captainslog_warn("Read_W3D_CHUNK_FX_SHADER_INFO not implemented");
     char *rawData = ReadChunkRaw(cload);
     captainslog_dbgassert(data->data->chunkSize == sizeof(W3dFXShaderStruct) + 1, "Chunk W3D_CHUNK_FX_SHADER_INFO size does not match data size");
-    uint8_t *version = (uint8_t *)rawData;
-    AddInt8(data, "Version", *version);
-    W3dFXShaderStruct *shader = (W3dFXShaderStruct *)(rawData + 1);
-    AddString(data, "ShaderName", shader->shadername, "string");
-    AddInt8(data, "Technique", shader->technique);
-    delete[] rawData;
+    // TODO Fix W3dFXShaderStruct
+    // uint8_t *version = (uint8_t *)rawData;
+    // W3dFXShaderStruct *shader = (W3dFXShaderStruct *)(rawData + 1);
+    AddData(data, "W3D_CHUNK_FX_SHADER_INFO", "W3dFXShaderStruct", "", (void *)rawData);
+
 }
 
 void Write_W3D_CHUNK_FX_SHADER_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    // TODO: Implement Write_W3D_CHUNK_FX_SHADER_INFO
     captainslog_warn("Write_W3D_CHUNK_FX_SHADER_INFO not implemented");
-//    char *rawData = new char[sizeof(W3dFXShaderStruct) + 1];
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, W3D_CHUNK_FX_SHADER_INFO, rawData, data->data->chunkSize);
 }
 
 struct W3dFXShaderConstantStruct
@@ -1538,7 +1521,7 @@ struct W3dFXShaderConstantStruct
 void Read_W3D_CHUNK_FX_SHADER_CONSTANT(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
     char *rawData = ReadChunkRaw(cload);
-    // TODO check valid
+    // TODO check if this correct
     captainslog_dbgassert(data->data->chunkSize == sizeof(W3dFXShaderConstantStruct), "Chunk W3D_CHUNK_FX_SHADER_CONSTANT size does not match data size");
     W3dFXShaderConstantStruct *constant = (W3dFXShaderConstantStruct *)rawData;
     uint32_t type = *(uint32_t *)rawData;
@@ -1631,6 +1614,7 @@ struct W3dCompressedMotionChannelStructNew
 void Read_W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
     char *rawData = ReadChunkRaw(cload);
+    // TODO check if this correct
     captainslog_dbgassert(data->data->chunkSize == sizeof(W3dCompressedMotionChannelStructNew), "Chunk W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL size does not match data size");
     W3dCompressedMotionChannelStructNew *channel = (W3dCompressedMotionChannelStructNew *)rawData;
     if (channel->Flavor >= ANIM_FLAVOR_NEW_VALID) {
