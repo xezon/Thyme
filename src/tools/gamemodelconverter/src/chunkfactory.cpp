@@ -6,7 +6,7 @@
 
 // Helper Functions
 
-char *ReadChunkData(ChunkLoadClass &cload)
+char *ReadChunkRaw(ChunkLoadClass &cload)
 {
     if (!cload.Cur_Chunk_Length()) {
         char *c = new char[1];
@@ -14,15 +14,17 @@ char *ReadChunkData(ChunkLoadClass &cload)
         return c;
     }
     char *c = new char[cload.Cur_Chunk_Length()];
-    cload.Read(c, cload.Cur_Chunk_Length());
+    size_t bytes = cload.Read(c, cload.Cur_Chunk_Length());
+    captainslog_dbgassert(cload.Cur_Chunk_Length() == bytes, "Read chunk size does not match data size");
     return c;
 }
 
-void WriteChunkData(ChunkSaveClass &csave, unsigned id, const void *data, unsigned dataSize)
+void WriteChunkRaw(ChunkSaveClass &csave, unsigned id, const void *data, unsigned dataSize)
 {
     csave.Begin_Chunk(id);
-    csave.Write(data, dataSize);
-    csave.End_Chunk(); // TODO ASSERT SIZE
+    size_t bytes = csave.Write(data, dataSize);
+    captainslog_dbgassert(dataSize == bytes, "Write chunk size does not match data size");
+    csave.End_Chunk();
 }
 
 template<typename T> void WriteArray(ChunkSaveClass &csave, unsigned id, unsigned dataSize, unsigned numElements)
@@ -80,258 +82,267 @@ void AddVector(ChunkTreePtr &data, const char *name, const W3dVectorStruct *valu
 
 // Macro for Defining Functions
 
-#define DUMP_SERIALIZE_CHUNK_STRING(name) \
-    void Dump_##name(ChunkLoadClass &cload, ChunkTreePtr &data) \
-    { \
-        char *chunkdata = ReadChunkData(cload); \
-        AddString(data, #name, chunkdata, "string"); \
-        delete[] chunkdata; \
-    } \
-\
-    void Serialize_##name(ChunkSaveClass &csave, ChunkTreePtr &data) \
-    { \
-        char *chunkdata = (char *)data->data->info->value; \
-        WriteChunkData(csave, name, chunkdata,  sizeof(chunkdata)); \
-    }
-
-#define DUMP_SERIALIZE_CHUNK(name, type) \
-    void Dump_##name(ChunkLoadClass &cload, ChunkTreePtr &data) \
-    { \
-        char *chunkdata = ReadChunkData(cload); \
-        type *chunkData = (type *)chunkdata; \
-        AddData(data, #name, #type, "", (void *)chunkData); \
-        delete[] chunkdata; \
-    } \
-\
-    void Serialize_##name(ChunkSaveClass &csave, ChunkTreePtr &data) \
-    { \
-        type *chunkData = (type *)data->data->info->value; \
-        WriteChunkData(csave, name, chunkData, sizeof(type)); \
-    }
-
-#define DUMP_SERIALIZE_CHUNK_ARRAY(name, type) \
-    void Dump_##name(ChunkLoadClass &cload, ChunkTreePtr &data) \
-    { \
-        char *chunkdata = ReadChunkData(cload); \
-        type *arrayData = (type *)chunkdata; \
-        AddData(data, #name, #type "[]", "", (void *)arrayData); \
-        delete[] chunkdata; \
-    } \
-\
-    void Serialize_##name(ChunkSaveClass &csave, ChunkTreePtr &data) \
-    { \
-        type *arrayData = (type *)data->data->info->value; \
-        unsigned numElements = data->data->chunkSize / sizeof(type); \
-        WriteChunkData(csave, name, arrayData, numElements * sizeof(type)); \
-    }
-
-#define DUMP_SERIALIZE_PARSER(name) \
-    void Dump_##name(ChunkLoadClass &cload, ChunkTreePtr &data) \
-    { \
-        AddString(data, #name, "", "string"); \
-        ChunkManager::DumpSubChunks(cload, data); \
-    } \
-\
-    void Serialize_##name(ChunkSaveClass &csave, ChunkTreePtr &data) \
-    { \
-        ChunkManager::SerializeSubChunks(csave, data); \
-    }
-
-// Example Replacement:
-void Dump_PARSER_DUMMY(ChunkLoadClass &cload, ChunkTreePtr &data)
+// Macro for Defining Functions
+// READ_WRITE_CHUNK_STRING
+template<typename> void Read_Chunk_String(ChunkLoadClass &cload, ChunkTreePtr &data, const char *id)
 {
-    // spilt name from Dump___func__, no need in macros
-    const char *name = strstr(__func__, "Dump_") + 5;
-    AddString(data, name, "", "string");
-    data->subchunks = std::vector<ChunkTreePtr>(1);
-    ChunkManager::DumpSubChunks(cload, data);
+    char* rawData = ReadChunkRaw(cload);
+    if (strlen(rawData) == 0) { // case of null terminator
+        for (unsigned i = 0; i < data->data->chunkSize; i++) {
+            captainslog_dbgassert(rawData[i] == '\0', "Chunk %s size does not match data size", id);
+        }
+    } else {
+        captainslog_dbgassert(data->data->chunkSize == strlen(rawData) + 1, "Chunk %s size does not match data size", id);
+    }
+    AddData(data, id, "string", rawData, (void *)rawData);
 }
 
-void Dump_W3D_CHUNK_ARRAY_DUMMY(ChunkLoadClass &cload, ChunkTreePtr &data)
+template<typename> void Write_Chunk_String(ChunkSaveClass &csave, ChunkTreePtr &data, unsigned id)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dMaterialStruct *arrayData = (W3dMaterialStruct *)chunkdata;
-    AddData(data, "O_W3D_CHUNK_MATERIALS", "W3dMaterialStruct[]", "", (void *)arrayData);
-    delete[] chunkdata;
+    char* rawData = (char*)data->data->info->value;
+    if (strlen(rawData) == 0) { // case of null terminator
+        for (unsigned i = 0; i < data->data->chunkSize; i++) {
+            captainslog_dbgassert(rawData[i] == '\0', "Chunk %s size does not match data size", id);
+        }
+    } else {
+        captainslog_dbgassert(data->data->chunkSize == strlen(rawData) + 1, "Chunk %s size does not match data size", id);
+    }
+    WriteChunkRaw(csave, id, rawData, data->data->chunkSize);
+}
+#define READ_WRITE_CHUNK_STRING(id) \
+    void Read_##id(ChunkLoadClass &cload, ChunkTreePtr &data) { Read_Chunk_String<StringClass>(cload, data, #id); } \
+    void Write_##id(ChunkSaveClass &csave, ChunkTreePtr &data) { Write_Chunk_String<StringClass>(csave, data, id); } \
+
+// READ_WRITE_CHUNK
+template<typename T> void Read_Chunk_Struct(ChunkLoadClass &cload, ChunkTreePtr &data, const char *id)
+{
+    char* rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(T), "Chunk %s size does not match data size", id);
+    AddData(data, id, typeid(T).name(), "", (void *)rawData);
 }
 
-void Serialize_W3D_CHUNK_ARRAY_DUMMY(ChunkSaveClass &csave, ChunkTreePtr &data)
+template<typename T> void Write_Chunk_Struct(ChunkSaveClass &csave, ChunkTreePtr &data, unsigned id)
 {
-    W3dMaterialStruct *arrayData = (W3dMaterialStruct *)data->data->info->value;
-    unsigned numElements = data->data->chunkSize / sizeof(W3dMaterialStruct);
-    WriteChunkData(csave, O_W3D_CHUNK_MATERIALS, arrayData, numElements * sizeof(W3dMaterialStruct));
+    char *rawData = (char *)data->data->info->value;
+    captainslog_dbgassert(data->data->chunkSize == sizeof(T), "Chunk %X size does not match data size", id);
+    WriteChunkRaw(csave, id, rawData, sizeof(T));
+}
+#define READ_WRITE_CHUNK(id, type) \
+    void Read_##id(ChunkLoadClass &cload, ChunkTreePtr &data) { Read_Chunk_Struct<type>(cload, data, #id); } \
+    void Write_##id(ChunkSaveClass &csave, ChunkTreePtr &data) { Write_Chunk_Struct<type>(csave, data, id); } \
+
+// READ_WRITE_CHUNK_ARRAY
+template<typename T> void Read_Chunk_Array(ChunkLoadClass &cload, ChunkTreePtr &data, const char *id)
+{
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize % sizeof(T) == 0, "Chunk %s size does not match data size", id);
+    std::vector<T> *arrayData = new std::vector<T>();
+    unsigned numElements = data->data->chunkSize / sizeof(T);
+
+    for (unsigned i = 0; i < numElements; i++) {
+        arrayData->push_back(*reinterpret_cast<T*>(rawData + i * sizeof(T)));
+    }
+
+    AddData(data, id, (std::string(typeid(T).name()) + "[]").c_str(), "", (void *)arrayData);
+    delete [] rawData;
 }
 
-void Dump_W3D_CHUNK_PARSER_DUMMY(ChunkLoadClass &cload, ChunkTreePtr &data)
+
+template<typename T> void Write_Chunk_Array(ChunkSaveClass &csave, ChunkTreePtr &data, unsigned id)
 {
-    // Because data is parent chunk, we need to add the name of the chunk, no any data or value
-    AddString(data, "W3D_CHUNK_ARRAY_DUMMY", "", "string");
-    ChunkManager::DumpSubChunks(cload, data);
+    std::vector<T>* arrayData = reinterpret_cast<std::vector<T>*>(data->data->info->value);
+    captainslog_dbgassert(data->data->chunkSize % sizeof(T) == 0, "Chunk %X size does not match data size", id);
+    unsigned numElements = data->data->chunkSize / sizeof(T);
+    char *chunkData = new char[numElements * sizeof(T)];
+    for (unsigned i = 0; i < numElements; i++) {
+        memcpy(chunkData + i * sizeof(T), &(*arrayData)[i], sizeof(T));
+    }
+    WriteChunkRaw(csave, id, chunkData, numElements * sizeof(T));
+
+    delete[] chunkData;
+}
+#define READ_WRITE_CHUNK_ARRAY(id, type) \
+    void Read_##id(ChunkLoadClass &cload, ChunkTreePtr &data) { Read_Chunk_Array<type>(cload, data, #id); } \
+    void Write_##id(ChunkSaveClass &csave, ChunkTreePtr &data) { Write_Chunk_Array<type>(csave, data, id); } \
+
+// READ_WRITE_SUBCHUNKS
+template<typename T> void Read_Sub_Chunks(ChunkLoadClass &cload, ChunkTreePtr &data, const char *id)
+{
+    AddString(data, id, id, "StringClass");
+    ChunkManager::ReadSubChunks(cload, data);
 }
 
-// Dump and Serialize Functions
-DUMP_SERIALIZE_CHUNK_ARRAY(O_W3D_CHUNK_MATERIALS, W3dMaterialStruct)
+template<typename T> void Write_Sub_Chunks(ChunkSaveClass &csave, ChunkTreePtr &data)
+{
+    ChunkManager::WriteSubChunks(csave, data);
+}
+#define READ_WRITE_SUBCHUNKS(id) \
+    void Read_##id(ChunkLoadClass &cload, ChunkTreePtr &data) { Read_Sub_Chunks<StringClass>(cload, data, #id); } \
+    void Write_##id(ChunkSaveClass &csave, ChunkTreePtr &data) { Write_Sub_Chunks<StringClass>(csave, data); }    \
 
-DUMP_SERIALIZE_CHUNK_ARRAY(O_W3D_CHUNK_MATERIALS2, W3dMaterial2Struct)
 
-void Dump_O_W3D_CHUNK_POV_QUADRANGLES(ChunkLoadClass &cload, ChunkTreePtr &data)
+// Read and Write Functions
+READ_WRITE_CHUNK_ARRAY(O_W3D_CHUNK_MATERIALS, W3dMaterialStruct)
+
+READ_WRITE_CHUNK_ARRAY(O_W3D_CHUNK_MATERIALS2, W3dMaterial2Struct)
+
+void Read_O_W3D_CHUNK_POV_QUADRANGLES(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
     captainslog_warn("O_W3D_CHUNK_POV_QUADRANGLES is unsupported");
-    char *chunkdata = ReadChunkData(cload);
-    AddData(data, "O_W3D_CHUNK_POV_QUADRANGLES", "char", "string", (void *)chunkdata);
-    delete[] chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    AddData(data, "O_W3D_CHUNK_POV_QUADRANGLES", "char", "string", (void *)rawData);
 }
 
-void Serialize_O_W3D_CHUNK_POV_QUADRANGLES(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_O_W3D_CHUNK_POV_QUADRANGLES(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     captainslog_warn("O_W3D_CHUNK_POV_QUADRANGLES is unsupported");
-    char *chunkdata = (char *)data->data->info->value;
-    WriteChunkData(csave, O_W3D_CHUNK_POV_QUADRANGLES, chunkdata, data->data->chunkSize);
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, O_W3D_CHUNK_POV_QUADRANGLES, rawData, data->data->chunkSize);
 }
 
-void Dump_O_W3D_CHUNK_POV_TRIANGLES(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_O_W3D_CHUNK_POV_TRIANGLES(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
     captainslog_warn("O_W3D_CHUNK_POV_TRIANGLES is unsupported");
-    char *chunkdata = ReadChunkData(cload);
-    AddData(data, "O_W3D_CHUNK_POV_TRIANGLES", "char", "string", (void *)chunkdata);
-    delete[] chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    AddData(data, "O_W3D_CHUNK_POV_TRIANGLES", "char", "string", (void *)rawData);
 }
 
-void Serialize_O_W3D_CHUNK_POV_TRIANGLES(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_O_W3D_CHUNK_POV_TRIANGLES(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     captainslog_warn("O_W3D_CHUNK_POV_TRIANGLES is unsupported");
-    char *chunkdata = (char *)data->data->info->value;
-    WriteChunkData(csave, O_W3D_CHUNK_POV_TRIANGLES, chunkdata, data->data->chunkSize);
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, O_W3D_CHUNK_POV_TRIANGLES, rawData, data->data->chunkSize);
 }
 
-void Dump_O_W3D_CHUNK_QUADRANGLES(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_O_W3D_CHUNK_QUADRANGLES(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
     captainslog_warn("O_W3D_CHUNK_QUADRANGLES is outdated");
-    char *chunkdata = ReadChunkData(cload);
-    AddData(data, "O_W3D_CHUNK_QUADRANGLES", "char", "string", (void *)chunkdata);
-    delete[] chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    AddData(data, "O_W3D_CHUNK_QUADRANGLES", "char", "string", (void *)rawData);
 }
 
-void Serialize_O_W3D_CHUNK_QUADRANGLES(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_O_W3D_CHUNK_QUADRANGLES(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     captainslog_warn("O_W3D_CHUNK_QUADRANGLES is outdated");
-    char *chunkdata = (char *)data->data->info->value;
-    WriteChunkData(csave, O_W3D_CHUNK_QUADRANGLES, chunkdata, data->data->chunkSize);
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, O_W3D_CHUNK_QUADRANGLES, rawData, data->data->chunkSize);
 }
 
-DUMP_SERIALIZE_CHUNK_ARRAY(O_W3D_CHUNK_SURRENDER_TRIANGLES, W3dSurrenderTriangleStruct)
+READ_WRITE_CHUNK_ARRAY(O_W3D_CHUNK_SURRENDER_TRIANGLES, W3dSurrenderTriangleStruct)
 
-void Dump_O_W3D_CHUNK_TRIANGLES(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_O_W3D_CHUNK_TRIANGLES(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
     captainslog_warn("O_W3D_CHUNK_TRIANGLES is obsoleted");
-    char *chunkdata = ReadChunkData(cload);
-    AddData(data, "O_W3D_CHUNK_TRIANGLES", "char", "string", (void *)chunkdata);
-    delete[] chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    AddData(data, "O_W3D_CHUNK_TRIANGLES", "char", "string", (void *)rawData);
 }
 
-void Serialize_O_W3D_CHUNK_TRIANGLES(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_O_W3D_CHUNK_TRIANGLES(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     captainslog_warn("O_W3D_CHUNK_TRIANGLES is obsoleted");
-    char *chunkdata = (char *)data->data->info->value;
-    WriteChunkData(csave, O_W3D_CHUNK_TRIANGLES, chunkdata, data->data->chunkSize);
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, O_W3D_CHUNK_TRIANGLES, rawData, data->data->chunkSize);
 }
 
-DUMP_SERIALIZE_CHUNK(OBSOLETE_W3D_CHUNK_EMITTER_COLOR_KEYFRAME, W3dEmitterColorKeyframeStruct)
+READ_WRITE_CHUNK(OBSOLETE_W3D_CHUNK_EMITTER_COLOR_KEYFRAME, W3dEmitterColorKeyframeStruct)
 
-DUMP_SERIALIZE_CHUNK(OBSOLETE_W3D_CHUNK_EMITTER_OPACITY_KEYFRAME, W3dEmitterOpacityKeyframeStruct)
+READ_WRITE_CHUNK(OBSOLETE_W3D_CHUNK_EMITTER_OPACITY_KEYFRAME, W3dEmitterOpacityKeyframeStruct)
 
-DUMP_SERIALIZE_CHUNK(OBSOLETE_W3D_CHUNK_EMITTER_SIZE_KEYFRAME, W3dEmitterSizeKeyframeStruct)
+READ_WRITE_CHUNK(OBSOLETE_W3D_CHUNK_EMITTER_SIZE_KEYFRAME, W3dEmitterSizeKeyframeStruct)
 
-DUMP_SERIALIZE_CHUNK(OBSOLETE_W3D_CHUNK_SHADOW_NODE, W3dHModelNodeStruct)
+READ_WRITE_CHUNK(OBSOLETE_W3D_CHUNK_SHADOW_NODE, W3dHModelNodeStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_AABTREE)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_AABTREE)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_AABTREE_HEADER, W3dMeshAABTreeHeader)
+READ_WRITE_CHUNK(W3D_CHUNK_AABTREE_HEADER, W3dMeshAABTreeHeader)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_AABTREE_NODES, W3dMeshAABTreeNode)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_AABTREE_NODES, W3dMeshAABTreeNode)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_AABTREE_POLYINDICES, uint32_t)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_AABTREE_POLYINDICES, uint32_t)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_AGGREGATE)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_AGGREGATE)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_AGGREGATE_CLASS_INFO, W3dAggregateMiscInfo)
+READ_WRITE_CHUNK(W3D_CHUNK_AGGREGATE_CLASS_INFO, W3dAggregateMiscInfo)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_AGGREGATE_HEADER, W3dAggregateHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_AGGREGATE_HEADER, W3dAggregateHeaderStruct)
 
-void Dump_W3D_CHUNK_AGGREGATE_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_AGGREGATE_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dAggregateInfoStruct *info = (W3dAggregateInfoStruct *)chunkdata;
-    W3dAggregateSubobjectStruct *subobj = (W3dAggregateSubobjectStruct *)(chunkdata + sizeof(W3dAggregateInfoStruct));
-
-    // TODO: Add Subobjects
-    captainslog_warn("W3D_CHUNK_AGGREGATE_INFO Subobjects are not correctly implemented");
-    AddData(data, "W3D_CHUNK_AGGREGATE_INFO", "W3dAggregateInfoStruct[][]", "Obsolete", (void *)info);
-    delete[] chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    W3dAggregateInfoStruct *info = (W3dAggregateInfoStruct *)rawData;
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dAggregateInfoStruct) + info->SubobjectCount * sizeof(W3dAggregateSubobjectStruct),
+        "Chunk W3D_CHUNK_AGGREGATE_INFO size does not match expected size for AggregateInfo structure");
+    AddData(data, "W3D_CHUNK_AGGREGATE_INFO", "W3dAggregateInfoStruct[][]", "Obsolete", (void *)rawData);
 }
 
-void Serialize_W3D_CHUNK_AGGREGATE_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_AGGREGATE_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    W3dAggregateInfoStruct *info = (W3dAggregateInfoStruct *)data->data->info->value;
-    WriteChunkData(csave, W3D_CHUNK_AGGREGATE_INFO, info, sizeof(W3dAggregateInfoStruct));
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, W3D_CHUNK_AGGREGATE_INFO, rawData, data->data->chunkSize);
 }
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_ANIMATION)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_ANIMATION)
 
-void Dump_W3D_CHUNK_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dAnimChannelStruct *channel = (W3dAnimChannelStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    W3dAnimChannelStruct *channel = (W3dAnimChannelStruct *)rawData;
 
-    if (channel->Flags <= ANIM_CHANNEL_VIS) {
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dAnimChannelStruct) +
+                (channel->LastFrame - channel->FirstFrame) * channel->VectorLen * sizeof(float),
+        "Chunk W3D_CHUNK_ANIMATION_CHANNEL size does not match data size");
+
+    if (channel->Flags > ANIM_CHANNEL_VIS) {
         StringClass str;
         str.Format("W3D_CHUNK_ANIMATION_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
         captainslog_warn((const char *)str);
     }
-    AddData(data, "W3D_CHUNK_ANIMATION_CHANNEL", "W3dAnimChannelStruct", "", (void *)channel);
-    delete[] chunkdata;
+    AddData(data, "W3D_CHUNK_ANIMATION_CHANNEL", "W3dAnimChannelStruct", "", (void *)rawData);
 }
 
-void Serialize_W3D_CHUNK_ANIMATION_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_ANIMATION_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dAnimChannelStruct *channel = (W3dAnimChannelStruct *)data->data->info->value;
-    if (channel->Flags <= ANIM_CHANNEL_VIS) {
+    if (channel->Flags > ANIM_CHANNEL_VIS) {
         StringClass str;
         str.Format("W3D_CHUNK_ANIMATION_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
         captainslog_warn((const char *)str);
     }
-    WriteChunkData(csave, W3D_CHUNK_ANIMATION_CHANNEL, channel, sizeof(W3dAnimChannelStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_ANIMATION_CHANNEL, channel, sizeof(W3dAnimChannelStruct));
 }
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_ANIMATION_HEADER, W3dAnimHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_ANIMATION_HEADER, W3dAnimHeaderStruct)
 
-void Dump_W3D_CHUNK_BIT_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_BIT_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dBitChannelStruct *channel = (W3dBitChannelStruct *)chunkdata;
-    if (channel->Flags <= BIT_CHANNEL_TIMECODED_VIS) {
+    char *rawData = ReadChunkRaw(cload);
+    W3dBitChannelStruct *channel = (W3dBitChannelStruct *)rawData;
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dBitChannelStruct)
+                + (channel->LastFrame - channel->FirstFrame) * sizeof(bool),
+        "Chunk W3D_CHUNK_BIT_CHANNEL size does not match data size");
+    if (channel->Flags > BIT_CHANNEL_TIMECODED_VIS) {
         StringClass str;
         str.Format("W3D_CHUNK_BIT_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
         captainslog_warn((const char *)str);
     }
-    AddData(data, "W3D_CHUNK_BIT_CHANNEL", "W3dBitChannelStruct", "", (void *)channel);
-    delete[] chunkdata;
+    AddData(data, "W3D_CHUNK_BIT_CHANNEL", "W3dBitChannelStruct[]", "", (void *)channel);
 }
-void Serialize_W3D_CHUNK_BIT_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_BIT_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dBitChannelStruct *channel = (W3dBitChannelStruct *)data->data->info->value;
-    if (channel->Flags <= BIT_CHANNEL_TIMECODED_VIS) {
+    if (channel->Flags > BIT_CHANNEL_TIMECODED_VIS) {
         StringClass str;
         str.Format("W3D_CHUNK_BIT_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
         captainslog_warn((const char *)str);
     }
-    WriteChunkData(csave, W3D_CHUNK_BIT_CHANNEL, channel, sizeof(W3dBitChannelStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_BIT_CHANNEL, channel, data->data->chunkSize);
 }
 
-void Dump_W3D_CHUNK_BOX(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_BOX(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dBoxStruct *box = (W3dBoxStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dBoxStruct), "Chunk W3D_CHUNK_BOX size does not match data size");
+    W3dBoxStruct *box = (W3dBoxStruct *)rawData;
 
     if (box->Attributes & 4) {
         StringClass str;
@@ -352,10 +363,9 @@ void Dump_W3D_CHUNK_BOX(ChunkLoadClass &cload, ChunkTreePtr &data)
     }
 
     AddData(data, "W3D_CHUNK_BOX", "W3dBoxStruct", "", (void *)box);
-    delete[] chunkdata;
 }
 
-void Serialize_W3D_CHUNK_BOX(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_BOX(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dBoxStruct *box = (W3dBoxStruct *)data->data->info->value;
     if (box->Attributes & 4) {
@@ -376,162 +386,159 @@ void Serialize_W3D_CHUNK_BOX(ChunkSaveClass &csave, ChunkTreePtr &data)
         captainslog_warn((const char *)str);
     }
 
-    WriteChunkData(csave, W3D_CHUNK_BOX, box, sizeof(W3dBoxStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_BOX, box, sizeof(W3dBoxStruct));
 }
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_COLLECTION)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_COLLECTION)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_COLLECTION_HEADER, W3dCollectionHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_COLLECTION_HEADER, W3dCollectionHeaderStruct)
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_COLLECTION_OBJ_NAME)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_COLLECTION_OBJ_NAME)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_COLLISION_NODE, W3dHModelNodeStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_COLLISION_NODE, W3dHModelNodeStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_DAMAGE)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_DAMAGE)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_DAMAGE_COLORS, W3dDamageColorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_DAMAGE_COLORS, W3dDamageColorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_DAMAGE_HEADER, W3dDamageStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_DAMAGE_HEADER, W3dDamageStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_DAMAGE_VERTICES, W3dDamageVertexStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_DAMAGE_VERTICES, W3dDamageVertexStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_DAZZLE)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_DAZZLE)
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_DAZZLE_NAME)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_DAZZLE_NAME)
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_DAZZLE_TYPENAME)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_DAZZLE_TYPENAME)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_DCG, W3dRGBAStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_DCG, W3dRGBAStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_DIG, W3dRGBStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_DIG, W3dRGBStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_EMITTER)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_EMITTER)
 
-void Dump_W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dEmitterBlurTimeHeaderStruct *header = (W3dEmitterBlurTimeHeaderStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    W3dEmitterBlurTimeHeaderStruct *header = (W3dEmitterBlurTimeHeaderStruct *)rawData;
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dEmitterBlurTimeHeaderStruct)
+                + (header->KeyframeCount + 1) * sizeof(W3dEmitterBlurTimeKeyframeStruct),
+        "Chunk W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES size does not match data size");
 
-    W3dEmitterBlurTimeKeyframeStruct *blurtime =
-        (W3dEmitterBlurTimeKeyframeStruct *)(chunkdata + sizeof(W3dEmitterBlurTimeHeaderStruct));
-
-    // TODO: Add subobjects
-    captainslog_warn("W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES Subobjects are not correctly implemented");
-    AddData(data, "W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES", "W3dEmitterBlurTimeHeaderStruct[][]", "", (void *)chunkdata);
-    delete[] chunkdata;
+    AddData(data, "W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES", "W3dEmitterBlurTimeHeaderStruct[][]", "", (void *)rawData);
 }
 
-void Serialize_W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    W3dEmitterBlurTimeHeaderStruct *header = (W3dEmitterBlurTimeHeaderStruct *)data->data->info->value;
-    WriteChunkData(csave, W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES, header, sizeof(W3dEmitterBlurTimeHeaderStruct));
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, W3D_CHUNK_EMITTER_BLUR_TIME_KEYFRAMES, rawData, data->data->chunkSize);
 }
 
-void Dump_W3D_CHUNK_EMITTER_FRAME_KEYFRAMES(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_EMITTER_FRAME_KEYFRAMES(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dEmitterFrameHeaderStruct *header = (W3dEmitterFrameHeaderStruct *)chunkdata;
-    W3dEmitterFrameKeyframeStruct *frame =
-        (W3dEmitterFrameKeyframeStruct *)(chunkdata + sizeof(W3dEmitterFrameHeaderStruct));
+    char *rawData = ReadChunkRaw(cload);
+    W3dEmitterFrameHeaderStruct *header = (W3dEmitterFrameHeaderStruct *)rawData;
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dEmitterFrameHeaderStruct)
+                + (header->KeyframeCount + 1) * sizeof(W3dEmitterFrameKeyframeStruct),
+        "Chunk W3D_CHUNK_EMITTER_FRAME_KEYFRAMES size does not match data size");
 
-    // TODO: Add subobjects
-    captainslog_warn("W3D_CHUNK_EMITTER_FRAME_KEYFRAMES Subobjects are not correctly implemented");
-    AddData(data, "W3D_CHUNK_EMITTER_FRAME_KEYFRAMES", "W3dEmitterFrameHeaderStruct[][]", "", (void *)chunkdata);
-    delete[] chunkdata;
+    AddData(data, "W3D_CHUNK_EMITTER_FRAME_KEYFRAMES", "W3dEmitterFrameHeaderStruct[][]", "", (void *)rawData);
 }
 
-void Serialize_W3D_CHUNK_EMITTER_FRAME_KEYFRAMES(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_EMITTER_FRAME_KEYFRAMES(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    W3dEmitterFrameHeaderStruct *header = (W3dEmitterFrameHeaderStruct *)data->data->info->value;
-    WriteChunkData(csave, W3D_CHUNK_EMITTER_FRAME_KEYFRAMES, header, sizeof(W3dEmitterFrameHeaderStruct));
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, W3D_CHUNK_EMITTER_FRAME_KEYFRAMES, rawData, data->data->chunkSize);
 }
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_EMITTER_HEADER, W3dEmitterHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_EMITTER_HEADER, W3dEmitterHeaderStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_EMITTER_INFO, W3dEmitterInfoStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_EMITTER_INFO, W3dEmitterInfoStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_EMITTER_INFOV2, W3dEmitterInfoStructV2)
+READ_WRITE_CHUNK(W3D_CHUNK_EMITTER_INFOV2, W3dEmitterInfoStructV2)
 
-void Dump_W3D_CHUNK_EMITTER_PROPS(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_EMITTER_PROPS(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dEmitterPropertyStruct *props = (W3dEmitterPropertyStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    W3dEmitterPropertyStruct *props = (W3dEmitterPropertyStruct *)rawData;
 
-    W3dEmitterColorKeyframeStruct *color = (W3dEmitterColorKeyframeStruct *)(chunkdata + sizeof(W3dEmitterPropertyStruct));
+    W3dEmitterColorKeyframeStruct *color = (W3dEmitterColorKeyframeStruct *)(rawData + sizeof(W3dEmitterPropertyStruct));
 
-    W3dEmitterOpacityKeyframeStruct *opacity = (W3dEmitterOpacityKeyframeStruct *)(chunkdata
+    W3dEmitterOpacityKeyframeStruct *opacity = (W3dEmitterOpacityKeyframeStruct *)(rawData
         + sizeof(W3dEmitterPropertyStruct) + (props->ColorKeyframes * sizeof(W3dEmitterColorKeyframeStruct)));
 
-    W3dEmitterSizeKeyframeStruct *size = (W3dEmitterSizeKeyframeStruct *)(chunkdata + sizeof(W3dEmitterPropertyStruct)
+    W3dEmitterSizeKeyframeStruct *size = (W3dEmitterSizeKeyframeStruct *)(rawData + sizeof(W3dEmitterPropertyStruct)
         + (props->ColorKeyframes * sizeof(W3dEmitterColorKeyframeStruct))
         + (props->OpacityKeyframes * sizeof(W3dEmitterOpacityKeyframeStruct)));
+    captainslog_dbgassert(data->data->chunkSize ==
+            sizeof(W3dEmitterPropertyStruct)
+                + (props->ColorKeyframes * sizeof(W3dEmitterColorKeyframeStruct))
+                + (props->OpacityKeyframes * sizeof(W3dEmitterOpacityKeyframeStruct))
+                + (props->SizeKeyframes * sizeof(W3dEmitterSizeKeyframeStruct)),
+        "Chunk W3D_CHUNK_EMITTER_PROPS size does not match data size");
 
-    // TODO: Add subobjects
-    captainslog_warn("W3D_CHUNK_EMITTER_PROPS Subobjects are not correctly implemented");
-    AddData(data, "W3D_CHUNK_EMITTER_PROPS", "W3dEmitterPropertyStruct[][][][]", "", (void *)chunkdata);
-    delete[] chunkdata;
+
+    AddData(data, "W3D_CHUNK_EMITTER_PROPS", "W3dEmitterPropertyStruct[][][][]", "", (void *)rawData);
 }
 
-void Serialize_W3D_CHUNK_EMITTER_PROPS(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_EMITTER_PROPS(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    W3dEmitterPropertyStruct *props = (W3dEmitterPropertyStruct *)data->data->info->value;
-    WriteChunkData(csave, W3D_CHUNK_EMITTER_PROPS, props, sizeof(W3dEmitterPropertyStruct));
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, W3D_CHUNK_EMITTER_PROPS, rawData, data->data->chunkSize);
 }
 
-void Dump_W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dEmitterRotationHeaderStruct *header = (W3dEmitterRotationHeaderStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    W3dEmitterRotationHeaderStruct *header = (W3dEmitterRotationHeaderStruct *)rawData;
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dEmitterRotationHeaderStruct)
+                + (header->KeyframeCount + 1) * sizeof(W3dEmitterRotationKeyframeStruct),
+        "Chunk W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES size does not match data size");
 
-    W3dEmitterRotationKeyframeStruct *frame =
-        (W3dEmitterRotationKeyframeStruct *)(chunkdata + sizeof(W3dEmitterRotationHeaderStruct));
-
-    // TODO: Add subobjects
-    captainslog_warn("W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES Subobjects are not correctly implemented");
-    AddData(data, "W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES", "W3dEmitterRotationHeaderStruct[][]", "", (void *)chunkdata);
-    delete[] chunkdata;
+    AddData(data, "W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES", "W3dEmitterRotationHeaderStruct[][]", "", (void *)rawData);
 }
 
-void Serialize_W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    W3dEmitterRotationHeaderStruct *header = (W3dEmitterRotationHeaderStruct *)data->data->info->value;
-    WriteChunkData(csave, W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES, header, sizeof(W3dEmitterRotationHeaderStruct));
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, W3D_CHUNK_EMITTER_ROTATION_KEYFRAMES, rawData, data->data->chunkSize);
 }
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_EMITTER_USER_DATA)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_EMITTER_USER_DATA)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_FAR_ATTENUATION, W3dLightAttenuationStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_FAR_ATTENUATION, W3dLightAttenuationStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_HIERARCHY)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_HIERARCHY)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_HIERARCHY_HEADER, W3dHierarchyStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_HIERARCHY_HEADER, W3dHierarchyStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_HLOD)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_HLOD)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_HLOD_AGGREGATE_ARRAY)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_HLOD_AGGREGATE_ARRAY)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_HLOD_HEADER, W3dHLodHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_HLOD_HEADER, W3dHLodHeaderStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_HLOD_LOD_ARRAY)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_HLOD_LOD_ARRAY)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_HLOD_SUB_OBJECT_ARRAY_HEADER, W3dHLodArrayHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_HLOD_SUB_OBJECT_ARRAY_HEADER, W3dHLodArrayHeaderStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_HLOD_PROXY_ARRAY)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_HLOD_PROXY_ARRAY)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_HLOD_SUB_OBJECT, W3dHLodSubObjectStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_HLOD_SUB_OBJECT, W3dHLodSubObjectStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_HMODEL)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_HMODEL)
 
-DUMP_SERIALIZE_CHUNK(OBSOLETE_W3D_CHUNK_HMODEL_AUX_DATA, W3dHModelAuxDataStruct)
+READ_WRITE_CHUNK(OBSOLETE_W3D_CHUNK_HMODEL_AUX_DATA, W3dHModelAuxDataStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_HMODEL_HEADER, W3dHModelHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_HMODEL_HEADER, W3dHModelHeaderStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_LIGHT)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_LIGHT)
 
-void Dump_W3D_CHUNK_LIGHT_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_LIGHT_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dLightStruct *light = (W3dLightStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dLightStruct), "Chunk W3D_CHUNK_LIGHT_INFO size does not match data size");
+    W3dLightStruct *light = (W3dLightStruct *)rawData;
 
     int type = light->Attributes & W3D_LIGHT_ATTRIBUTE_TYPE_MASK;
     if (type != W3D_LIGHT_ATTRIBUTE_POINT && type != W3D_LIGHT_ATTRIBUTE_SPOT && type != W3D_LIGHT_ATTRIBUTE_DIRECTIONAL) {
@@ -545,11 +552,10 @@ void Dump_W3D_CHUNK_LIGHT_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
         str.Format("W3D_CHUNK_LIGHT_INFO Unknown Light Flags %x", light->Attributes & 0xFFFFFE00);
         captainslog_warn((const char *)str);
     }
-    AddData(data, "W3D_CHUNK_LIGHT_INFO", "W3dLightStruct", "", (void *)chunkdata);
-    delete[] chunkdata;
+    AddData(data, "W3D_CHUNK_LIGHT_INFO", "W3dLightStruct", "", (void *)rawData);
 }
 
-void Serialize_W3D_CHUNK_LIGHT_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_LIGHT_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dLightStruct *light = (W3dLightStruct *)data->data->info->value;
     int type = light->Attributes & W3D_LIGHT_ATTRIBUTE_TYPE_MASK;
@@ -565,53 +571,54 @@ void Serialize_W3D_CHUNK_LIGHT_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
         captainslog_warn((const char *)str);
     }
 
-    WriteChunkData(csave, W3D_CHUNK_LIGHT_INFO, light, sizeof(W3dLightStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_LIGHT_INFO, light, sizeof(W3dLightStruct));
 }
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_LIGHT_TRANSFORM, W3dLightTransformStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_LIGHT_TRANSFORM, W3dLightTransformStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_LIGHTSCAPE)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_LIGHTSCAPE)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_LIGHTSCAPE_LIGHT)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_LIGHTSCAPE_LIGHT)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_LOD, W3dLODStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_LOD, W3dLODStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_LODMODEL)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_LODMODEL)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_LODMODEL_HEADER, W3dLODModelHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_LODMODEL_HEADER, W3dLODModelHeaderStruct)
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_MAP3_FILENAME)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_MAP3_FILENAME)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_MAP3_INFO, W3dMap3Struct)
+READ_WRITE_CHUNK(W3D_CHUNK_MAP3_INFO, W3dMap3Struct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_MATERIAL_INFO, W3dMaterialInfoStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_MATERIAL_INFO, W3dMaterialInfoStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MATERIAL_PASS)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MATERIAL_PASS)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MATERIAL3)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MATERIAL3)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MATERIAL3_DC_MAP)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MATERIAL3_DC_MAP)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MATERIAL3_DI_MAP)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MATERIAL3_DI_MAP)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_MATERIAL3_INFO, W3dMaterial3Struct)
+READ_WRITE_CHUNK(W3D_CHUNK_MATERIAL3_INFO, W3dMaterial3Struct)
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_MATERIAL3_NAME)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_MATERIAL3_NAME)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MATERIAL3_SC_MAP)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MATERIAL3_SC_MAP)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MATERIAL3_SI_MAP)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MATERIAL3_SI_MAP)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MATERIALS3)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MATERIALS3)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MESH)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MESH)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_MESH_HEADER, W3dMeshHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_MESH_HEADER, W3dMeshHeaderStruct)
 
-void Dump_W3D_CHUNK_MESH_HEADER3(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_MESH_HEADER3(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dMeshHeader3Struct *header = (W3dMeshHeader3Struct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dMeshHeader3Struct), "Chunk W3D_CHUNK_MESH_HEADER3 size does not match data size");
+    W3dMeshHeader3Struct *header = (W3dMeshHeader3Struct *)rawData;
     int type = header->Attributes & W3D_MESH_FLAG_GEOMETRY_TYPE_MASK;
     if (type != W3D_MESH_FLAG_GEOMETRY_TYPE_NORMAL && type != W3D_MESH_FLAG_GEOMETRY_TYPE_CAMERA_ALIGNED
         && type != W3D_MESH_FLAG_GEOMETRY_TYPE_SKIN && type != OBSOLETE_W3D_MESH_FLAG_GEOMETRY_TYPE_SHADOW
@@ -652,10 +659,9 @@ void Dump_W3D_CHUNK_MESH_HEADER3(ChunkLoadClass &cload, ChunkTreePtr &data)
         captainslog_warn((const char *)str);
     }
     AddData(data, "W3D_CHUNK_MESH_HEADER3", "W3dMeshHeader3Struct", "", (void *)header);
-    delete[] chunkdata;
 }
 
-void Serialize_W3D_CHUNK_MESH_HEADER3(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_MESH_HEADER3(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dMeshHeader3Struct *header = (W3dMeshHeader3Struct *)data->data->info->value;
     int type = header->Attributes & W3D_MESH_FLAG_GEOMETRY_TYPE_MASK;
@@ -699,65 +705,66 @@ void Serialize_W3D_CHUNK_MESH_HEADER3(ChunkSaveClass &csave, ChunkTreePtr &data)
         captainslog_warn((const char *)str);
     }
 
-    WriteChunkData(csave, W3D_CHUNK_MESH_HEADER3, header, sizeof(W3dMeshHeader3Struct));
+    WriteChunkRaw(csave, W3D_CHUNK_MESH_HEADER3, header, sizeof(W3dMeshHeader3Struct));
 }
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_MESH_USER_TEXT)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_MESH_USER_TEXT)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_NEAR_ATTENUATION, W3dLightAttenuationStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_NEAR_ATTENUATION, W3dLightAttenuationStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_NODE, W3dHModelNodeStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_NODE, W3dHModelNodeStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_NULL_OBJECT, W3dNullObjectStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_NULL_OBJECT, W3dNullObjectStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_PER_FACE_TEXCOORD_IDS, Vector3i)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_PER_FACE_TEXCOORD_IDS, Vector3i)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_PER_TRI_MATERIALS, uint16_t)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_PER_TRI_MATERIALS, uint16_t)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_PIVOT_FIXUPS, W3dPivotFixupStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_PIVOT_FIXUPS, W3dPivotFixupStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_PIVOTS, W3dPivotStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_PIVOTS, W3dPivotStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_PLACEHOLDER, W3dPlaceholderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_PLACEHOLDER, W3dPlaceholderStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_POINTS, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_POINTS, W3dVectorStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_PRELIT_LIGHTMAP_MULTI_PASS)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_PRELIT_LIGHTMAP_MULTI_PASS)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_PRELIT_LIGHTMAP_MULTI_TEXTURE)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_PRELIT_LIGHTMAP_MULTI_TEXTURE)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_PRELIT_UNLIT)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_PRELIT_UNLIT)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_PRELIT_VERTEX)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_PRELIT_VERTEX)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_PS2_SHADERS, W3dPS2ShaderStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_PS2_SHADERS, W3dPS2ShaderStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SCG, W3dRGBStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SCG, W3dRGBStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHADER_IDS, uint32_t)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHADER_IDS, uint32_t)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHADERS, W3dShaderStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHADERS, W3dShaderStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_SKIN_NODE, W3dHModelNodeStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_SKIN_NODE, W3dHModelNodeStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_SPOT_LIGHT_INFO, W3dSpotLightStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_SPOT_LIGHT_INFO, W3dSpotLightStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_SPOT_LIGHT_INFO_5_0, W3dSpotLightStruct_v5_0)
+READ_WRITE_CHUNK(W3D_CHUNK_SPOT_LIGHT_INFO_5_0, W3dSpotLightStruct_v5_0)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_STAGE_TEXCOORDS, W3dTexCoordStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_STAGE_TEXCOORDS, W3dTexCoordStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SURRENDER_NORMALS, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SURRENDER_NORMALS, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_TEXCOORDS, W3dTexCoordStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_TEXCOORDS, W3dTexCoordStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_TEXTURE)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_TEXTURE)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_TEXTURE_IDS, uint32_t)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_TEXTURE_IDS, uint32_t)
 
-void Dump_W3D_CHUNK_TEXTURE_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_TEXTURE_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dTextureInfoStruct *info = (W3dTextureInfoStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dTextureInfoStruct), "Chunk W3D_CHUNK_TEXTURE_INFO size does not match data size");
+    W3dTextureInfoStruct *info = (W3dTextureInfoStruct *)rawData;
 
     int hint = info->Attributes & 0xF00;
 
@@ -782,10 +789,9 @@ void Dump_W3D_CHUNK_TEXTURE_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
     }
 
     AddData(data, "W3D_CHUNK_TEXTURE_INFO", "W3dTextureInfoStruct", "", (void *)info);
-    delete[] chunkdata;
 }
 
-void Serialize_W3D_CHUNK_TEXTURE_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_TEXTURE_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dTextureInfoStruct *info = (W3dTextureInfoStruct *)data->data->info->value;
     int hint = info->Attributes & 0xF00;
@@ -810,37 +816,53 @@ void Serialize_W3D_CHUNK_TEXTURE_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
         captainslog_warn((const char *)str);
     }
 
-    WriteChunkData(csave, W3D_CHUNK_TEXTURE_INFO, info, sizeof(W3dTextureInfoStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_TEXTURE_INFO, info, sizeof(W3dTextureInfoStruct));
 }
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_TEXTURE_NAME)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_TEXTURE_NAME)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_TEXTURE_REPLACER_INFO, W3dTextureReplacerStruct)
-
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_TEXTURE_STAGE)
-
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_TEXTURES)
-
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_TRANSFORM_NODE, W3dPlaceholderStruct)
-
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_TRIANGLES, W3dTriStruct)
-
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_COLORS, W3dRGBStruct)
-
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_INFLUENCES, W3dVertInfStruct)
-
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_VERTEX_MAPPER_ARGS0)
-
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_VERTEX_MAPPER_ARGS1)
-
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_VERTEX_MATERIAL)
-
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_MATERIAL_IDS, uint32_t)
-
-void Dump_W3D_CHUNK_VERTEX_MATERIAL_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_TEXTURE_REPLACER_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dVertexMaterialStruct *material = (W3dVertexMaterialStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    W3dTextureReplacerHeaderStruct *header = (W3dTextureReplacerHeaderStruct *)rawData;
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dTextureReplacerHeaderStruct)
+                + header->ReplacedTexturesCount * sizeof(W3dTextureReplacerStruct),
+        "Chunk W3D_CHUNK_TEXTURE_REPLACER_INFO size does not match data size");
+
+    AddData(data, "W3D_CHUNK_TEXTURE_REPLACER_INFO", "W3dTextureReplacerHeaderStruct[][]", "", (void *)rawData);
+}
+
+void Write_W3D_CHUNK_TEXTURE_REPLACER_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
+{
+    char *rawData = (char *)data->data->info->value;
+    WriteChunkRaw(csave, W3D_CHUNK_TEXTURE_REPLACER_INFO, rawData, data->data->chunkSize);
+}
+
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_TEXTURE_STAGE)
+
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_TEXTURES)
+
+READ_WRITE_CHUNK(W3D_CHUNK_TRANSFORM_NODE, W3dPlaceholderStruct)
+
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_TRIANGLES, W3dTriStruct)
+
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_COLORS, W3dRGBStruct)
+
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_INFLUENCES, W3dVertInfStruct)
+
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_VERTEX_MAPPER_ARGS0)
+
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_VERTEX_MAPPER_ARGS1)
+
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_VERTEX_MATERIAL)
+
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_MATERIAL_IDS, uint32_t)
+
+void Read_W3D_CHUNK_VERTEX_MATERIAL_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
+{
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dVertexMaterialStruct), "Chunk W3D_CHUNK_VERTEX_MATERIAL_INFO size does not match data size");
+    W3dVertexMaterialStruct *material = (W3dVertexMaterialStruct *)rawData;
 
     if (material->Attributes & 0x00000010) {
         StringClass str;
@@ -888,10 +910,9 @@ void Dump_W3D_CHUNK_VERTEX_MATERIAL_INFO(ChunkLoadClass &cload, ChunkTreePtr &da
         }
     }
     AddData(data, "W3D_CHUNK_VERTEX_MATERIAL_INFO", "W3dVertexMaterialStruct", "", (void *)material);
-    delete[] chunkdata;
 }
 
-void Serialize_W3D_CHUNK_VERTEX_MATERIAL_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_VERTEX_MATERIAL_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dVertexMaterialStruct *material = (W3dVertexMaterialStruct *)data->data->info->value;
     if (material->Attributes & 0x00000010) {
@@ -940,23 +961,24 @@ void Serialize_W3D_CHUNK_VERTEX_MATERIAL_INFO(ChunkSaveClass &csave, ChunkTreePt
         }
     }
 
-    WriteChunkData(csave, W3D_CHUNK_VERTEX_MATERIAL_INFO, material, sizeof(W3dVertexMaterialStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_VERTEX_MATERIAL_INFO, material, sizeof(W3dVertexMaterialStruct));
 }
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_VERTEX_MATERIAL_NAME)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_VERTEX_MATERIAL_NAME)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_VERTEX_MATERIALS)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_VERTEX_MATERIALS)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_NORMALS, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_NORMALS, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_SHADE_INDICES, uint32_t)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_VERTEX_SHADE_INDICES, uint32_t)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_VERTICES, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_VERTICES, W3dVectorStruct)
 
-void Dump_W3D_CHUNK_EMITTER_LINE_PROPERTIES(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_EMITTER_LINE_PROPERTIES(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dEmitterLinePropertiesStruct *props = (W3dEmitterLinePropertiesStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dEmitterLinePropertiesStruct), "Chunk W3D_CHUNK_EMITTER_LINE_PROPERTIES size does not match data size");
+    W3dEmitterLinePropertiesStruct *props = (W3dEmitterLinePropertiesStruct *)rawData;
 
     if (props->Flags & 0x00FFFFF0) {
         StringClass str;
@@ -973,10 +995,9 @@ void Dump_W3D_CHUNK_EMITTER_LINE_PROPERTIES(ChunkLoadClass &cload, ChunkTreePtr 
     }
 
     AddData(data, "W3D_CHUNK_EMITTER_LINE_PROPERTIES", "W3dEmitterLinePropertiesStruct", "", (void *)props);
-    delete[] chunkdata;
 }
 
-void Serialize_W3D_CHUNK_EMITTER_LINE_PROPERTIES(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_EMITTER_LINE_PROPERTIES(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dEmitterLinePropertiesStruct *props = (W3dEmitterLinePropertiesStruct *)data->data->info->value;
     if (props->Flags & 0x00FFFFF0) {
@@ -993,25 +1014,26 @@ void Serialize_W3D_CHUNK_EMITTER_LINE_PROPERTIES(ChunkSaveClass &csave, ChunkTre
         captainslog_warn((const char *)str);
     }
 
-    WriteChunkData(csave, W3D_CHUNK_EMITTER_LINE_PROPERTIES, props, sizeof(W3dEmitterLinePropertiesStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_EMITTER_LINE_PROPERTIES, props, sizeof(W3dEmitterLinePropertiesStruct));
 }
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SECONDARY_VERTICES, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SECONDARY_VERTICES, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SECONDARY_VERTEX_NORMALS, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SECONDARY_VERTEX_NORMALS, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_TANGENTS, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_TANGENTS, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_BINORMALS, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_BINORMALS, W3dVectorStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_COMPRESSED_ANIMATION)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_COMPRESSED_ANIMATION)
 
 int flavor = ANIM_FLAVOR_TIMECODED;
 
-void Dump_W3D_CHUNK_COMPRESSED_ANIMATION_HEADER(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_COMPRESSED_ANIMATION_HEADER(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dCompressedAnimHeaderStruct *header = (W3dCompressedAnimHeaderStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dCompressedAnimHeaderStruct), "Chunk W3D_CHUNK_COMPRESSED_ANIMATION_HEADER size does not match data size");
+    W3dCompressedAnimHeaderStruct *header = (W3dCompressedAnimHeaderStruct *)rawData;
 
     if (header->Flavor >= ANIM_FLAVOR_VALID) {
         StringClass str;
@@ -1021,10 +1043,9 @@ void Dump_W3D_CHUNK_COMPRESSED_ANIMATION_HEADER(ChunkLoadClass &cload, ChunkTree
 
     flavor = header->Flavor;
     AddData(data, "W3D_CHUNK_COMPRESSED_ANIMATION_HEADER", "W3dCompressedAnimHeaderStruct", "", (void *)header);
-    delete[] chunkdata;
 }
 
-void Serialize_W3D_CHUNK_COMPRESSED_ANIMATION_HEADER(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_COMPRESSED_ANIMATION_HEADER(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dCompressedAnimHeaderStruct *header = (W3dCompressedAnimHeaderStruct *)data->data->info->value;
 
@@ -1035,15 +1056,18 @@ void Serialize_W3D_CHUNK_COMPRESSED_ANIMATION_HEADER(ChunkSaveClass &csave, Chun
     }
 
     flavor = header->Flavor;
-    WriteChunkData(csave, W3D_CHUNK_COMPRESSED_ANIMATION_HEADER, header, sizeof(W3dCompressedAnimHeaderStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_COMPRESSED_ANIMATION_HEADER, header, sizeof(W3dCompressedAnimHeaderStruct));
 }
 
-void Dump_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
+    char *rawData = ReadChunkRaw(cload);
 
     if (flavor == ANIM_FLAVOR_TIMECODED) {
-        W3dTimeCodedAnimChannelStruct *channel = (W3dTimeCodedAnimChannelStruct *)chunkdata;
+        W3dTimeCodedAnimChannelStruct *channel = (W3dTimeCodedAnimChannelStruct *)rawData;
+        captainslog_dbgassert(data->data->chunkSize == sizeof(W3dTimeCodedAnimChannelStruct)
+                    + (((cload.Cur_Chunk_Length() - sizeof(W3dTimeCodedAnimChannelStruct)) >> 2) + 1) * sizeof(int),
+            "Chunk W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL size does not match data size");
 
         if (channel->Flags <= ANIM_CHANNEL_VIS) {
         } else {
@@ -1052,9 +1076,11 @@ void Dump_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTre
             captainslog_warn((const char *)str);
         }
         AddData(data, "W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL", "W3dTimeCodedAnimChannelStruct", "", (void *)channel);
-        delete[] chunkdata;
-    } else {
-        W3dAdaptiveDeltaAnimChannelStruct *channel = (W3dAdaptiveDeltaAnimChannelStruct *)chunkdata;
+        } else {
+        W3dAdaptiveDeltaAnimChannelStruct *channel = (W3dAdaptiveDeltaAnimChannelStruct *)rawData;
+        captainslog_dbgassert(data->data->chunkSize == sizeof(W3dAdaptiveDeltaAnimChannelStruct)
+                    + (((cload.Cur_Chunk_Length() - sizeof(W3dAdaptiveDeltaAnimChannelStruct)) >> 2) + 1) * sizeof(int),
+            "Chunk W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL size does not match data size");
 
         if (channel->Flags <= ANIM_CHANNEL_VIS) {
         } else {
@@ -1064,37 +1090,22 @@ void Dump_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkLoadClass &cload, ChunkTre
         }
 
         AddData(data, "W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL", "W3dAdaptiveDeltaAnimChannelStruct", "", (void *)channel);
-        delete[] chunkdata;
-    }
+        }
 }
 
-void Serialize_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    if (flavor == ANIM_FLAVOR_TIMECODED) {
-        W3dTimeCodedAnimChannelStruct *channel = (W3dTimeCodedAnimChannelStruct *)data->data->info->value;
-        if (channel->Flags <= ANIM_CHANNEL_VIS) {
-        } else {
-            StringClass str;
-            str.Format("W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
-            captainslog_warn((const char *)str);
-        }
-        WriteChunkData(csave, W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL, channel, sizeof(W3dTimeCodedAnimChannelStruct));
-    } else {
-        W3dAdaptiveDeltaAnimChannelStruct *channel = (W3dAdaptiveDeltaAnimChannelStruct *)data->data->info->value;
-        if (channel->Flags <= ANIM_CHANNEL_VIS) {
-        } else {
-            StringClass str;
-            str.Format("W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
-            captainslog_warn((const char *)str);
-        }
-        WriteChunkData(csave, W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL, channel, sizeof(W3dAdaptiveDeltaAnimChannelStruct));
-    }
+    char *rawData = (char *)data->data->info->value;
+    // TODO valid data
+    WriteChunkRaw(csave, W3D_CHUNK_COMPRESSED_ANIMATION_CHANNEL, rawData, data->data->chunkSize);
 }
 
-void Dump_W3D_CHUNK_COMPRESSED_BIT_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_COMPRESSED_BIT_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dTimeCodedBitChannelStruct *channel = (W3dTimeCodedBitChannelStruct *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    W3dTimeCodedBitChannelStruct *channel = (W3dTimeCodedBitChannelStruct *)rawData;
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dTimeCodedBitChannelStruct) + channel->NumTimeCodes * sizeof(int),
+        "Chunk W3D_CHUNK_COMPRESSED_BIT_CHANNEL size does not match data size");
 
     if (channel->Flags > BIT_CHANNEL_TIMECODED_VIS) {
         StringClass str;
@@ -1103,10 +1114,9 @@ void Dump_W3D_CHUNK_COMPRESSED_BIT_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &
     }
     AddData(data, "W3D_CHUNK_COMPRESSED_BIT_CHANNEL", "W3dTimeCodedBitChannelStruct", "", (void *)channel);
 
-    delete[] chunkdata;
 }
 
-void Serialize_W3D_CHUNK_COMPRESSED_BIT_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_COMPRESSED_BIT_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dTimeCodedBitChannelStruct *channel = (W3dTimeCodedBitChannelStruct *)data->data->info->value;
     if (channel->Flags > BIT_CHANNEL_TIMECODED_VIS) {
@@ -1114,24 +1124,24 @@ void Serialize_W3D_CHUNK_COMPRESSED_BIT_CHANNEL(ChunkSaveClass &csave, ChunkTree
         str.Format("W3D_CHUNK_COMPRESSED_BIT_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
         captainslog_warn((const char *)str);
     }
-    WriteChunkData(csave, W3D_CHUNK_COMPRESSED_BIT_CHANNEL, channel, sizeof(W3dTimeCodedBitChannelStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_COMPRESSED_BIT_CHANNEL, channel, data->data->chunkSize);
 }
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MORPH_ANIMATION)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MORPH_ANIMATION)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_MORPHANIM_HEADER, W3dMorphAnimHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_MORPHANIM_HEADER, W3dMorphAnimHeaderStruct)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_MORPHANIM_CHANNEL)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_MORPHANIM_CHANNEL)
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_MORPHANIM_POSENAME)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_MORPHANIM_POSENAME)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_MORPHANIM_KEYDATA, W3dMorphAnimKeyStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_MORPHANIM_KEYDATA, W3dMorphAnimKeyStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_MORPHANIM_PIVOTCHANNELDATA, uint32_t)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_MORPHANIM_PIVOTCHANNELDATA, uint32_t)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_SOUNDROBJ)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_SOUNDROBJ)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_SOUNDROBJ_HEADER, W3dSoundRObjHeaderStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_SOUNDROBJ_HEADER, W3dSoundRObjHeaderStruct)
 
 #define READ_FLOAT(id, name) \
     case id: { \
@@ -1177,10 +1187,10 @@ DUMP_SERIALIZE_CHUNK(W3D_CHUNK_SOUNDROBJ_HEADER, W3dSoundRObjHeaderStruct)
         break; \
     }
 
-void Dump_W3D_CHUNK_SOUNDROBJ_DEFINITION(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_SOUNDROBJ_DEFINITION(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    // TODO: Implement Dump_W3D_CHUNK_SOUNDROBJ_DEFINITION
-    captainslog_warn("Dump_W3D_CHUNK_SOUNDROBJ_DEFINITION not implemented");
+    // TODO: Implement Read_W3D_CHUNK_SOUNDROBJ_DEFINITION
+    captainslog_warn("Read_W3D_CHUNK_SOUNDROBJ_DEFINITION not implemented");
     while (cload.Open_Chunk()) {
         switch (cload.Cur_Chunk_ID()) {
             case 0x100:
@@ -1229,10 +1239,10 @@ void Dump_W3D_CHUNK_SOUNDROBJ_DEFINITION(ChunkLoadClass &cload, ChunkTreePtr &da
     }
 }
 
-void Serialize_W3D_CHUNK_SOUNDROBJ_DEFINITION(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_SOUNDROBJ_DEFINITION(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    // TODO: Implement Serialize_W3D_CHUNK_SOUNDROBJ_DEFINITION
-    captainslog_warn("Serialize_W3D_CHUNK_SOUNDROBJ_DEFINITION not implemented");
+    // TODO: Implement Write_W3D_CHUNK_SOUNDROBJ_DEFINITION
+    captainslog_warn("Write_W3D_CHUNK_SOUNDROBJ_DEFINITION not implemented");
 }
 
 void DoVector3Channel(ChunkLoadClass &cload, ChunkTreePtr &data, const char *name)
@@ -1345,10 +1355,10 @@ void DoAlphaVectorStructChannel(ChunkLoadClass &cload, ChunkTreePtr &data, const
     }
 }
 
-void Dump_W3D_CHUNK_RING(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_RING(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    // TODO: Implement Dump_W3D_CHUNK_RING
-    captainslog_warn("Dump_W3D_CHUNK_RING not implemented");
+    // TODO: Implement Read_W3D_CHUNK_RING
+    captainslog_warn("Read_W3D_CHUNK_RING not implemented");
     while (cload.Open_Chunk()) {
         switch (cload.Cur_Chunk_ID()) {
             case 1: {
@@ -1381,16 +1391,16 @@ void Dump_W3D_CHUNK_RING(ChunkLoadClass &cload, ChunkTreePtr &data)
     }
 }
 
-void Serialize_W3D_CHUNK_RING(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_RING(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    // TODO: Implement Serialize_W3D_CHUNK_RING
-    captainslog_warn("Serialize_W3D_CHUNK_RING not implemented");
+    // TODO: Implement Write_W3D_CHUNK_RING
+    captainslog_warn("Write_W3D_CHUNK_RING not implemented");
 }
 
-void Dump_W3D_CHUNK_SPHERE(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_SPHERE(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    // TODO: Implement Dump_W3D_CHUNK_SPHERE
-    captainslog_warn("Dump_W3D_CHUNK_SPHERE not implemented");
+    // TODO: Implement Read_W3D_CHUNK_SPHERE
+    captainslog_warn("Read_W3D_CHUNK_SPHERE not implemented");
     while (cload.Open_Chunk()) {
         switch (cload.Cur_Chunk_ID()) {
             case 1: {
@@ -1422,67 +1432,69 @@ void Dump_W3D_CHUNK_SPHERE(ChunkLoadClass &cload, ChunkTreePtr &data)
     }
 }
 
-void Serialize_W3D_CHUNK_SPHERE(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_SPHERE(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    // TODO: Implement Serialize_W3D_CHUNK_SPHERE
-    captainslog_warn("Serialize_W3D_CHUNK_SPHERE not implemented");
+    // TODO: Implement Write_W3D_CHUNK_SPHERE
+    captainslog_warn("Write_W3D_CHUNK_SPHERE not implemented");
 }
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_SHDMESH)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_SHDMESH)
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_SHDMESH_NAME)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_SHDMESH_NAME)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_SHDSUBMESH)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_SHDSUBMESH)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_SHDSUBMESH_SHADER)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_SHDSUBMESH_SHADER)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_SHDSUBMESH_SHADER_TYPE, uint32_t)
+READ_WRITE_CHUNK(W3D_CHUNK_SHDSUBMESH_SHADER_TYPE, uint32_t)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_VERTICES, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_VERTICES, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_VERTEX_NORMALS, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_VERTEX_NORMALS, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_TRIANGLES, Vector3i16)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_TRIANGLES, Vector3i16)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_VERTEX_SHADE_INDICES, uint32_t)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_VERTEX_SHADE_INDICES, uint32_t)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_UV0, W3dTexCoordStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_UV0, W3dTexCoordStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_UV1, W3dTexCoordStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_UV1, W3dTexCoordStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_TANGENT_BASIS_S, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_TANGENT_BASIS_S, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_TANGENT_BASIS_T, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_TANGENT_BASIS_T, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_TANGENT_BASIS_SXT, W3dVectorStruct)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_SHDSUBMESH_TANGENT_BASIS_SXT, W3dVectorStruct)
 
-DUMP_SERIALIZE_CHUNK(W3D_CHUNK_EMITTER_EXTRA_INFO, W3dEmitterExtraInfoStruct)
+READ_WRITE_CHUNK(W3D_CHUNK_EMITTER_EXTRA_INFO, W3dEmitterExtraInfoStruct)
 
-DUMP_SERIALIZE_CHUNK_STRING(W3D_CHUNK_SHDMESH_USER_TEXT)
+READ_WRITE_CHUNK_STRING(W3D_CHUNK_SHDMESH_USER_TEXT)
 
-DUMP_SERIALIZE_CHUNK_ARRAY(W3D_CHUNK_FXSHADER_IDS, uint32_t)
+READ_WRITE_CHUNK_ARRAY(W3D_CHUNK_FXSHADER_IDS, uint32_t)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_FX_SHADERS)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_FX_SHADERS)
 
-DUMP_SERIALIZE_PARSER(W3D_CHUNK_FX_SHADER)
+READ_WRITE_SUBCHUNKS(W3D_CHUNK_FX_SHADER)
 
-void Dump_W3D_CHUNK_FX_SHADER_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_FX_SHADER_INFO(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
     // TODO Fix W3dFXShaderStruct
-    captainslog_warn("Dump_W3D_CHUNK_FX_SHADER_INFO not implemented");
-    char *chunkdata = ReadChunkData(cload);
-    uint8_t *version = (uint8_t *)chunkdata;
+    captainslog_warn("Read_W3D_CHUNK_FX_SHADER_INFO not implemented");
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dFXShaderStruct) + 1, "Chunk W3D_CHUNK_FX_SHADER_INFO size does not match data size");
+    uint8_t *version = (uint8_t *)rawData;
     AddInt8(data, "Version", *version);
-    W3dFXShaderStruct *shader = (W3dFXShaderStruct *)(chunkdata + 1);
+    W3dFXShaderStruct *shader = (W3dFXShaderStruct *)(rawData + 1);
     AddString(data, "ShaderName", shader->shadername, "string");
     AddInt8(data, "Technique", shader->technique);
-    delete[] chunkdata;
+    delete[] rawData;
 }
 
-void Serialize_W3D_CHUNK_FX_SHADER_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_FX_SHADER_INFO(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
-    // TODO: Implement Serialize_W3D_CHUNK_FX_SHADER_INFO
-    captainslog_warn("Serialize_W3D_CHUNK_FX_SHADER_INFO not implemented");
+    // TODO: Implement Write_W3D_CHUNK_FX_SHADER_INFO
+    captainslog_warn("Write_W3D_CHUNK_FX_SHADER_INFO not implemented");
+//    char *rawData = new char[sizeof(W3dFXShaderStruct) + 1];
 }
 
 struct W3dFXShaderConstantStruct
@@ -1498,22 +1510,22 @@ struct W3dFXShaderConstantStruct
         bool Bool;
     } Value;
 
-    W3dFXShaderConstantStruct &operator=(const char *chunkdata)
+    W3dFXShaderConstantStruct &operator=(const char *rawData)
     {
-        Type = *(uint32_t *)chunkdata;
-        Length = *(uint32_t *)(chunkdata + 4);
-        ConstantName = std::string(chunkdata + 8, Length);
+        Type = *(uint32_t *)rawData;
+        Length = *(uint32_t *)(rawData + 4);
+        ConstantName = std::string(rawData + 8, Length);
 
         if (Type == CONSTANT_TYPE_TEXTURE) {
-            Value.Texture = std::string(chunkdata + 8 + Length);
+            Value.Texture = std::string(rawData + 8 + Length);
         } else if (Type >= CONSTANT_TYPE_FLOAT1 && Type <= CONSTANT_TYPE_FLOAT4) {
             int count = Type - 1;
-            float *floats = (float *)(chunkdata + 8 + Length);
+            float *floats = (float *)(rawData + 8 + Length);
             Value.Floats.assign(floats, floats + count);
         } else if (Type == CONSTANT_TYPE_INT) {
-            Value.Int = *(uint32_t *)(chunkdata + 8 + Length);
+            Value.Int = *(uint32_t *)(rawData + 8 + Length);
         } else if (Type == CONSTANT_TYPE_BOOL) {
-            Value.Bool = *(uint8_t *)(chunkdata + 8 + Length) != 0;
+            Value.Bool = *(uint8_t *)(rawData + 8 + Length) != 0;
         } else {
             // Handle unknown types
             Value.Texture = "Unknown";
@@ -1523,20 +1535,39 @@ struct W3dFXShaderConstantStruct
     }
 };
 
-void Dump_W3D_CHUNK_FX_SHADER_CONSTANT(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_FX_SHADER_CONSTANT(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dFXShaderConstantStruct *constant = (W3dFXShaderConstantStruct *)chunkdata;
-    if (constant->Value.Texture == "Unknown") {
+    char *rawData = ReadChunkRaw(cload);
+    // TODO check valid
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dFXShaderConstantStruct), "Chunk W3D_CHUNK_FX_SHADER_CONSTANT size does not match data size");
+    W3dFXShaderConstantStruct *constant = (W3dFXShaderConstantStruct *)rawData;
+    uint32_t type = *(uint32_t *)rawData;
+    uint32_t length = *(uint32_t *)(rawData + 4);
+    uint32_t expectedSize = 4 + 4 + length; // 4 bytes for 'type' and 'length' plus length for constant name
+    if (type == CONSTANT_TYPE_TEXTURE) {
+        expectedSize += 4 + strlen((char *)(rawData + expectedSize)); // add texture size
+    } else if (type >= CONSTANT_TYPE_FLOAT1 && type <= CONSTANT_TYPE_FLOAT4) {
+        expectedSize += sizeof(float) * (type - 1); // add float array size
+    } else if (type == CONSTANT_TYPE_INT) {
+        expectedSize += sizeof(uint32_t); // add int size
+    } else if (type == CONSTANT_TYPE_BOOL) {
+        expectedSize += sizeof(uint8_t); // add bool size
+    } else {
         StringClass str;
         str.Format("W3D_CHUNK_FX_SHADER_CONSTANT Unknown Constant Type %x", constant->Type);
         captainslog_warn((const char *)str);
     }
+
+    captainslog_dbgassert(data->data->chunkSize == expectedSize,
+        "Chunk W3D_CHUNK_FX_SHADER_CONSTANT size does not match expected size");
+
+
+    if (constant->Value.Texture == "Unknown") {
+    }
     AddData(data, "W3D_CHUNK_FX_SHADER_CONSTANT", "W3dFXShaderConstantStruct", "", (void *)constant);
-    delete[] chunkdata;
 }
 
-void Serialize_W3D_CHUNK_FX_SHADER_CONSTANT(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_FX_SHADER_CONSTANT(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dFXShaderConstantStruct *constant = (W3dFXShaderConstantStruct *)data->data->info->value;
     if (constant->Value.Texture == "Unknown") {
@@ -1544,7 +1575,7 @@ void Serialize_W3D_CHUNK_FX_SHADER_CONSTANT(ChunkSaveClass &csave, ChunkTreePtr 
         str.Format("W3D_CHUNK_FX_SHADER_CONSTANT Unknown Constant Type %x", constant->Type);
         captainslog_warn((const char *)str);
     }
-    WriteChunkData(csave, W3D_CHUNK_FX_SHADER_CONSTANT, constant, sizeof(W3dFXShaderConstantStruct));
+    WriteChunkRaw(csave, W3D_CHUNK_FX_SHADER_CONSTANT, constant, sizeof(W3dFXShaderConstantStruct));
 }
 
 struct W3dCompressedMotionChannelStructNew
@@ -1561,47 +1592,47 @@ struct W3dCompressedMotionChannelStructNew
     std::vector<float> Initial;
     std::vector<uint32_t> Data;
 
-    W3dCompressedMotionChannelStructNew &operator=(const char *chunkdata)
+    W3dCompressedMotionChannelStructNew &operator=(const char *rawData)
     {
-        Zero = *(uint8_t *)chunkdata;
-        Flavor = *(uint8_t *)(chunkdata + 1);
-        VectorLen = *(uint8_t *)(chunkdata + 2);
-        Flags = *(uint8_t *)(chunkdata + 3);
-        NumTimeCodes = *(uint16_t *)(chunkdata + 4);
-        Pivot = *(uint16_t *)(chunkdata + 6);
+        Zero = *(uint8_t *)rawData;
+        Flavor = *(uint8_t *)(rawData + 1);
+        VectorLen = *(uint8_t *)(rawData + 2);
+        Flags = *(uint8_t *)(rawData + 3);
+        NumTimeCodes = *(uint16_t *)(rawData + 4);
+        Pivot = *(uint16_t *)(rawData + 6);
 
         size_t offset = sizeof(W3dCompressedMotionChannelStructNew);
 
         if (Flavor == ANIM_FLAVOR_NEW_TIMECODED) {
             KeyFrames.assign(
-                (uint16_t *)(chunkdata + offset), (uint16_t *)(chunkdata + offset + NumTimeCodes * sizeof(uint16_t)));
+                (uint16_t *)(rawData + offset), (uint16_t *)(rawData + offset + NumTimeCodes * sizeof(uint16_t)));
             offset += NumTimeCodes * sizeof(uint16_t);
 
             int datalen = VectorLen * NumTimeCodes;
             if (NumTimeCodes & 1) {
                 offset += 2; // Padding for odd NumTimeCodes
             }
-            Data.assign((uint32_t *)(chunkdata + offset), (uint32_t *)(chunkdata + offset + datalen * sizeof(uint32_t)));
+            Data.assign((uint32_t *)(rawData + offset), (uint32_t *)(rawData + offset + datalen * sizeof(uint32_t)));
         } else {
-            Scale = *(float *)(chunkdata + offset);
+            Scale = *(float *)(rawData + offset);
             offset += sizeof(float);
 
-            Initial.assign((float *)(chunkdata + offset), (float *)(chunkdata + offset + VectorLen * sizeof(float)));
+            Initial.assign((float *)(rawData + offset), (float *)(rawData + offset + VectorLen * sizeof(float)));
             offset += VectorLen * sizeof(float);
 
             int count = (NumTimeCodes * VectorLen - sizeof(W3dCompressedMotionChannelStructNew) - sizeof(float)
-                            - sizeof(float) * VectorLen)
-                / sizeof(uint32_t);
-            Data.assign((uint32_t *)(chunkdata + offset), (uint32_t *)(chunkdata + offset + count * sizeof(uint32_t)));
+                            - sizeof(float) * VectorLen) / sizeof(uint32_t);
+            Data.assign((uint32_t *)(rawData + offset), (uint32_t *)(rawData + offset + count * sizeof(uint32_t)));
         }
         return *this;
     }
 };
 
-void Dump_W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
+void Read_W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL(ChunkLoadClass &cload, ChunkTreePtr &data)
 {
-    char *chunkdata = ReadChunkData(cload);
-    W3dCompressedMotionChannelStructNew *channel = (W3dCompressedMotionChannelStructNew *)chunkdata;
+    char *rawData = ReadChunkRaw(cload);
+    captainslog_dbgassert(data->data->chunkSize == sizeof(W3dCompressedMotionChannelStructNew), "Chunk W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL size does not match data size");
+    W3dCompressedMotionChannelStructNew *channel = (W3dCompressedMotionChannelStructNew *)rawData;
     if (channel->Flavor >= ANIM_FLAVOR_NEW_VALID) {
         StringClass str;
         str.Format("W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL Unknown Flavor Type %x", channel->Flavor);
@@ -1616,10 +1647,9 @@ void Dump_W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL(ChunkLoadClass &cload, C
 
     AddData(
         data, "W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL", "W3dCompressedMotionChannelStructNew", "", (void *)channel);
-    delete[] chunkdata;
 }
 
-void Serialize_W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
+void Write_W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL(ChunkSaveClass &csave, ChunkTreePtr &data)
 {
     W3dCompressedMotionChannelStructNew *channel = (W3dCompressedMotionChannelStructNew *)data->data->info->value;
     if (channel->Flavor >= ANIM_FLAVOR_NEW_VALID) {
@@ -1633,7 +1663,7 @@ void Serialize_W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL(ChunkSaveClass &csa
         str.Format("W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL Unknown Animation Channel Type %x", channel->Flags);
         captainslog_warn((const char *)str);
     }
-    WriteChunkData(
+    WriteChunkRaw(
         csave, W3D_CHUNK_COMPRESSED_ANIMATION_MOTION_CHANNEL, channel, sizeof(W3dCompressedMotionChannelStructNew));
 }
 
@@ -1643,8 +1673,8 @@ std::map<int, ChunkIOFuncs> chunkFuncMap;
     { \
         ChunkIOFuncs c; \
         c.name = #id; \
-        c.ReadFunc = Dump_##id; \
-        c.WriteFunc = Serialize_##id; \
+        c.ReadChunk = Read_##id; \
+        c.WriteChunk = Write_##id; \
         chunkFuncMap[id] = c; \
     }
 

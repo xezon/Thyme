@@ -279,7 +279,7 @@ bool GameModelFile::Read_W3D_File(const char *filename, const Options &options)
     }
     m_chunkManager = new ChunkManager(filename, ChunkManager::ChunkManagerType::LOAD);
     m_chunkLoader = ChunkLoadClass(file);
-    m_chunkManager->DumpSubChunks(m_chunkLoader, m_chunkManager->GetRootChunk());
+    m_chunkManager->ReadSubChunks(m_chunkLoader, m_chunkManager->GetRootChunk());
     // TODO unknown chunks
     GAMEMODELLOG_INFO("Successfully parsed W3D file: %s", filename);
 
@@ -296,7 +296,7 @@ bool GameModelFile::Write_W3D_File(const char *filename, const Options &options)
         return false;
     }
     ChunkSaveClass chunkSaver(file);
-    m_chunkManager->SerializeSubChunks(chunkSaver, m_chunkManager->GetRootChunk());
+    m_chunkManager->WriteSubChunks(chunkSaver, m_chunkManager->GetRootChunk());
     return true;
 }
 

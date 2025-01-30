@@ -20,6 +20,11 @@ struct ChunkInfo
 
     ChunkInfo(const char *name, const StringClass &type, const StringClass &data, void *value) :
         name(name), type(type), data(data), value(value) {}
+
+    ~ChunkInfo()
+    {
+        delete [] value;
+    }
 };
 
 
@@ -46,8 +51,8 @@ using ChunkTreePtr = std::unique_ptr<ChunkTree>;
 struct ChunkIOFuncs
 {
     const char *name;
-    void (*ReadFunc)(ChunkLoadClass &chunkLoader, ChunkTreePtr &data);
-    void (*WriteFunc)(ChunkSaveClass &chunkSaver, ChunkTreePtr &data);
+    void (*ReadChunk)(ChunkLoadClass &chunkLoader, ChunkTreePtr &data);
+    void (*WriteChunk)(ChunkSaveClass &chunkSaver, ChunkTreePtr &data);
 };
 
 extern std::map<int, ChunkIOFuncs> chunkFuncMap;
@@ -77,9 +82,9 @@ public:
         return std::make_unique<ChunkInfo>(name, type, data, value);
     }
 
-    static void DumpSubChunks(ChunkLoadClass &chunkLoader, ChunkTreePtr &parentChunk);
+    static void ReadSubChunks(ChunkLoadClass &chunkLoader, ChunkTreePtr &parentChunk);
     static void ReadChunkInfo(ChunkLoadClass &chunkLoader, ChunkTreePtr &chunk);
-    static void SerializeSubChunks(ChunkSaveClass &chunkSaver, ChunkTreePtr &parentChunk);
+    static void WriteSubChunks(ChunkSaveClass &chunkSaver, ChunkTreePtr &parentChunk);
     static void WriteChunkInfo(ChunkSaveClass &chunkSaver, ChunkTreePtr &chunk);
 
     ChunkTreePtr & GetRootChunk() { return m_rootChunk; }
