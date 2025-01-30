@@ -42,6 +42,7 @@ public:
     virtual int Read(void *dst, int bytes) override;
     virtual int Write(void const *src, int bytes) override;
     virtual int Seek(int offset, File::SeekMode mode) override;
+    virtual int Position() override;
     virtual void Next_Line(char *dst, int bytes) override;
     virtual bool Scan_Int(int &integer) override;
     virtual bool Scan_Real(float &real) override;
