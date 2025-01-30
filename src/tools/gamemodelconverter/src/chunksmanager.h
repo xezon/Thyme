@@ -81,17 +81,19 @@ public:
     {
         return std::make_unique<ChunkInfo>(name, type, data, value);
     }
-
+    void ReadChunks(ChunkLoadClass &chunkLoader);
     static void ReadSubChunks(ChunkLoadClass &chunkLoader, ChunkTreePtr &parentChunk);
     static void ReadChunkInfo(ChunkLoadClass &chunkLoader, ChunkTreePtr &chunk);
+
+    void WriteChunks(ChunkSaveClass &chunkSaver);
     static void WriteSubChunks(ChunkSaveClass &chunkSaver, ChunkTreePtr &parentChunk);
     static void WriteChunkInfo(ChunkSaveClass &chunkSaver, ChunkTreePtr &chunk);
 
-    ChunkTreePtr & GetRootChunk() { return m_rootChunk; }
-    void SetRootChunk(ChunkTreePtr root) { m_rootChunk = std::move(root); }
+    ChunkTreePtr & GetRootChunk() { return m_rootChunks.front(); }
+    void SetRootChunk(ChunkTreePtr root) { m_rootChunks.push_back(std::move(root)); }
 
 private:
-
-    ChunkTreePtr m_rootChunk;
+    std::vector<ChunkTreePtr> m_rootChunks;
     FileClass *m_file;
 };
+

@@ -277,9 +277,11 @@ bool GameModelFile::Read_W3D_File(const char *filename, const Options &options)
         GAMEMODELLOG_ERROR("Could not open file: %s", filename);
         return false;
     }
+
     m_chunkManager = new ChunkManager(filename, ChunkManager::ChunkManagerType::LOAD);
     m_chunkLoader = ChunkLoadClass(file);
-    m_chunkManager->ReadSubChunks(m_chunkLoader, m_chunkManager->GetRootChunk());
+    m_chunkManager->ReadChunks(m_chunkLoader);
+
     // TODO unknown chunks
     GAMEMODELLOG_INFO("Successfully parsed W3D file: %s", filename);
 
@@ -295,8 +297,10 @@ bool GameModelFile::Write_W3D_File(const char *filename, const Options &options)
         GAMEMODELLOG_ERROR("Could not open file: %s", filename);
         return false;
     }
+
     ChunkSaveClass chunkSaver(file);
-    m_chunkManager->WriteSubChunks(chunkSaver, m_chunkManager->GetRootChunk());
+    m_chunkManager->WriteChunks(chunkSaver);  // השתמש בפונקציה החדשה לכתיבה
+
     return true;
 }
 

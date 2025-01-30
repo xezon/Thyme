@@ -2,7 +2,7 @@
 
 ChunkManager::ChunkManager(const char *filePath, int flag)
 {
-    m_rootChunk = std::make_unique<ChunkTree>();
+    //    m_rootChunks.push_back(std::make_unique<ChunkTree>());
     InitiateChunkFuncMap();
 }
 
@@ -13,6 +13,16 @@ ChunkManager::~ChunkManager()
     }
 }
 
+void ChunkManager::ReadChunks(ChunkLoadClass &chunkLoader)
+{
+    while (chunkLoader.Open_Chunk()) {
+        ChunkTreePtr root = std::make_unique<ChunkTree>();
+        ReadSubChunks(chunkLoader, root);
+        m_rootChunks.push_back(std::move(root));
+        chunkLoader.Close_Chunk();
+    }
+}
+
 void ChunkManager::ReadSubChunks(ChunkLoadClass &chunkLoader, ChunkTreePtr &parentChunk)
 {
     if (parentChunk == nullptr) {
@@ -20,9 +30,7 @@ void ChunkManager::ReadSubChunks(ChunkLoadClass &chunkLoader, ChunkTreePtr &pare
     }
 
     if (!parentChunk->data) {
-        if (chunkLoader.Open_Chunk()) {
-            ReadChunkInfo(chunkLoader, parentChunk);
-        }
+        ReadChunkInfo(chunkLoader, parentChunk);
     }
     while (chunkLoader.Open_Chunk()) {
         ChunkTreePtr subchunk = std::make_unique<ChunkTree>();
@@ -56,6 +64,17 @@ void ChunkManager::ReadChunkInfo(ChunkLoadClass &chunkLoader, ChunkTreePtr &data
     }
 }
 
+void ChunkManager::WriteChunks(ChunkSaveClass &chunkSaver)
+{
+    for (auto &root : m_rootChunks) {
+        if (root->data->info->value != nullptr) {
+            WriteChunkInfo(chunkSaver, root);
+        } else {
+            WriteSubChunks(chunkSaver, root);
+        }
+    }
+}
+
 void ChunkManager::WriteSubChunks(ChunkSaveClass &chunkSaver, ChunkTreePtr &parentChunk)
 {
     if (parentChunk->data) {
@@ -72,7 +91,6 @@ void ChunkManager::WriteSubChunks(ChunkSaveClass &chunkSaver, ChunkTreePtr &pare
             return;
         }
     }
-
 }
 
 void ChunkManager::WriteChunkInfo(ChunkSaveClass &chunkSaver, ChunkTreePtr &data)

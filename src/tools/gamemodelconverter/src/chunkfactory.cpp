@@ -168,7 +168,7 @@ template<typename T> void Write_Chunk_Array(ChunkSaveClass &csave, ChunkTreePtr 
 // READ_WRITE_SUBCHUNKS
 template<typename T> void Read_Sub_Chunks(ChunkLoadClass &cload, ChunkTreePtr &data, const char *id)
 {
-    AddString(data, id, id, "StringClass");
+    AddData(data, id, "StringClass", id, nullptr);
     ChunkManager::ReadSubChunks(cload, data);
 }
 
@@ -362,7 +362,7 @@ void Read_W3D_CHUNK_BOX(ChunkLoadClass &cload, ChunkTreePtr &data)
         captainslog_warn((const char *)str);
     }
 
-    AddData(data, "W3D_CHUNK_BOX", "W3dBoxStruct", "", (void *)box);
+    AddData(data, "W3D_CHUNK_BOX", "W3dBoxStruct", "", (void *)rawData);
 }
 
 void Write_W3D_CHUNK_BOX(ChunkSaveClass &csave, ChunkTreePtr &data)
